@@ -29,6 +29,12 @@ public class AiScore {
     @Column(columnDefinition = "TEXT")
     private String aiReasoning;
 
+    @Column(columnDefinition = "TEXT")
+    private String aiSuggestions;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String detailedResult; // To store the full 4-stage evaluation JSON
+
     // Audit fields
     private Instant createdAt;
     private Instant updatedAt;

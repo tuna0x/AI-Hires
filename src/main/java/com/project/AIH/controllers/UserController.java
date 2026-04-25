@@ -5,7 +5,7 @@ import com.project.AIH.dto.user.ReqUpdateUserDTO;
 import com.project.AIH.dto.user.ResUserDTO;
 import com.project.AIH.models.User;
 import com.project.AIH.services.UserService;
-import com.project.AIH.utils.annotation.APIMessage;
+import com.project.AIH.utils.annotation.ApiMessage;
 import com.project.AIH.utils.error.IdInvalidException;
 import com.turkraft.springfilter.boot.Filter;
 import jakarta.validation.Valid;
@@ -24,7 +24,7 @@ public class UserController {
     private final UserService userService;
 
     @PostMapping
-    @APIMessage("Create user successfully")
+    @ApiMessage("Create user successfully")
     public ResponseEntity<ResUserDTO> createUser(@Valid @RequestBody User user) throws IdInvalidException {
         if (userService.existsByEmail(user.getEmail())) {
             throw new IdInvalidException("Email already exists");
@@ -34,7 +34,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @APIMessage("Fetch user by id successfully")
+    @ApiMessage("Fetch user by id successfully")
     public ResponseEntity<ResUserDTO> getUserById(@PathVariable Long id) throws IdInvalidException {
         User user = userService.fetchUserById(id);
         if (user == null) {
@@ -44,7 +44,7 @@ public class UserController {
     }
 
     @GetMapping
-    @APIMessage("Fetch all users successfully")
+    @ApiMessage("Fetch all users successfully")
     public ResponseEntity<ResultPaginationDTO> getAllUsers(
             @Filter Specification<User> spec,
             Pageable pageable
@@ -53,7 +53,7 @@ public class UserController {
     }
 
     @PutMapping
-    @APIMessage("Update user successfully")
+    @ApiMessage("Update user successfully")
     public ResponseEntity<ResUserDTO> updateUser(@RequestBody ReqUpdateUserDTO req) throws IdInvalidException {
         User updatedUser = userService.handleUpdateUser(req);
         if (updatedUser == null) {
@@ -63,7 +63,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @APIMessage("Delete user successfully")
+    @ApiMessage("Delete user successfully")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) throws IdInvalidException {
         if (userService.fetchUserById(id) == null) {
             throw new IdInvalidException("User id not found");

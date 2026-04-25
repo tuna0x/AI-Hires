@@ -1,7 +1,8 @@
 package com.project.AIH.utils;
 
 import com.project.AIH.dto.RestResponse;
-import com.project.AIH.utils.annotation.APIMessage;
+import com.project.AIH.utils.annotation.ApiMessage;
+
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.MethodParameter;
 import org.springframework.core.io.Resource;
@@ -49,7 +50,7 @@ public class FormatRestResponse implements ResponseBodyAdvice<Object> {
             return body;
         } else {
             res.setData(body);
-            APIMessage message = returnType.getMethodAnnotation(APIMessage.class);
+            ApiMessage message = returnType.getMethodAnnotation(ApiMessage.class);
             res.setMessage(message != null ? message.value() : "CALL API SUCCESS");
         }
 

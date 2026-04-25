@@ -32,6 +32,9 @@ public class Application {
     @Column(columnDefinition = "TEXT")
     private String notes;
 
+    @OneToOne(mappedBy = "application", cascade = CascadeType.ALL)
+    private AiScore aiScore;
+
     // Audit fields
     private Instant createdAt;
     private Instant updatedAt;

@@ -10,7 +10,8 @@ import java.time.Instant;
 @Table(name = "users", indexes = {
     @Index(name = "idx_user_email", columnList = "email")
 })
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
