@@ -1,0 +1,52 @@
+spring:
+  application:
+    name: AIH
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/ai_hire?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    username: root
+    password: root
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MySQL8Dialect
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+    rabbitmq:
+      host: localhost
+      port: 5672
+      username: guest
+      password: guest
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+# Custom Configs
+app:
+  jwt:
+    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
+    expiration: 86400000 # 1 day
+  minio:
+    endpoint: http://localhost:9000
+    accessKey: minioadmin
+    secretKey: minioadmin
+    bucket: ai-hire-resumes
+  gemini:
+    api-key: YOUR_GEMINI_API_KEY_HERE
+    api-url: https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
