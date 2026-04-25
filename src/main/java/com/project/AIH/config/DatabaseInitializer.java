@@ -27,32 +27,20 @@ public class DatabaseInitializer implements CommandLineRunner {
         log.info(">>> START INIT DATABASE");
 
         // 1. Ensure Roles exist
-        Role adminRole = this.roleRepository.findByName("ADMIN").orElse(null);
-        if (adminRole == null) {
-            adminRole = new Role();
-            adminRole.setName("ADMIN");
-            adminRole.setDescription("Full control role");
-            adminRole.setActive(true);
-            adminRole = this.roleRepository.save(adminRole);
-        }
+        Role adminRole = this.roleRepository.findByName("ADMIN").orElseGet(() -> {
+            Role r = Role.builder().name("ADMIN").description("Full control role").active(true).build();
+            return this.roleRepository.save(r);
+        });
 
-        Role hrRole = this.roleRepository.findByName("HR").orElse(null);
-        if (hrRole == null) {
-            hrRole = new Role();
-            hrRole.setName("HR");
-            hrRole.setDescription("Human Resources role");
-            hrRole.setActive(true);
-            hrRole = this.roleRepository.save(hrRole);
-        }
+        Role hrRole = this.roleRepository.findByName("HR").orElseGet(() -> {
+            Role r = Role.builder().name("HR").description("Human Resources role").active(true).build();
+            return this.roleRepository.save(r);
+        });
 
-        Role candidateRole = this.roleRepository.findByName("CANDIDATE").orElse(null);
-        if (candidateRole == null) {
-            candidateRole = new Role();
-            candidateRole.setName("CANDIDATE");
-            candidateRole.setDescription("Job candidate role");
-            candidateRole.setActive(true);
-            candidateRole = this.roleRepository.save(candidateRole);
-        }
+        Role candidateRole = this.roleRepository.findByName("CANDIDATE").orElseGet(() -> {
+            Role r = Role.builder().name("CANDIDATE").description("Job candidate role").active(true).build();
+            return this.roleRepository.save(r);
+        });
 
         // 2. Sync Permissions
         syncPermissions(adminRole, hrRole, candidateRole);
@@ -63,11 +51,27 @@ public class DatabaseInitializer implements CommandLineRunner {
     private void syncPermissions(Role adminRole, Role hrRole, Role candidateRole) {
         List<PermDef> perms = new ArrayList<>();
 
+        // USERS
+        perms.add(new PermDef("Create User", "/api/v1/users", "POST", "USERS", false, false));
+        perms.add(new PermDef("Update User", "/api/v1/users/**", "PUT", "USERS", false, false));
+        perms.add(new PermDef("Delete User", "/api/v1/users/**", "DELETE", "USERS", false, false));
+        perms.add(new PermDef("Get Users", "/api/v1/users", "GET", "USERS", false, false));
+
+        // COMPANIES
+        perms.add(new PermDef("Create Company", "/api/v1/companies", "POST", "COMPANIES", true, false));
+        perms.add(new PermDef("Update Company", "/api/v1/companies/**", "PUT", "COMPANIES", true, false));
+        perms.add(new PermDef("Delete Company", "/api/v1/companies/**", "DELETE", "COMPANIES", false, false));
+        perms.add(new PermDef("Get Companies", "/api/v1/companies", "GET", "COMPANIES", true, true));
+
         // JOBS
         perms.add(new PermDef("Create Job", "/api/v1/jobs", "POST", "JOBS", true, false));
         perms.add(new PermDef("Update Job", "/api/v1/jobs/**", "PUT", "JOBS", true, false));
         perms.add(new PermDef("Delete Job", "/api/v1/jobs/**", "DELETE", "JOBS", true, false));
         perms.add(new PermDef("Get Jobs", "/api/v1/jobs", "GET", "JOBS", true, true));
+
+        // SKILLS
+        perms.add(new PermDef("Create Skill", "/api/v1/skills", "POST", "SKILLS", true, false));
+        perms.add(new PermDef("Get Skills", "/api/v1/skills", "GET", "SKILLS", true, true));
 
         // RESUMES
         perms.add(new PermDef("Upload Resume", "/api/v1/resumes/upload", "POST", "RESUMES", true, true));
@@ -76,11 +80,19 @@ public class DatabaseInitializer implements CommandLineRunner {
         // APPLICATIONS
         perms.add(new PermDef("Apply for Job", "/api/v1/applications", "POST", "APPLICATIONS", false, true));
         perms.add(new PermDef("Get Applications", "/api/v1/applications", "GET", "APPLICATIONS", true, true));
+        
+        // AI SCORES
+        perms.add(new PermDef("Get AI Score", "/api/v1/ai-scores/**", "GET", "AI_SCORES", true, true));
 
         for (PermDef def : perms) {
             Permission p = this.permissionRepository.findByModuleAndApiPathAndMethod(def.module, def.path, def.method);
             if (p == null) {
-                p = new Permission(def.name, def.path, def.method, def.module);
+                p = Permission.builder()
+                        .name(def.name)
+                        .apiPath(def.path)
+                        .method(def.method)
+                        .module(def.module)
+                        .build();
                 p = this.permissionRepository.save(p);
             }
 

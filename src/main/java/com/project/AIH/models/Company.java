@@ -1,12 +1,17 @@
 package com.project.AIH.models;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import com.project.AIH.utils.SecurityUtil;
 import java.time.Instant;
+import java.util.List;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 @Entity
-@Table(name = "companies")
+@Table(name = "companies", indexes = {
+    @Index(name = "idx_company_name", columnList = "name")
+})
 @Data
 @Builder
 @NoArgsConstructor
@@ -17,14 +22,19 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @NotBlank(message = "Company name is required")
+    @Size(min = 2, max = 255)
     private String name;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @NotBlank(message = "Address is required")
     private String address;
+
     private String website;
+
+    @Column(columnDefinition = "MEDIUMTEXT")
     private String logo;
 
     // Audit fields
@@ -32,6 +42,10 @@ public class Company {
     private Instant updatedAt;
     private String createdBy;
     private String updatedBy;
+
+    @OneToMany(mappedBy = "company", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<Job> jobs;
 
     @PrePersist
     public void handleBeforeCreate() {

@@ -1,5 +1,6 @@
 package com.project.AIH.models;
 
+import com.project.AIH.utils.constant.ApplicationStatusEnum;
 import jakarta.persistence.*;
 import lombok.*;
 import com.project.AIH.utils.SecurityUtil;
@@ -17,16 +18,16 @@ public class Application {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_id", nullable = false)
     private Job job;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "resume_id", nullable = false)
     private Resume resume;
 
     @Enumerated(EnumType.STRING)
-    private ApplicationStatus status = ApplicationStatus.SUBMITTED;
+    private ApplicationStatusEnum status = ApplicationStatusEnum.APPLIED;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -36,10 +37,6 @@ public class Application {
     private Instant updatedAt;
     private String createdBy;
     private String updatedBy;
-
-    public enum ApplicationStatus {
-        SUBMITTED, AI_SCREENING, REVIEWING, INTERVIEWING, OFFERED, REJECTED
-    }
 
     @PrePersist
     public void handleBeforeCreate() {
