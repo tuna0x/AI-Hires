@@ -7,6 +7,7 @@ import com.project.AIH.services.UserService;
 import com.project.AIH.utils.SecurityUtil;
 import com.project.AIH.utils.annotation.ApiMessage;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RestController
 @RequestMapping("/api/v1/resumes")
 @RequiredArgsConstructor
+@Slf4j
 public class ResumeController {
 
     private final ResumeService resumeService;
@@ -23,16 +25,32 @@ public class ResumeController {
     @PostMapping("/apply")
     @ApiMessage("Apply for job and get AI score successfully")
     public ResponseEntity<Application> apply(@RequestParam("file") MultipartFile file,
-                                              @RequestParam("jobId") Long jobId) {
+            @RequestParam("jobId") Long jobId) {
         String email = SecurityUtil.getCurrentUserLogin()
                 .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
-        
+
         User user = userService.fetchUserByEmail(email);
         if (user == null) {
             throw new RuntimeException("Người dùng không tồn tại");
         }
-        
+
         Application application = resumeService.applyAndScore(file, jobId, user);
         return ResponseEntity.status(HttpStatus.CREATED).body(application);
+    }
+
+    @PostMapping("/upload")
+    @ApiMessage("Upload and parse resume successfully")
+    public ResponseEntity<com.project.AIH.models.Resume> upload(@RequestParam("file") MultipartFile file) {
+        String email = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
+
+        User user = userService.fetchUserByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("Người dùng không tồn tại");
+        }
+
+        com.project.AIH.models.Resume resume = resumeService.uploadAndParse(file, user);
+        log.info("Resume parsed successfully: {}", resume);
+        return ResponseEntity.status(HttpStatus.CREATED).body(resume);
     }
 }

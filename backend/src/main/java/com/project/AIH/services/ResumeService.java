@@ -92,4 +92,41 @@ public class ResumeService {
         resumeRepository.save(resume);
         return application;
     }
+
+    @Transactional
+    public Resume uploadAndParse(MultipartFile file, User user) {
+        log.info("Uploading and parsing resume for user: {}", user.getEmail());
+
+        // 1. Upload CV to MinIO
+        String fileName = fileService.uploadFile(file, "resumes/" + user.getId());
+
+        // 2. Extract Text
+        String extractedText = "";
+        try {
+            extractedText = parserService.extractText(file.getInputStream());
+        } catch (Exception e) {
+            log.error("Failed to extract text: {}", e.getMessage());
+        }
+
+        // 3. AI Analysis (General)
+        String parsedData = "";
+        try {
+            parsedData = geminiService.parseResume(file.getBytes(), file.getContentType());
+        } catch (Exception e) {
+            log.error("AI Analysis failed: {}", e.getMessage());
+        }
+
+        // 4. Save Resume record
+        Resume resume = Resume.builder()
+                .user(user)
+                .fileUrl(fileName)
+                .contentType(file.getContentType())
+                .fileSize(file.getSize())
+                .extractedText(extractedText)
+                .parsedData(parsedData)
+                .parseStatus(parsedData.isEmpty() ? ResumeStatusEnum.FAILED : ResumeStatusEnum.DONE)
+                .build();
+        
+        return resumeRepository.save(resume);
+    }
 }

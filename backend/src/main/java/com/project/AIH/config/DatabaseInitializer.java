@@ -83,7 +83,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         perms.add(new PermDef("Get Resumes", "/api/v1/resumes", "GET", "RESUMES", true, false));
 
         // APPLICATIONS
-        perms.add(new PermDef("Apply for Job", "/api/v1/applications", "POST", "APPLICATIONS", false, true));
+        perms.add(new PermDef("Apply for Job", "/api/v1/resumes/apply", "POST", "APPLICATIONS", false, true));
         perms.add(new PermDef("Get Applications", "/api/v1/applications", "GET", "APPLICATIONS", true, true));
 
         // AI SCORES
