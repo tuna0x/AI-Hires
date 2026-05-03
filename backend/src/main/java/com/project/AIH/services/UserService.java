@@ -57,6 +57,7 @@ public class UserService {
         return userRepository.findById(id).orElse(null);
     }
 
+    @Transactional(readOnly = true)
     public User fetchUserByEmail(String email) {
         return userRepository.findByEmail(email).orElse(null);
     }

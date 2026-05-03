@@ -3,7 +3,7 @@ package com.project.AIH.config;
 import com.project.AIH.models.Permission;
 import com.project.AIH.models.Role;
 import com.project.AIH.models.User;
-import com.project.AIH.repositories.UserRepository;
+import com.project.AIH.services.UserService;
 import com.project.AIH.utils.SecurityUtil;
 import com.project.AIH.utils.error.PermissionException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -19,7 +19,7 @@ import java.util.List;
 public class PermissionInterceptor implements HandlerInterceptor {
 
     @Autowired
-    private UserRepository userRepository;
+    private UserService userService;
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
@@ -41,7 +41,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
             return true; // Spring Security will handle unauthorized access
         }
 
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userService.fetchUserByEmail(email);
         if (user != null) {
             Role role = user.getRole();
             if (role != null) {

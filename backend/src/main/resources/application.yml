@@ -34,17 +34,17 @@ spring:
 # Custom Configs
 app:
   jwt:
-    secret: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-    access-token-expiration: 3600 # 1 hour
-    refresh-token-expiration: 86400 # 1 day
+    secret: "404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970"
+    access-token-expiration: 3600
+    refresh-token-expiration: 86400
   minio:
-    endpoint: http://localhost:9000
-    accessKey: minioadmin
-    secretKey: minioadmin
-    bucket: ai-hire-resumes
+    endpoint: "http://localhost:9000"
+    accessKey: "minioadmin"
+    secretKey: "minioadmin"
+    bucket: "ai-hire-resumes"
   gemini:
-    api-key: AIzaSyCSjBJNCSsgv_DM7TXM4AQdQldw5vbvhIU
-    api-url: https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent
+    api-key: "xxx"
+    api-url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 logging:
   level:
