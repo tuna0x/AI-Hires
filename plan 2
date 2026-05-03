@@ -1,0 +1,317 @@
+# AI-Hire: Part 2 - API, AI Prompt & Frontend
+
+## 4. API Endpoints
+
+### 4.1 Auth (`/api/v1/auth`)
+| Method | Path | Mô tả |
+|--------|------|--------|
+| POST | `/register` | Đăng ký (Candidate hoặc HR) |
+| POST | `/login` | Đăng nhập → JWT |
+| POST | `/refresh` | Refresh token |
+| POST | `/google` | Đăng nhập Google OAuth2 |
+| POST | `/logout` | Đăng xuất |
+
+### 4.2 Job Management (`/api/v1/jobs`) — HR only
+| Method | Path | Mô tả |
+|--------|------|--------|
+| POST | `/` | Tạo JD mới |
+| PUT | `/{id}` | Sửa JD |
+| DELETE | `/{id}` | Xóa JD |
+| GET | `/{id}` | Chi tiết JD |
+| GET | `/` | Danh sách JD (phân trang, filter) |
+| POST | `/{id}/criteria` | Thêm tiêu chí chấm điểm cho JD |
+| PUT | `/{id}/criteria/{criteriaId}` | Sửa tiêu chí |
+| DELETE | `/{id}/criteria/{criteriaId}` | Xóa tiêu chí |
+
+### 4.3 Resume / CV (`/api/v1/resumes`) — Candidate
+| Method | Path | Mô tả |
+|--------|------|--------|
+| POST | `/upload` | Upload CV (PDF/Docx) → trigger RabbitMQ |
+| GET | `/my` | Danh sách CV của tôi (có versioning) |
+| GET | `/{id}` | Chi tiết CV + parsed data |
+| DELETE | `/{id}` | Xóa CV |
+| GET | `/{id}/status` | Kiểm tra trạng thái parsing |
+
+### 4.4 Application / Ứng tuyển (`/api/v1/applications`)
+| Method | Path | Mô tả | Role |
+|--------|------|--------|------|
+| POST | `/` | Nộp đơn (chọn Job + Resume) | Candidate |
+| GET | `/my` | Lịch sử ứng tuyển của tôi | Candidate |
+| GET | `/job/{jobId}` | DS ứng viên cho 1 job (sorted by score) | HR |
+| GET | `/{id}` | Chi tiết đơn + AI Score | Both |
+| PUT | `/{id}/status` | Cập nhật trạng thái (shortlist/reject) | HR |
+
+### 4.5 AI Scoring (`/api/v1/ai`)
+| Method | Path | Mô tả |
+|--------|------|--------|
+| POST | `/score` | Chấm điểm CV vs JD (async qua RabbitMQ) |
+| GET | `/score/{applicationId}` | Lấy kết quả chấm điểm |
+| POST | `/improve` | AI gợi ý cải thiện CV |
+| POST | `/fix-cv` | AI viết lại phần yếu trong CV |
+
+### 4.6 Interview (`/api/v1/interviews`)
+| Method | Path | Mô tả |
+|--------|------|--------|
+| POST | `/start` | Bắt đầu phỏng vấn AI |
+| GET | `/{id}` | Chi tiết buổi phỏng vấn |
+| GET | `/{id}/messages` | Lịch sử chat |
+| WebSocket | `/ws/interview/{id}` | Real-time chat với AI |
+| GET | `/{id}/report` | Báo cáo tổng kết |
+
+---
+
+## 5. AI Prompt Engineering (Phần quan trọng nhất)
+
+### 5.1 Prompt chấm điểm CV vs JD
+
+```text
+Bạn là chuyên gia tuyển dụng (HR Expert). Hãy đánh giá CV sau so với Job Description.
+
+=== JOB DESCRIPTION ===
+{jd_text}
+
+=== TIÊU CHÍ CHẤM ĐIỂM (do HR thiết lập) ===
+{criteria_list}
+Ví dụ:
+- Java Spring Boot: trọng số 10/10
+- Docker/K8s: trọng số 7/10
+- English: trọng số 5/10
+- 2+ năm kinh nghiệm: trọng số 8/10
+
+=== NỘI DUNG CV ===
+{cv_extracted_text}
+
+=== YÊU CẦU OUTPUT ===
+Trả về JSON CHÍNH XÁC theo format sau, không thêm markdown:
+{
+  "overall_score": <0-100>,
+  "technical_score": <0-100>,
+  "experience_score": <0-100>,
+  "education_score": <0-100>,
+  "softskill_score": <0-100>,
+  "matched_keywords": ["Java", "Spring Boot", ...],
+  "missing_keywords": ["Docker", "K8s", ...],
+  "strengths": ["Có 3 năm kinh nghiệm Java", ...],
+  "weaknesses": ["Thiếu kinh nghiệm DevOps", ...],
+  "improvement_suggestions": [
+    "Nên bổ sung chứng chỉ AWS vào CV",
+    "Phần mô tả dự án nên thêm số liệu cụ thể"
+  ],
+  "summary": "Ứng viên có nền tảng backend vững chắc với 3 năm KN Java..."
+}
+
+QUY TẮC CHẤM ĐIỂM:
+- overall_score = tổng hợp có trọng số từ 4 điểm thành phần
+- Trọng số mặc định: Technical 40%, Experience 30%, Education 15%, Softskill 15%
+- Nếu HR cung cấp criteria riêng, ƯU TIÊN dùng trọng số của HR
+- matched_keywords: chỉ liệt kê từ khóa THỰC SỰ có trong CV
+- missing_keywords: từ khóa JD yêu cầu nhưng CV KHÔNG có
+- improvement_suggestions: tối thiểu 3, tối đa 5 gợi ý cụ thể, khả thi
+```
+
+### 5.2 Prompt gợi ý cải thiện CV (cho Candidate)
+
+```text
+Bạn là Career Coach chuyên nghiệp. Dựa trên kết quả phân tích CV dưới đây,
+hãy đưa ra lời khuyên CỤ THỂ và KHẢ THI để ứng viên cải thiện CV.
+
+=== KẾT QUẢ CHẤM ĐIỂM ===
+{ai_score_json}
+
+=== JOB MỤC TIÊU ===
+{job_title}: {job_description_short}
+
+=== YÊU CẦU ===
+Trả về JSON:
+{
+  "priority_actions": [
+    {
+      "action": "Thêm kỹ năng Docker vào CV",
+      "reason": "JD yêu cầu Docker nhưng CV chưa đề cập",
+      "how": "Học Docker cơ bản trên Udemy (2 tuần), làm 1 project nhỏ deploy bằng Docker",
+      "impact": "Tăng ~10 điểm technical_score"
+    }
+  ],
+  "cv_rewrite_suggestions": [
+    {
+      "section": "Professional Summary",
+      "current": "Tôi là lập trình viên Java",
+      "suggested": "Backend Developer với 3 năm kinh nghiệm xây dựng RESTful APIs..."
+    }
+  ],
+  "estimated_new_score": <0-100>
+}
+```
+
+### 5.3 Prompt Phỏng vấn AI (Adaptive)
+
+```text
+Bạn là Senior Technical Interviewer. Bạn đang phỏng vấn ứng viên cho vị trí:
+{job_title} tại {company_name}.
+
+=== HỒ SƠ ỨNG VIÊN ===
+- Điểm AI Score: {overall_score}/100
+- Kỹ năng mạnh: {strengths}
+- Kỹ năng yếu: {weaknesses}
+
+=== LỊCH SỬ HỘI THOẠI ===
+{chat_history}
+
+=== QUY TẮC ===
+1. Hỏi tổng cộng 8 câu: 3 Technical, 2 Situational, 2 Behavioral, 1 Culture-fit
+2. ADAPTIVE: Nếu ứng viên trả lời SAI → hỏi câu DỄ hơn cùng chủ đề
+3. ADAPTIVE: Nếu ứng viên trả lời ĐÚNG → hỏi câu NÂNG CAO hơn
+4. Sau MỖI câu trả lời, trả về JSON:
+{
+  "question_number": <1-8>,
+  "response_to_answer": "Nhận xét ngắn về câu TL trước",
+  "answer_score": <0-10>,
+  "next_question": "Câu hỏi tiếp theo",
+  "question_type": "TECHNICAL|SITUATIONAL|BEHAVIORAL|CULTURE_FIT",
+  "difficulty": "EASY|MEDIUM|HARD"
+}
+5. Ở câu cuối cùng (question_number=8), thêm field:
+{
+  "is_final": true,
+  "overall_evaluation": {
+    "rating": <0-100>,
+    "hire_recommendation": "STRONG_YES|YES|MAYBE|NO|STRONG_NO",
+    "summary": "Đánh giá tổng quan...",
+    "strengths_observed": [...],
+    "concerns": [...]
+  }
+}
+```
+
+---
+
+## 6. Luồng xử lý CV (Core Flow)
+
+```
+┌──────────┐    ┌──────────┐    ┌───────────┐    ┌──────────┐    ┌──────────┐
+│ Candidate│───>│ API      │───>│ RabbitMQ  │───>│ Consumer │───>│ Gemini   │
+│ Upload   │    │ /upload  │    │ cv_queue  │    │ Worker   │    │ API      │
+│ CV (PDF) │    │          │    │           │    │          │    │          │
+└──────────┘    └────┬─────┘    └───────────┘    └────┬─────┘    └────┬─────┘
+                     │                                │               │
+                     │ 1.Lưu file                     │ 3.Tika parse  │ 4.AI score
+                     v                                v               v
+                ┌──────────┐                    ┌──────────┐    ┌──────────┐
+                │ MinIO    │                    │ MySQL    │<───│ Score    │
+                │ Storage  │                    │ Resume   │    │ Result   │
+                └──────────┘                    │ AI_Score │    └──────────┘
+                                                └────┬─────┘
+                                                     │ 5.Notify
+                                                     v
+                                                ┌──────────┐
+                                                │WebSocket │──> Candidate
+                                                │ Notify   │    thấy điểm
+                                                └──────────┘
+```
+
+**Chi tiết từng bước:**
+1. Candidate upload file → API lưu vào MinIO, tạo record RESUME (status=PENDING)
+2. API đẩy message `{resumeId, userId}` vào RabbitMQ `cv_processing_queue`
+3. Consumer nhận message → Lấy file từ MinIO → Apache Tika parse → Lưu `extracted_text`
+4. Consumer gửi text + JD (nếu có) → Gemini API → Nhận JSON score
+5. Lưu AI_SCORE vào DB → Gửi WebSocket notification đến Candidate
+6. Nếu Tika/Gemini fail → Đẩy vào **Dead Letter Queue** → Retry 3 lần → Đánh dấu FAILED
+
+**Error Handling:**
+- PDF bị lỗi → Trả thông báo "File không đọc được, vui lòng upload lại"
+- Gemini timeout → Retry 3 lần với exponential backoff (2s, 4s, 8s)
+- RabbitMQ full → Circuit Breaker (Resilience4j) trả 503
+
+---
+
+## 7. Frontend - Danh sách trang & Wireframe mô tả
+
+### 7.1 Public Pages (Không cần đăng nhập)
+| Trang | Path | Mô tả |
+|-------|------|--------|
+| Landing Page | `/` | Giới thiệu nền tảng, CTA đăng ký |
+| Job Listing | `/jobs` | Tìm kiếm việc, filter theo kỹ năng/vị trí/lương |
+| Job Detail | `/jobs/:id` | Chi tiết JD, nút "Ứng tuyển ngay" |
+| Login | `/login` | Đăng nhập (Email + Google OAuth) |
+| Register | `/register` | Đăng ký chọn role: Candidate hoặc HR |
+
+### 7.2 Candidate Pages
+| Trang | Path | Mô tả |
+|-------|------|--------|
+| Dashboard | `/candidate/dashboard` | Tổng quan: số đơn đã nộp, điểm trung bình |
+| My Resumes | `/candidate/resumes` | Upload CV, xem danh sách CV đã upload |
+| CV Analysis | `/candidate/resumes/:id` | **TRANG CHÍNH**: Điểm số, biểu đồ radar, gợi ý cải thiện |
+| My Applications | `/candidate/applications` | Lịch sử ứng tuyển + trạng thái |
+| AI Interview | `/candidate/interview/:id` | Giao diện phỏng vấn chat với AI |
+| Interview Result | `/candidate/interview/:id/result` | Kết quả + đánh giá |
+| Profile | `/candidate/profile` | Thông tin cá nhân |
+
+### 7.3 HR / Recruiter Pages
+| Trang | Path | Mô tả |
+|-------|------|--------|
+| HR Dashboard | `/hr/dashboard` | Thống kê: tổng ứng viên, top skills, tỷ lệ match |
+| Company Profile | `/hr/company` | Quản lý thông tin công ty |
+| Job Management | `/hr/jobs` | CRUD tin tuyển dụng |
+| Create/Edit Job | `/hr/jobs/new` | Form tạo JD + thiết lập tiêu chí chấm điểm |
+| Applicant List | `/hr/jobs/:id/applicants` | **TRANG CHÍNH HR**: Bảng ứng viên ranked by AI score |
+| Applicant Detail | `/hr/applicants/:id` | Xem CV + AI Score + Interview transcript |
+| Kanban Board | `/hr/pipeline` | Kéo thả ứng viên qua các giai đoạn tuyển dụng |
+
+### 7.4 Mô tả chi tiết trang quan trọng nhất
+
+#### Trang CV Analysis (Candidate) - `/candidate/resumes/:id`
+```
+┌─────────────────────────────────────────────────────────┐
+│  ← Back to My Resumes          CV Analysis v2.0        │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  ┌──────────────┐  ┌─────────────────────────────────┐  │
+│  │              │  │  Overall Score                   │  │
+│  │  RADAR CHART │  │  ████████████████░░░░  78/100    │  │
+│  │  (4 metrics) │  │                                 │  │
+│  │  Technical   │  │  Technical    ██████████░  85    │  │
+│  │  Experience  │  │  Experience   ████████░░░  72    │  │
+│  │  Education   │  │  Education    ██████░░░░░  65    │  │
+│  │  Soft Skills │  │  Soft Skills  █████████░░  80    │  │
+│  └──────────────┘  └─────────────────────────────────┘  │
+│                                                         │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │  ✅ Matched Skills          ❌ Missing Skills       ││
+│  │  ┌──────┐ ┌──────┐         ┌──────┐ ┌──────┐      ││
+│  │  │ Java │ │Spring│         │Docker│ │ K8s  │      ││
+│  │  └──────┘ └──────┘         └──────┘ └──────┘      ││
+│  │  ┌──────┐ ┌──────┐         ┌──────┐               ││
+│  │  │MySQL │ │ Git  │         │ AWS  │               ││
+│  │  └──────┘ └──────┘         └──────┘               ││
+│  └─────────────────────────────────────────────────────┘│
+│                                                         │
+│  ┌─────────────────────────────────────────────────────┐│
+│  │  💡 AI Improvement Suggestions                      ││
+│  │  1. Thêm kỹ năng Docker vào CV (+10 điểm)         ││
+│  │  2. Bổ sung số liệu cụ thể vào phần dự án (+5đ)  ││
+│  │  3. Viết lại Professional Summary chuyên nghiệp hơn││
+│  │                                                     ││
+│  │  [🔧 Let AI Fix My CV]  [📄 Download Improved CV]  ││
+│  └─────────────────────────────────────────────────────┘│
+└─────────────────────────────────────────────────────────┘
+```
+
+#### Trang Applicant List (HR) - `/hr/jobs/:id/applicants`
+```
+┌─────────────────────────────────────────────────────────┐
+│  Senior Java Developer (15 applicants)    [Export CSV]   │
+├─────────────────────────────────────────────────────────┤
+│  Filter: Score ≥ [70] | Status [All ▼] | [Search name] │
+├────┬──────────┬───────┬──────┬──────┬────────┬─────────┤
+│ #  │ Name     │ Score │ Tech │ Exp  │ Status │ Action  │
+├────┼──────────┼───────┼──────┼──────┼────────┼─────────┤
+│ 1  │ Nguyen A │  92   │  95  │  88  │ ⭐New  │ [View]  │
+│ 2  │ Tran B   │  85   │  80  │  90  │ ⭐New  │ [View]  │
+│ 3  │ Le C     │  78   │  82  │  70  │ 💬Intv │ [View]  │
+│ 4  │ Pham D   │  65   │  60  │  68  │ ❌Rej  │ [View]  │
+├────┴──────────┴───────┴──────┴──────┴────────┴─────────┤
+│  AI Summary: "Có 3 ứng viên phù hợp cao (≥80).        │
+│  Kỹ năng phổ biến nhất: Java, Spring Boot.             │
+│  Kỹ năng thiếu nhiều nhất: Docker, CI/CD."             │
+└─────────────────────────────────────────────────────────┘
+```
