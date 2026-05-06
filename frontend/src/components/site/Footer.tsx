@@ -14,7 +14,7 @@ export default function Footer() {
               <span>Career<span className="text-primary">AI</span></span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">
-              The focused AI career tool for improving your CV and acing interviews. Analyze, fix, practice, get hired.
+              Công cụ nghề nghiệp AI tập trung giúp bạn nâng cấp CV và chinh phục phỏng vấn. Phân tích, sửa lỗi, luyện tập, nhận offer.
             </p>
             <div className="flex gap-3">
               <a aria-label="Twitter" className="p-2 rounded-lg hover:bg-muted"><Twitter className="h-4 w-4" /></a>
@@ -23,27 +23,25 @@ export default function Footer() {
             </div>
           </div>
 
-          <FooterCol title="Product" links={[
-            { to: "/dashboard", label: "Dashboard" },
-            { to: "/cv-analysis", label: "CV Analysis" },
-            { to: "/interview", label: "Interview Practice" },
-            { to: "/pricing", label: "Pricing" },
+          <FooterCol title="Sản phẩm" links={[
+            { to: "/dashboard", label: "Tổng quan" },
+            { to: "/cv-analysis", label: "Phân tích CV" },
+            { to: "/interview", label: "Luyện phỏng vấn" },
           ]} />
-          <FooterCol title="Resources" links={[
-            { to: "/blog", label: "Blog" },
-            { to: "/blog/best-resume-tips", label: "Best Resume Tips" },
-            { to: "/blog/interview-questions-2025", label: "Interview Questions" },
+          <FooterCol title="Tài nguyên" links={[
+            { to: "/blog", label: "Bài viết" },
+            { to: "/blog/best-resume-tips", label: "Mẹo viết CV hay" },
+            { to: "/blog/interview-questions-2025", label: "Câu hỏi phỏng vấn 2025" },
           ]} />
-          <FooterCol title="Company" links={[
-            { to: "/contact", label: "Contact" },
-            { to: "/pricing", label: "Pricing" },
-            { to: "/admin", label: "Admin" },
+          <FooterCol title="Công ty" links={[
+            { to: "/contact", label: "Liên hệ" },
+            { to: "/admin", label: "Quản trị" },
           ]} />
         </div>
 
         <div className="mt-12 pt-8 border-t border-border text-xs text-muted-foreground flex flex-col sm:flex-row gap-4 justify-between">
-          <p>© {new Date().getFullYear()} CareerAI. All rights reserved.</p>
-          <p>Analyze. Improve. Practice. Succeed.</p>
+          <p>© {new Date().getFullYear()} CareerAI. Mọi quyền được bảo lưu.</p>
+          <p>Phân tích. Cải thiện. Luyện tập. Thành công.</p>
         </div>
       </div>
     </footer>

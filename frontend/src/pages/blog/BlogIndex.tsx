@@ -8,18 +8,18 @@ import { posts, categories } from "@/data/blog";
 import { ArrowRight, Calendar, Clock } from "lucide-react";
 
 export default function BlogIndex() {
-  const [cat, setCat] = useState("All");
-  const filtered = cat === "All" ? posts : posts.filter((p) => p.category === cat);
+  const [cat, setCat] = useState("Tất cả");
+  const filtered = cat === "Tất cả" ? posts : posts.filter((p) => p.category === cat);
 
   return (
     <SiteLayout>
       <Seo
-        title="Blog — Resume, ATS, Interview & Career Guides"
-        description="Practical career guides on resume writing, passing ATS, interviewing, and growing your career — written by recruiters and hiring managers."
+        title="Cẩm nang — Bí quyết viết CV, ATS & Phỏng vấn thành công"
+        description="Tổng hợp hướng dẫn thực hành chi tiết về viết CV, vượt qua bộ lọc ATS, chuẩn bị phỏng vấn và thăng tiến nghề nghiệp từ các nhà tuyển dụng chuyên nghiệp."
         path="/blog"
-        jsonLd={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Blog", path: "/blog" }])}
+        jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Cẩm nang", path: "/blog" }])}
       />
-      <PageHero eyebrow="Blog" title="Resume, ATS & career guides" subtitle="Practical, recruiter-tested advice. No filler." />
+      <PageHero eyebrow="Cẩm nang" title="Bí quyết viết CV & Phỏng vấn" subtitle="Lời khuyên thực tế từ các nhà tuyển dụng hàng đầu. Đi thẳng vào hành động." />
 
       <section className="pb-24">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
@@ -50,7 +50,7 @@ export default function BlogIndex() {
                   <p className="mt-3 text-sm text-muted-foreground leading-relaxed flex-1">{p.description}</p>
                   <div className="mt-5 flex items-center justify-between text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(p.date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
+                      <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" /> {new Date(p.date).toLocaleDateString("vi-VN", { month: "long", day: "numeric", year: "numeric" })}</span>
                       <span className="inline-flex items-center gap-1"><Clock className="h-3 w-3" /> {p.readTime}</span>
                     </span>
                     <ArrowRight className="h-4 w-4 text-primary group-hover:translate-x-1 transition-transform" />

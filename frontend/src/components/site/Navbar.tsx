@@ -1,21 +1,31 @@
 import { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu, X, Sparkles } from "lucide-react";
+import { Menu, X, Sparkles, LogOut, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/lib/auth";
+import { toast } from "sonner";
 
 const links = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/cv-analysis", label: "CV Analysis" },
-  { href: "/interview", label: "Interview Practice" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
+  { href: "/dashboard", label: "Tổng quan" },
+  { href: "/cv-analysis", label: "Phân tích CV" },
+  { href: "/interview", label: "Luyện phỏng vấn" },
+  // { href: "/pricing", label: "Bảng giá" }, // tạm ẩn
+  { href: "/blog", label: "Bài viết" },
 ];
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user, isAdmin, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleSignOut() {
+    await signOut();
+    toast.success("Đã đăng xuất");
+    navigate("/");
+  }
 
   return (
     <motion.header
@@ -49,10 +59,25 @@ export default function Navbar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-2">
-          <Button variant="ghost" asChild><Link to="/contact">Sign in</Link></Button>
-          <Button asChild className="bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow transition-shadow">
-            <Link to="/cv-analysis">Analyze CV</Link>
-          </Button>
+          {isAdmin && (
+            <Button variant="ghost" asChild><Link to="/admin"><Shield className="h-4 w-4" /> Admin</Link></Button>
+          )}
+          {user ? (
+            <>
+              <span className="text-sm text-muted-foreground max-w-[160px] truncate">{user.email}</span>
+              <Button variant="ghost" onClick={handleSignOut}><LogOut className="h-4 w-4" /> Đăng xuất</Button>
+              <Button asChild className="bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow transition-shadow">
+                <Link to="/dashboard">Tổng quan</Link>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild><Link to="/login">Đăng nhập</Link></Button>
+              <Button asChild className="bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow transition-shadow">
+                <Link to="/signup">Bắt đầu</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -81,9 +106,14 @@ export default function Navbar() {
                 {l.label}
               </Link>
             ))}
-            <Button asChild className="w-full mt-2 bg-gradient-primary text-primary-foreground">
-              <Link to="/cv-analysis" onClick={() => setOpen(false)}>Analyze CV</Link>
-            </Button>
+            {user ? (
+              <Button onClick={() => { setOpen(false); handleSignOut(); }} variant="outline" className="w-full mt-2"><LogOut className="h-4 w-4" /> Đăng xuất</Button>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <Button asChild variant="outline"><Link to="/login" onClick={() => setOpen(false)}>Đăng nhập</Link></Button>
+                <Button asChild className="bg-gradient-primary text-primary-foreground"><Link to="/signup" onClick={() => setOpen(false)}>Bắt đầu</Link></Button>
+              </div>
+            )}
           </div>
         </motion.div>
       )}

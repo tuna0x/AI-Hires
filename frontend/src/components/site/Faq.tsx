@@ -2,19 +2,19 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { SectionHeading } from "./HowItWorks";
 
 export const faqs = [
-  { q: "Is CV analysis really free?", a: "Yes — your ATS score and detailed section analysis are free. Pro unlocks unlimited analyses, history, and longer interview practice sessions." },
-  { q: "How does the ATS score work?", a: "We benchmark your CV against the parsing logic used by major ATS platforms (Workday, Greenhouse, Lever, Taleo). Each section earns points for formatting, keyword density, and clarity." },
-  { q: "Is my CV private and secure?", a: "Your file never leaves our analysis pipeline. We don't share, sell, or train models on your CV. You can delete it at any time." },
-  { q: "What file formats do you support?", a: "PDF (recommended) and DOCX, up to 5MB. Image-based PDFs are auto-flagged because ATS systems can't read them." },
-  { q: "How does interview practice work?", a: "Paste a target job description (optional) and we generate a structured set of questions from your CV — with skill tags, difficulty, and adaptive follow-ups based on your answers." },
-  { q: "Is this a chatbot?", a: "No. Interview practice is a structured experience: one question at a time, a focused answer area, and a clear evaluation per skill — not an open-ended chat." },
+  { q: "Phân tích CV có thực sự miễn phí?", a: "Có — điểm ATS và phân tích chi tiết theo mục đều miễn phí. Bản Pro mở khóa số lần phân tích không giới hạn, lưu lịch sử và phiên luyện phỏng vấn dài hơn." },
+  { q: "Điểm ATS được tính như thế nào?", a: "Chúng tôi so sánh CV của bạn với cách phân tích của các nền tảng ATS lớn (Workday, Greenhouse, Lever, Taleo). Mỗi mục được chấm điểm theo định dạng, mật độ từ khóa và độ rõ ràng." },
+  { q: "CV của tôi có được bảo mật không?", a: "File CV không bao giờ rời khỏi hệ thống phân tích. Chúng tôi không chia sẻ, không bán, không dùng để huấn luyện mô hình. Bạn có thể xóa bất cứ lúc nào." },
+  { q: "Hỗ trợ định dạng file nào?", a: "PDF (khuyến nghị) và DOCX, tối đa 5MB. PDF dạng ảnh sẽ được cảnh báo vì ATS không đọc được." },
+  { q: "Luyện phỏng vấn hoạt động ra sao?", a: "Dán mô tả công việc (không bắt buộc) — chúng tôi sẽ sinh bộ câu hỏi có cấu trúc từ CV của bạn, kèm nhãn kỹ năng, độ khó và câu hỏi phụ thích ứng theo câu trả lời." },
+  { q: "Đây có phải là chatbot không?", a: "Không. Luyện phỏng vấn là trải nghiệm có cấu trúc: từng câu hỏi một, khu vực trả lời rõ ràng và đánh giá theo từng kỹ năng — không phải hội thoại tự do." },
 ];
 
 export default function Faq() {
   return (
     <section className="py-20 lg:py-28 bg-secondary/40">
       <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="FAQ" title="Questions, answered" subtitle="Everything you need to know before you upload." />
+        <SectionHeading eyebrow="Hỏi & Đáp" title="Những điều bạn cần biết" subtitle="Tất cả thông tin quan trọng trước khi bạn tải CV lên." />
         <Accordion type="single" collapsible className="mt-10 space-y-3">
           {faqs.map((f, i) => (
             <AccordionItem key={i} value={`f${i}`} className="bg-card border border-border/60 rounded-2xl px-5 shadow-soft">

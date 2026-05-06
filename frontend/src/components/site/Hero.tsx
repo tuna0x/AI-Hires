@@ -20,30 +20,30 @@ export default function Hero() {
           >
             <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary-light px-3 py-1.5 text-xs font-semibold text-primary-dark">
               <Sparkles className="h-3.5 w-3.5" />
-              AI career coach · Built for serious candidates
+              Trợ lý nghề nghiệp AI · Dành cho ứng viên nghiêm túc
             </div>
 
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-[1.05] tracking-tight">
-              Improve your CV and{" "}
-              <span className="text-gradient-primary">pass interviews</span> with AI
+              Nâng cấp CV và{" "}
+              <span className="text-gradient-primary">vượt qua phỏng vấn</span> cùng AI
             </h1>
 
             <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
-              Two focused tools, one outcome: an ATS-grade CV review and a structured AI mock interview tailored to your background and target role.
+              Hai công cụ tập trung, một mục tiêu: chấm điểm CV theo chuẩn ATS và luyện phỏng vấn mô phỏng được cá nhân hóa theo CV và vị trí ứng tuyển của bạn.
             </p>
 
             <div className="flex flex-wrap gap-3">
               <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground shadow-glow hover:shadow-elegant h-12 px-7 text-base font-semibold rounded-xl">
-                <Link to="/cv-analysis">Upload CV <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <Link to="/cv-analysis">Tải CV lên <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="h-12 px-7 text-base font-semibold rounded-xl border-2">
-                <Link to="/interview"><Mic className="mr-2 h-4 w-4" /> Start interview practice</Link>
+                <Link to="/interview"><Mic className="mr-2 h-4 w-4" /> Luyện phỏng vấn</Link>
               </Button>
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2">
-              {["No sign-up required", "Private & secure", "Built on real ATS logic"].map((t) => (
-                <div key={t} className="flex items-center gap-2 text-sm text-muted-foreground">
+              {["Không cần đăng ký", "Riêng tư & bảo mật", "Dựa trên logic ATS thực tế"].map((t) => (
+                <div key={t} className="flex items-center gap-2 text-sm text-secondary-foreground/90">
                   <CheckCircle2 className="h-4 w-4 text-primary" /> {t}
                 </div>
               ))}
@@ -72,21 +72,21 @@ function HeroVisual() {
         className="absolute top-4 right-0 lg:right-4 w-[280px] rounded-3xl bg-card shadow-elegant border border-border/60 p-6"
       >
         <div className="flex items-center justify-between mb-4">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ATS Score</span>
-          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary-light text-primary-dark">+12 this week</span>
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Điểm ATS</span>
+          <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-primary/15 text-primary">+12 tuần này</span>
         </div>
         <div className="flex items-end gap-2">
-          <span className="text-6xl font-bold text-gradient-primary">87</span>
+          <span className="text-6xl font-bold text-primary">87</span>
           <span className="text-2xl text-muted-foreground mb-2">/100</span>
         </div>
         <div className="mt-4 space-y-2">
           {[
-            { label: "Keywords", v: 82 },
-            { label: "Formatting", v: 94 },
-            { label: "Experience", v: 78 },
+            { label: "Từ khóa", v: 82 },
+            { label: "Định dạng", v: 94 },
+            { label: "Kinh nghiệm", v: 78 },
           ].map((b) => (
             <div key={b.label}>
-              <div className="flex justify-between text-xs mb-1"><span className="text-muted-foreground">{b.label}</span><span className="font-semibold">{b.v}%</span></div>
+              <div className="flex justify-between text-xs mb-1"><span className="text-muted-foreground">{b.label}</span><span className="font-semibold text-foreground">{b.v}%</span></div>
               <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                 <motion.div initial={{ width: 0 }} animate={{ width: `${b.v}%` }} transition={{ duration: 1.2, delay: 0.4 }} className="h-full bg-gradient-primary" />
               </div>
@@ -106,13 +106,13 @@ function HeroVisual() {
             <MessageSquareQuote className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <div className="text-xs text-muted-foreground">Question 3 of 8</div>
-            <div className="text-sm font-semibold">System Design · Medium</div>
+            <div className="text-xs text-muted-foreground">Câu 3 / 8</div>
+            <div className="text-sm font-semibold">Thiết kế hệ thống · Trung bình</div>
           </div>
         </div>
-        <p className="text-sm leading-relaxed">"Walk me through how you'd design a real-time notification system for 1M users."</p>
+        <p className="text-sm leading-relaxed text-secondary-foreground">"Hãy mô tả cách bạn thiết kế một hệ thống thông báo thời gian thực cho 1 triệu người dùng."</p>
         <div className="mt-3 flex items-center gap-2 text-xs">
-          <span className="px-2 py-0.5 rounded-full bg-primary-light text-primary-dark font-semibold">Skill: Architecture</span>
+          <span className="px-2 py-0.5 rounded-full bg-primary/15 text-primary font-semibold">Kỹ năng: Kiến trúc</span>
           <span className="text-muted-foreground">• 2:14</span>
         </div>
       </motion.div>
@@ -127,7 +127,7 @@ function HeroVisual() {
           <Gauge className="h-5 w-5 text-primary" />
         </div>
         <div>
-          <div className="text-xs text-muted-foreground">Confidence</div>
+          <div className="text-xs text-muted-foreground">Tự tin</div>
           <div className="text-lg font-bold">+38%</div>
         </div>
       </motion.div>
@@ -139,7 +139,7 @@ function HeroVisual() {
         className="absolute top-2 left-2 hidden md:flex items-center gap-2 rounded-full bg-card shadow-soft border border-border/60 px-3 py-1.5"
       >
         <FileText className="h-4 w-4 text-primary" />
-        <span className="text-xs font-medium">resume_v3.pdf · analyzed</span>
+        <span className="text-xs font-medium">resume_v3.pdf · đã phân tích</span>
       </motion.div>
     </motion.div>
   );
