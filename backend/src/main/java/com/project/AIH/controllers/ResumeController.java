@@ -41,12 +41,10 @@ public class ResumeController {
     @PostMapping("/upload")
     @ApiMessage("Upload and parse resume successfully")
     public ResponseEntity<com.project.AIH.models.Resume> upload(@RequestParam("file") MultipartFile file) {
-        String email = SecurityUtil.getCurrentUserLogin()
-                .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
-
-        User user = userService.fetchUserByEmail(email);
-        if (user == null) {
-            throw new RuntimeException("Người dùng không tồn tại");
+        String email = SecurityUtil.getCurrentUserLogin().orElse(null);
+        User user = null;
+        if (email != null) {
+            user = userService.fetchUserByEmail(email);
         }
 
         com.project.AIH.models.Resume resume = resumeService.uploadAndParse(file, user);

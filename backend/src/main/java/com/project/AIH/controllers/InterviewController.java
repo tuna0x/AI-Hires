@@ -1,6 +1,7 @@
 package com.project.AIH.controllers;
 
-import com.project.AIH.models.InterviewMessage;
+import com.project.AIH.dto.InterviewSubmitAnswerResponseDTO;
+import com.project.AIH.models.InterviewQuestion;
 import com.project.AIH.models.InterviewSession;
 import com.project.AIH.services.InterviewService;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ public class InterviewController {
     }
 
     @PostMapping("/{sessionId}/answer")
-    public ResponseEntity<InterviewMessage> submitAnswer(
+    public ResponseEntity<InterviewSubmitAnswerResponseDTO> submitAnswer(
             @PathVariable Long sessionId,
             @RequestBody Map<String, String> request) {
         String answer = request.get("answer");
@@ -36,8 +37,8 @@ public class InterviewController {
         return ResponseEntity.ok(interviewService.finishSession(sessionId));
     }
 
-    @GetMapping("/{sessionId}/messages")
-    public ResponseEntity<List<InterviewMessage>> getMessages(@PathVariable Long sessionId) {
-        return ResponseEntity.ok(interviewService.getSessionMessages(sessionId));
+    @GetMapping("/{sessionId}/questions")
+    public ResponseEntity<List<InterviewQuestion>> getQuestions(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(interviewService.getSessionQuestions(sessionId));
     }
 }

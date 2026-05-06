@@ -4,22 +4,28 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.AIH.config.RabbitMQConfig;
 import com.project.AIH.dto.CvScoringMessage;
-import com.project.AIH.models.AiScore;
+import com.project.AIH.models.CvScore;
+import com.project.AIH.models.CvScoreInsight;
 import com.project.AIH.models.Application;
 import com.project.AIH.models.Job;
 import com.project.AIH.models.Resume;
-import com.project.AIH.repositories.AiScoreRepository;
+import com.project.AIH.repositories.CvScoreRepository;
 import com.project.AIH.repositories.ApplicationRepository;
 import com.project.AIH.repositories.JobRepository;
 import com.project.AIH.repositories.ResumeRepository;
 import com.project.AIH.utils.constant.ApplicationStatusEnum;
 import com.project.AIH.utils.constant.ResumeStatusEnum;
+import com.project.AIH.utils.constant.InsightTypeEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.InputStream;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -31,10 +37,11 @@ public class CvScoringWorker {
     private final JobRepository jobRepository;
     private final ResumeRepository resumeRepository;
     private final ApplicationRepository applicationRepository;
-    private final AiScoreRepository aiScoreRepository;
+    private final CvScoreRepository cvScoreRepository;
     private final ObjectMapper objectMapper;
 
     @RabbitListener(queues = RabbitMQConfig.CV_SCORING_QUEUE)
+    @Transactional
     public void processCvScoring(CvScoringMessage message) {
         log.info("Received CV Scoring message for application: {}", message.getApplicationId());
 
@@ -64,15 +71,53 @@ public class CvScoringWorker {
             JsonNode resultNode = objectMapper.readTree(aiResultText);
 
             // 4. Save Score
-            AiScore aiScore = AiScore.builder()
+            double stage2Score = resultNode.path("stage2_core").path("score").asDouble(0.0);
+            double stage3Score = resultNode.path("stage3_in_depth").path("score").asDouble(0.0);
+            double stage4Score = resultNode.path("stage4_bonus").path("score").asDouble(0.0);
+
+            CvScore cvScore = CvScore.builder()
                     .application(application)
-                    .totalScore(resultNode.path("total_score").asDouble())
-                    .scoreBreakdown(resultNode.path("stage2_core").toString())
-                    .aiReasoning(resultNode.path("strengths").toString())
-                    .aiSuggestions(resultNode.path("priority_actions").toString())
-                    .detailedResult(aiResultText)
+                    .totalScore(BigDecimal.valueOf(resultNode.path("total_score").asDouble()))
+                    .stage2Score(BigDecimal.valueOf(stage2Score))
+                    .stage3Score(BigDecimal.valueOf(stage3Score))
+                    .stage4Score(BigDecimal.valueOf(stage4Score))
+                    .rawAiResponse(aiResultText)
                     .build();
-            aiScoreRepository.save(aiScore);
+
+            List<CvScoreInsight> insightsList = new ArrayList<>();
+
+            // Parse strengths
+            JsonNode strengthsNode = resultNode.path("strengths");
+            if (strengthsNode.isArray()) {
+                int index = 0;
+                for (JsonNode node : strengthsNode) {
+                    insightsList.add(CvScoreInsight.builder()
+                            .cvScore(cvScore)
+                            .type(InsightTypeEnum.STRENGTH)
+                            .title(node.asText())
+                            .displayOrder(index++)
+                            .build());
+                }
+            }
+
+            // Parse priority_actions
+            JsonNode actionsNode = resultNode.path("priority_actions");
+            if (actionsNode.isArray()) {
+                int index = 0;
+                for (JsonNode node : actionsNode) {
+                    insightsList.add(CvScoreInsight.builder()
+                            .cvScore(cvScore)
+                            .type(InsightTypeEnum.ACTION)
+                            .title(node.path("action").asText())
+                            .description(node.path("priority").asText())
+                            .priority(node.path("priority").asText().equalsIgnoreCase("Cao") ? 1 : 2)
+                            .displayOrder(index++)
+                            .build());
+                }
+            }
+
+            cvScore.setInsights(insightsList);
+            cvScoreRepository.save(cvScore);
 
             resume.setParsedData(aiResultText);
             resume.setParseStatus(ResumeStatusEnum.DONE);

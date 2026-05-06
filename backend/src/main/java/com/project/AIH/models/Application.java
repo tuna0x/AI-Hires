@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.project.AIH.utils.SecurityUtil;
 import java.time.Instant;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 @Entity
 @Table(name = "applications")
@@ -33,7 +35,7 @@ public class Application {
     private String notes;
 
     @OneToOne(mappedBy = "application", cascade = CascadeType.ALL)
-    private AiScore aiScore;
+    private CvScore cvScore;
 
     // Audit fields
     private Instant createdAt;
