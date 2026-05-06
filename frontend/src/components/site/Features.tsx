@@ -6,26 +6,26 @@ import { SectionHeading } from "./HowItWorks";
 
 const blocks = [
   {
-    eyebrow: "01 — CV Analysis",
-    title: "Get a clear ATS score and know exactly what to fix",
-    desc: "Upload your CV and receive an honest 0–100 ATS score, a section-by-section breakdown, and the top three critical issues holding you back.",
+    eyebrow: "01 — Phân tích CV",
+    title: "Điểm ATS rõ ràng và biết chính xác cần sửa gì",
+    desc: "Tải CV lên và nhận điểm ATS từ 0–100, phân tích chi tiết theo từng mục, cùng 3 vấn đề quan trọng nhất bạn cần khắc phục.",
     bullets: [
-      { icon: Gauge, t: "ATS score & detailed breakdown" },
-      { icon: ListChecks, t: "Formatting, keywords, experience, skills" },
-      { icon: Lightbulb, t: "Actionable, line-level feedback" },
+      { icon: Gauge, t: "Điểm ATS và phân tích chi tiết" },
+      { icon: ListChecks, t: "Định dạng, từ khóa, kinh nghiệm, kỹ năng" },
+      { icon: Lightbulb, t: "Gợi ý cụ thể đến từng dòng" },
     ],
-    cta: { label: "Analyze my CV", to: "/cv-analysis" },
+    cta: { label: "Phân tích CV của tôi", to: "/cv-analysis" },
   },
   {
-    eyebrow: "02 — Interview Practice",
-    title: "Practice real interviews tailored to your CV",
-    desc: "A structured mock interview — not a chatbot. Personalized questions are generated from your CV and the job description, with adaptive follow-ups and skill-level evaluation.",
+    eyebrow: "02 — Luyện phỏng vấn",
+    title: "Phỏng vấn thực chiến được cá nhân hóa theo CV của bạn",
+    desc: "Phiên phỏng vấn có cấu trúc — không phải chatbot. Câu hỏi được sinh từ CV và mô tả công việc, có câu hỏi phụ thích ứng và đánh giá theo từng kỹ năng.",
     bullets: [
-      { icon: MessageSquareQuote, t: "Personalized questions from your CV" },
-      { icon: Sparkles, t: "Skill-based evaluation per answer" },
-      { icon: RefreshCw, t: "Adaptive follow-up questions" },
+      { icon: MessageSquareQuote, t: "Câu hỏi cá nhân hóa từ CV" },
+      { icon: Sparkles, t: "Đánh giá theo kỹ năng cho mỗi câu trả lời" },
+      { icon: RefreshCw, t: "Câu hỏi phụ thích ứng theo câu trả lời" },
     ],
-    cta: { label: "Start practice", to: "/interview" },
+    cta: { label: "Bắt đầu luyện", to: "/interview" },
   },
 ];
 
@@ -34,9 +34,9 @@ export default function Features() {
     <section id="features" className="py-20 lg:py-28 bg-secondary/40">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
-          eyebrow="Two tools. One outcome."
-          title="Everything you need to land the offer"
-          subtitle="A focused workflow: analyze your CV, fix the gaps, then practice the exact interview you're preparing for."
+          eyebrow="Hai công cụ. Một mục tiêu."
+          title="Mọi thứ bạn cần để nhận được offer"
+          subtitle="Quy trình tập trung: phân tích CV, sửa lỗi, sau đó luyện đúng buổi phỏng vấn bạn đang chuẩn bị."
         />
 
         <div className="mt-14 grid gap-6 lg:grid-cols-2">

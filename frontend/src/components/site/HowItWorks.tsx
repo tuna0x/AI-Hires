@@ -2,10 +2,10 @@ import { motion } from "framer-motion";
 import { Upload, Wand2, Mic, Trophy } from "lucide-react";
 
 const steps = [
-  { icon: Upload, title: "Analyze your CV", desc: "Upload a PDF or DOCX. Get an instant ATS score with section-level feedback." },
-  { icon: Wand2, title: "Fix the gaps", desc: "Apply targeted, actionable suggestions for formatting, keywords, and impact." },
-  { icon: Mic, title: "Practice interviews", desc: "Run a structured mock interview tailored to your CV and target role." },
-  { icon: Trophy, title: "Get better results", desc: "Walk into real interviews calibrated, confident, and prepared." },
+  { icon: Upload, title: "Phân tích CV", desc: "Tải lên file PDF hoặc DOCX. Nhận điểm ATS tức thì kèm nhận xét theo từng mục." },
+  { icon: Wand2, title: "Khắc phục điểm yếu", desc: "Áp dụng các đề xuất cụ thể về định dạng, từ khóa và mức độ tác động." },
+  { icon: Mic, title: "Luyện phỏng vấn", desc: "Bắt đầu phiên phỏng vấn mô phỏng theo CV và vị trí bạn nhắm tới." },
+  { icon: Trophy, title: "Đạt kết quả tốt hơn", desc: "Bước vào buổi phỏng vấn thật với sự chuẩn bị kỹ và tự tin." },
 ];
 
 export default function HowItWorks() {
@@ -13,9 +13,9 @@ export default function HowItWorks() {
     <section className="py-20 lg:py-28">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading
-          eyebrow="How it works"
-          title="Three steps to a better resume"
-          subtitle="No sign-up. No friction. From upload to insights in under ten seconds."
+          eyebrow="Cách hoạt động"
+          title="Bốn bước để có CV tốt hơn"
+          subtitle="Không cần đăng ký, không rườm rà. Từ tải lên đến phân tích chỉ trong vài giây."
         />
         <div className="mt-14 grid gap-6 md:grid-cols-2 lg:grid-cols-4 relative">
           <div className="absolute hidden lg:block top-12 left-[12%] right-[12%] h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent" />

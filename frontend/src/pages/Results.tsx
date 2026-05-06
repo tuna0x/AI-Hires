@@ -14,12 +14,12 @@ import ScoreCircle from "@/components/results/ScoreCircle";
 import { toast } from "sonner";
 
 const NAV = [
-  { id: "overview", label: "Overview", icon: LayoutDashboard },
-  { id: "ats", label: "ATS Score", icon: Gauge },
-  { id: "sections", label: "Section Analysis", icon: ListChecks },
-  { id: "improve", label: "Improve CV", icon: Wand2 },
-  { id: "practice", label: "Practice Interview", icon: Mic },
-  { id: "upgrade", label: "Upgrade", icon: Crown },
+  { id: "overview", label: "Tổng quan", icon: LayoutDashboard },
+  { id: "ats", label: "Điểm ATS", icon: Gauge },
+  { id: "sections", label: "Phân tích từng mục", icon: ListChecks },
+  { id: "improve", label: "Cải thiện CV", icon: Wand2 },
+  { id: "practice", label: "Luyện phỏng vấn", icon: Mic },
+  { id: "upgrade", label: "Nâng cấp", icon: Crown },
 ];
 
 export default function Results() {
@@ -38,10 +38,10 @@ export default function Results() {
   return (
     <SiteLayout>
       <Seo
-        title="Your Resume Results — ATS Score & AI Suggestions"
-        description="Your personalized CV analysis: ATS score breakdown, section feedback, AI rewrites, and matched jobs."
+        title="Kết quả phân tích CV — Điểm ATS & Gợi ý cải thiện từ AI"
+        description="Kết quả đánh giá CV cá nhân hóa của bạn: phân tích chi tiết điểm ATS, nhận xét từng mục và gợi ý viết lại từ AI."
         path="/results"
-        jsonLd={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Results", path: "/results" }])}
+        jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Kết quả phân tích CV", path: "/results" }])}
       />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10 lg:py-14">
@@ -68,7 +68,7 @@ export default function Results() {
             <SectionAnalysis result={result} />
             <Improve result={result} />
             <PracticeCta />
-            <Upgrade />
+            {/* <Upgrade />  // Pricing tạm ẩn */}
           </div>
         </motion.div>
       </div>
@@ -78,26 +78,26 @@ export default function Results() {
 
 function Overview({ result }: { result: ReturnType<typeof generateMockResult> }) {
   return (
-    <section id="overview" className="relative overflow-hidden rounded-3xl bg-gradient-primary text-primary-foreground p-8 lg:p-10 shadow-elegant scroll-mt-24">
-      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-white/10 blur-2xl" />
+    <section id="overview" className="relative overflow-hidden rounded-3xl bg-card border border-border/60 p-8 lg:p-10 shadow-card scroll-mt-24">
+      <div className="absolute -top-24 -right-24 h-64 w-64 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
       <div className="relative grid lg:grid-cols-[1fr_auto] gap-8 items-center">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur px-3 py-1 text-xs font-semibold mb-4">
-            <Sparkles className="h-3.5 w-3.5" /> Analysis complete
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/15 text-primary px-3 py-1 text-xs font-semibold mb-4 border border-primary/30">
+            <Sparkles className="h-3.5 w-3.5" /> Đã phân tích xong
           </div>
-          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">{result.status}</h1>
-          <p className="mt-2 text-lg opacity-90">We analyzed <span className="font-semibold">{result.fileName}</span> across 6 dimensions.</p>
+          <h1 className="text-3xl lg:text-4xl font-bold tracking-tight text-foreground">{result.status}</h1>
+          <p className="mt-2 text-lg text-secondary-foreground/90">Chúng tôi đã phân tích <span className="font-semibold text-foreground">{result.fileName}</span> theo 6 tiêu chí.</p>
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button className="bg-background text-foreground hover:bg-background/90 rounded-xl h-11 px-5 font-semibold"><Download className="mr-2 h-4 w-4" /> Download Report</Button>
-            <Button variant="outline" className="bg-transparent border-white/40 text-primary-foreground hover:bg-white/10 hover:text-primary-foreground rounded-xl h-11 px-5 font-semibold" asChild>
-              <Link to="/cv-analysis">Re-upload <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            <Button className="bg-gradient-primary text-primary-foreground hover:opacity-95 rounded-xl h-11 px-5 font-semibold shadow-glow"><Download className="mr-2 h-4 w-4" /> Tải báo cáo</Button>
+            <Button variant="outline" className="rounded-xl h-11 px-5 font-semibold border-2" asChild>
+              <Link to="/cv-analysis">Tải lại CV <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
-            <Button variant="outline" className="bg-transparent border-white/40 text-primary-foreground hover:bg-white/10 hover:text-primary-foreground rounded-xl h-11 px-5 font-semibold" asChild>
-              <Link to="/interview"><Mic className="mr-2 h-4 w-4" /> Practice Interview</Link>
+            <Button variant="outline" className="rounded-xl h-11 px-5 font-semibold border-2" asChild>
+              <Link to="/interview"><Mic className="mr-2 h-4 w-4" /> Luyện phỏng vấn</Link>
             </Button>
           </div>
         </div>
-        <div className="grid place-items-center bg-background/15 backdrop-blur rounded-3xl p-6">
+        <div className="grid place-items-center rounded-3xl p-6 bg-primary/10 border border-primary/25">
           <ScoreCircle score={result.score} />
         </div>
       </div>
@@ -107,17 +107,17 @@ function Overview({ result }: { result: ReturnType<typeof generateMockResult> })
 
 function AtsBreakdown({ result }: { result: ReturnType<typeof generateMockResult> }) {
   const items = [
-    { key: "Formatting", v: result.breakdown.formatting },
-    { key: "Keywords", v: result.breakdown.keywords },
-    { key: "Experience", v: result.breakdown.experience },
-    { key: "Education", v: result.breakdown.education },
-    { key: "Skills", v: result.breakdown.skills },
-    { key: "Readability", v: result.breakdown.readability },
+    { key: "Định dạng", v: result.breakdown.formatting },
+    { key: "Từ khóa", v: result.breakdown.keywords },
+    { key: "Kinh nghiệm", v: result.breakdown.experience },
+    { key: "Học vấn", v: result.breakdown.education },
+    { key: "Kỹ năng", v: result.breakdown.skills },
+    { key: "Khả năng đọc", v: result.breakdown.readability },
   ];
   return (
     <section id="ats" className="scroll-mt-24">
-      <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">ATS Score Breakdown</h2>
-      <p className="text-muted-foreground mt-1">How each part of your CV scored.</p>
+      <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Chi tiết điểm ATS</h2>
+      <p className="text-muted-foreground mt-1">Điểm số của từng thành phần trong CV của bạn.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         {items.map((it, i) => (
           <motion.div
@@ -129,8 +129,8 @@ function AtsBreakdown({ result }: { result: ReturnType<typeof generateMockResult
             className="bg-card rounded-2xl border border-border/60 p-5 shadow-soft"
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="font-semibold">{it.key}</span>
-              <span className="text-2xl font-bold text-gradient-primary">{it.v}</span>
+              <span className="font-semibold text-foreground">{it.key}</span>
+              <span className="text-2xl font-bold text-primary">{it.v}</span>
             </div>
             <div className="h-2.5 rounded-full bg-muted overflow-hidden">
               <motion.div initial={{ width: 0 }} whileInView={{ width: `${it.v}%` }} viewport={{ once: true }} transition={{ duration: 1, delay: 0.1 + i * 0.05 }} className="h-full bg-gradient-primary" />
@@ -144,14 +144,14 @@ function AtsBreakdown({ result }: { result: ReturnType<typeof generateMockResult
 
 function SectionAnalysis({ result }: { result: ReturnType<typeof generateMockResult> }) {
   const map = {
-    good: { icon: CheckCircle2, color: "text-primary", bg: "bg-primary-light", label: "Good" },
-    warn: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/10", label: "Improve" },
-    bad: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/10", label: "Fix" },
+    good: { icon: CheckCircle2, color: "text-primary", bg: "bg-primary/15", label: "Tốt" },
+    warn: { icon: AlertTriangle, color: "text-warning", bg: "bg-warning/15", label: "Cần cải thiện" },
+    bad: { icon: XCircle, color: "text-destructive", bg: "bg-destructive/15", label: "Cần sửa" },
   } as const;
   return (
     <section id="sections" className="scroll-mt-24">
-      <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">CV Section Analysis</h2>
-      <p className="text-muted-foreground mt-1">Targeted feedback for every section of your resume.</p>
+      <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Phân tích từng mục CV</h2>
+      <p className="text-muted-foreground mt-1">Nhận xét cụ thể cho từng phần trong CV của bạn.</p>
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         {result.sections.map((s, i) => {
           const m = map[s.status];
@@ -181,8 +181,8 @@ function Improve({ result }: { result: ReturnType<typeof generateMockResult> }) 
   const [applied, setApplied] = useState<number[]>([]);
   return (
     <section id="improve" className="scroll-mt-24">
-      <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">AI Improvement Suggestions</h2>
-      <p className="text-muted-foreground mt-1">Replace weak bullets with sharper, metric-backed alternatives.</p>
+      <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Đề xuất cải thiện từ AI</h2>
+      <p className="text-muted-foreground mt-1">Thay những gạch đầu dòng yếu bằng phiên bản sắc nét, có số liệu.</p>
       <div className="mt-6 space-y-4">
         {result.suggestions.map((s, i) => {
           const isApplied = applied.includes(i);
@@ -190,11 +190,11 @@ function Improve({ result }: { result: ReturnType<typeof generateMockResult> }) 
             <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="bg-card rounded-2xl border border-border/60 p-6 shadow-soft">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="rounded-xl bg-muted/60 p-4">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Before</div>
-                  <p className="text-sm">{s.before}</p>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Trước</div>
+                  <p className="text-sm text-secondary-foreground">{s.before}</p>
                 </div>
-                <div className="rounded-xl bg-primary-light p-4 border border-primary/20">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-primary-dark mb-2">After</div>
+                <div className="rounded-xl bg-primary/15 p-4 border border-primary/30">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-primary mb-2">Sau</div>
                   <p className="text-sm font-medium text-foreground">{s.after}</p>
                 </div>
               </div>
@@ -203,12 +203,12 @@ function Improve({ result }: { result: ReturnType<typeof generateMockResult> }) 
                 <Button
                   size="sm"
                   className={isApplied ? "bg-success text-primary-foreground" : "bg-gradient-primary text-primary-foreground"}
-                  onClick={() => { setApplied([...applied, i]); toast.success("Suggestion applied"); }}
+                  onClick={() => { setApplied([...applied, i]); toast.success("Đã áp dụng đề xuất"); }}
                 >
-                  {isApplied ? <><CheckCircle2 className="mr-1.5 h-4 w-4" /> Applied</> : "Apply Suggestion"}
+                  {isApplied ? <><CheckCircle2 className="mr-1.5 h-4 w-4" /> Đã áp dụng</> : "Áp dụng đề xuất"}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(s.after); toast.success("Copied to clipboard"); }}>
-                  <Copy className="mr-1.5 h-4 w-4" /> Copy Text
+                <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(s.after); toast.success("Đã sao chép"); }}>
+                  <Copy className="mr-1.5 h-4 w-4" /> Sao chép
                 </Button>
               </div>
             </motion.div>
@@ -227,12 +227,12 @@ function PracticeCta() {
         <div className="relative grid lg:grid-cols-[1.4fr_1fr] gap-6 items-center">
           <div>
             <Mic className="h-7 w-7 text-primary mb-3" />
-            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Now practice the interview</h2>
-            <p className="mt-2 text-muted-foreground max-w-xl">We'll generate a structured interview from your CV — with skill tags, difficulty, and adaptive follow-ups. No chat. Just focused practice.</p>
+            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Giờ thì luyện phỏng vấn nào</h2>
+            <p className="mt-2 text-secondary-foreground/90 max-w-xl">Chúng tôi tạo phiên phỏng vấn có cấu trúc từ CV của bạn — kèm nhãn kỹ năng, độ khó và câu hỏi phụ thích ứng. Không phải chat, chỉ luyện tập tập trung.</p>
           </div>
           <div className="flex lg:justify-end">
             <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground rounded-xl h-12 px-7 font-semibold shadow-glow">
-              <Link to="/interview">Start practice <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Link to="/interview">Bắt đầu luyện <ArrowRight className="ml-2 h-4 w-4" /></Link>
             </Button>
           </div>
         </div>
@@ -249,15 +249,15 @@ function Upgrade() {
         <div className="relative grid lg:grid-cols-[1.4fr_1fr] gap-6 items-center">
           <div>
             <Crown className="h-7 w-7 text-primary mb-3" />
-            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Unlock unlimited analyses + full interview practice</h2>
-            <p className="mt-2 text-muted-foreground max-w-xl">Pro users get unlimited CV analyses, longer interview sessions, version history, and detailed per-skill scoring.</p>
+            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight">Mở khóa phân tích không giới hạn & luyện phỏng vấn trọn vẹn</h2>
+            <p className="mt-2 text-muted-foreground max-w-xl">Thành viên Pro có quyền phân tích CV không giới hạn, thực hành phỏng vấn dài hơn, lưu trữ lịch sử phiên bản và chấm điểm chi tiết theo kỹ năng.</p>
           </div>
           <div className="flex flex-wrap gap-3 lg:justify-end">
             <Button asChild size="lg" className="bg-gradient-primary text-primary-foreground rounded-xl h-12 px-7 font-semibold shadow-glow">
-              <Link to="/pricing">Upgrade Pro</Link>
+              <Link to="/pricing">Nâng cấp Pro</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="rounded-xl h-12 px-7 font-semibold border-2">
-              <Link to="/pricing">Start Free Trial</Link>
+              <Link to="/pricing">Bắt đầu dùng thử</Link>
             </Button>
           </div>
         </div>

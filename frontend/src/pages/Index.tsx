@@ -10,8 +10,8 @@ export default function Index() {
   return (
     <SiteLayout>
       <Seo
-        title="CareerAI — Improve Your CV & Pass Interviews with AI"
-        description="A focused AI career tool: get an ATS-grade CV analysis and practice structured mock interviews tailored to your CV and target role."
+        title="CareerAI — Đánh giá CV chuẩn ATS & Luyện phỏng vấn AI"
+        description="Công cụ phát triển sự nghiệp bằng AI: phân tích và chấm điểm CV chuẩn ATS, luyện phỏng vấn thử cá nhân hóa theo đúng hồ sơ và vị trí mục tiêu của bạn."
         path="/"
         jsonLd={[orgJsonLd, faqLd(faqs)]}
       />

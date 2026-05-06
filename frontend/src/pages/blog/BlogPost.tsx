@@ -16,23 +16,23 @@ export default function BlogPost() {
   return (
     <SiteLayout>
       <Seo
-        title={`${post.title} — CV Checker AI Blog`}
+        title={`${post.title} — Cẩm nang CareerAI`}
         description={post.description}
         path={path}
         type="article"
         jsonLd={[
-          breadcrumbLd([{ name: "Home", path: "/" }, { name: "Blog", path: "/blog" }, { name: post.title, path }]),
+          breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Cẩm nang", path: "/blog" }, { name: post.title, path }]),
           articleLd({ title: post.title, description: post.description, path, date: post.date }),
         ]}
       />
 
       <article className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
-        <Button asChild variant="ghost" className="mb-6 -ml-2"><Link to="/blog"><ArrowLeft className="mr-2 h-4 w-4" /> All articles</Link></Button>
+        <Button asChild variant="ghost" className="mb-6 -ml-2"><Link to="/blog"><ArrowLeft className="mr-2 h-4 w-4" /> Tất cả bài viết</Link></Button>
         <span className="inline-block text-xs font-bold uppercase tracking-wider text-primary">{post.category}</span>
         <h1 className="mt-3 text-4xl lg:text-5xl font-bold tracking-tight leading-tight">{post.title}</h1>
         <p className="mt-4 text-lg text-muted-foreground leading-relaxed">{post.description}</p>
         <div className="mt-6 flex items-center gap-5 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {new Date(post.date).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}</span>
+          <span className="inline-flex items-center gap-1.5"><Calendar className="h-4 w-4" /> {new Date(post.date).toLocaleDateString("vi-VN", { month: "long", day: "numeric", year: "numeric" })}</span>
           <span className="inline-flex items-center gap-1.5"><Clock className="h-4 w-4" /> {post.readTime}</span>
         </div>
 

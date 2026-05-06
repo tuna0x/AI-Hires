@@ -19,8 +19,8 @@ export default function ScoreCircle({ score }: { score: number }) {
       </svg>
       <div className="absolute inset-0 grid place-items-center">
         <div className="text-center">
-          <div className="text-5xl font-bold text-gradient-primary leading-none">{score}</div>
-          <div className="text-xs text-muted-foreground mt-1">out of 100</div>
+          <div className="text-5xl font-extrabold text-foreground leading-none">{score}</div>
+          <div className="text-xs text-muted-foreground mt-1.5 font-medium">trên 100</div>
         </div>
       </div>
     </div>

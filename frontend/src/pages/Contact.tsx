@@ -15,27 +15,27 @@ export default function Contact() {
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>();
   const onSubmit = async (data: FormData) => {
     await new Promise((r) => setTimeout(r, 600));
-    toast.success("Thanks! We'll be in touch within 1 business day.");
+    toast.success("Cảm ơn bạn! Chúng tôi đã nhận được thông tin và sẽ phản hồi trong vòng 1 ngày làm việc.");
     reset();
   };
 
   return (
     <SiteLayout>
       <Seo
-        title="Contact — Talk to the CV Checker AI Team"
-        description="Questions about CV Checker AI, partnerships, or team plans? Drop us a note and we'll reply within one business day."
+        title="Liên hệ — Đội ngũ phát triển CareerAI"
+        description="Bạn có câu hỏi về CareerAI, đề xuất tính năng hay hợp tác doanh nghiệp? Hãy gửi lời nhắn và chúng tôi sẽ phản hồi sớm nhất."
         path="/contact"
-        jsonLd={breadcrumbLd([{ name: "Home", path: "/" }, { name: "Contact", path: "/contact" }])}
+        jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Liên hệ", path: "/contact" }])}
       />
-      <PageHero eyebrow="Contact" title="Let's talk" subtitle="Sales, support, partnerships, press — we read every message." />
+      <PageHero eyebrow="Liên hệ" title="Kết nối với chúng tôi" subtitle="Hỗ trợ kỹ thuật, hợp tác hay phản hồi đóng góp ý kiến — chúng tôi luôn sẵn sàng lắng nghe bạn." />
 
       <section className="pb-24">
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.4fr] gap-10">
           <div className="space-y-5">
             {[
-              { icon: Mail, t: "Email", v: "hello@cvchecker.ai" },
-              { icon: MessageSquare, t: "Support", v: "Reply within 4h, Mon–Fri" },
-              { icon: Building, t: "Teams & Enterprise", v: "sales@cvchecker.ai" },
+              { icon: Mail, t: "Hòm thư chung", v: "hello@careerai.vn" },
+              { icon: MessageSquare, t: "Hỗ trợ kỹ thuật", v: "Phản hồi trong 4h (T2 - T6)" },
+              { icon: Building, t: "Hợp tác doanh nghiệp", v: "sales@careerai.vn" },
             ].map((c) => (
               <div key={c.t} className="bg-card rounded-2xl border border-border/60 p-5 shadow-soft">
                 <div className="flex items-center gap-3">
@@ -52,27 +52,27 @@ export default function Contact() {
           <form onSubmit={handleSubmit(onSubmit)} className="bg-card rounded-3xl border border-border/60 p-7 lg:p-9 shadow-card space-y-5">
             <div className="grid sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" {...register("name", { required: true })} placeholder="Jane Doe" />
-                {errors.name && <p className="text-xs text-destructive">Name is required</p>}
+                <Label htmlFor="name">Họ và tên</Label>
+                <Input id="name" {...register("name", { required: true })} placeholder="Nguyễn Văn A" />
+                {errors.name && <p className="text-xs text-destructive">Vui lòng nhập họ và tên</p>}
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" {...register("email", { required: true })} placeholder="jane@company.com" />
-                {errors.email && <p className="text-xs text-destructive">Email is required</p>}
+                <Label htmlFor="email">Địa chỉ Email</Label>
+                <Input id="email" type="email" {...register("email", { required: true })} placeholder="email@congty.com" />
+                {errors.email && <p className="text-xs text-destructive">Vui lòng nhập địa chỉ email</p>}
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="company">Company (optional)</Label>
-              <Input id="company" {...register("company")} placeholder="Acme Inc" />
+              <Label htmlFor="company">Tên công ty (không bắt buộc)</Label>
+              <Input id="company" {...register("company")} placeholder="Công ty TNHH ABC" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="message">Message</Label>
-              <Textarea id="message" rows={5} {...register("message", { required: true })} placeholder="How can we help?" />
-              {errors.message && <p className="text-xs text-destructive">Message is required</p>}
+              <Label htmlFor="message">Nội dung lời nhắn</Label>
+              <Textarea id="message" rows={5} {...register("message", { required: true })} placeholder="Chúng tôi có thể hỗ trợ gì cho bạn?" />
+              {errors.message && <p className="text-xs text-destructive">Vui lòng nhập nội dung lời nhắn</p>}
             </div>
             <Button type="submit" disabled={isSubmitting} className="w-full bg-gradient-primary text-primary-foreground rounded-xl h-11 font-semibold">
-              {isSubmitting ? "Sending..." : "Send message"}
+              {isSubmitting ? "Đang gửi..." : "Gửi lời nhắn"}
             </Button>
           </form>
         </div>
