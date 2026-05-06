@@ -9,6 +9,7 @@ import com.project.AIH.models.UserProfile;
 import com.project.AIH.repositories.RoleRepository;
 import com.project.AIH.repositories.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class UserService {
 
@@ -29,6 +31,8 @@ public class UserService {
 
     @Transactional
     public User handleCreateUser(User user) {
+        log.info("Creating new user with email: {}", user.getEmail());
+        
         // Encode password
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         
@@ -50,20 +54,26 @@ public class UserService {
             user.getUserProfile().setUser(user);
         }
         
-        return userRepository.save(user);
+        User savedUser = userRepository.save(user);
+        log.info("Successfully created user with ID: {}", savedUser.getId());
+        return savedUser;
     }
 
+    @Transactional(readOnly = true)
     public User fetchUserById(Long id) {
+        log.debug("Fetching user by ID: {}", id);
         return userRepository.findById(id).orElse(null);
     }
 
     @Transactional(readOnly = true)
     public User fetchUserByEmail(String email) {
+        log.debug("Fetching user by email: {}", email);
         return userRepository.findByEmail(email).orElse(null);
     }
 
     @Transactional
     public User handleUpdateUser(ReqUpdateUserDTO req) {
+        log.info("Updating user with ID: {}", req.getId());
         User currentUser = fetchUserById(req.getId());
         if (currentUser != null) {
             UserProfile profile = currentUser.getUserProfile();
@@ -73,21 +83,35 @@ public class UserService {
                 currentUser.setUserProfile(profile);
             }
             
-            if (req.getFullName() != null) profile.setFullName(req.getFullName());
-            if (req.getPhoneNumber() != null) profile.setPhoneNumber(req.getPhoneNumber());
-            if (req.getAvatar() != null) profile.setAvatar(req.getAvatar());
+            if (req.getFullName() != null) {
+                log.debug("Updating full name for user {}: {}", req.getId(), req.getFullName());
+                profile.setFullName(req.getFullName());
+            }
+            if (req.getPhoneNumber() != null) {
+                profile.setPhoneNumber(req.getPhoneNumber());
+            }
+            if (req.getAvatar() != null) {
+                profile.setAvatar(req.getAvatar());
+            }
             
-            return userRepository.save(currentUser);
+            User updatedUser = userRepository.save(currentUser);
+            log.info("Successfully updated user with ID: {}", updatedUser.getId());
+            return updatedUser;
         }
+        log.warn("User update failed: User ID {} not found", req.getId());
         return null;
     }
 
     @Transactional
     public void handleDeleteUser(Long id) {
+        log.info("Deleting user with ID: {}", id);
         userRepository.deleteById(id);
+        log.info("Successfully deleted user with ID: {}", id);
     }
 
+    @Transactional(readOnly = true)
     public ResultPaginationDTO fetchAllUsers(Specification<User> spec, Pageable pageable) {
+        log.debug("Fetching all users with specification: {} and pageable: {}", spec, pageable);
         Page<User> pageUser = userRepository.findAll(spec, pageable);
         
         ResultPaginationDTO rs = new ResultPaginationDTO();
@@ -106,9 +130,11 @@ public class UserService {
         
         rs.setResult(listUser);
         
+        log.debug("Fetched {} users successfully", listUser.size());
         return rs;
     }
 
+    @Transactional(readOnly = true)
     public ResUserDTO convertToResUserDTO(User user) {
         if (user == null) return null;
         
@@ -137,7 +163,9 @@ public class UserService {
         return res;
     }
 
+    @Transactional(readOnly = true)
     public boolean existsByEmail(String email) {
+        log.debug("Checking existence of user by email: {}", email);
         return userRepository.findByEmail(email).isPresent();
     }
 }

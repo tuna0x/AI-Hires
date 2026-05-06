@@ -1,6 +1,8 @@
 package com.project.AIH.models;
 
 import com.project.AIH.utils.constant.InterviewSessionStatusEnum;
+import com.project.AIH.utils.constant.InterviewTypeEnum;
+import com.project.AIH.utils.constant.DifficultyLevelEnum;
 import jakarta.persistence.*;
 import lombok.*;
 import com.project.AIH.utils.SecurityUtil;
@@ -26,13 +28,20 @@ public class InterviewSession {
     @Enumerated(EnumType.STRING)
     private InterviewSessionStatusEnum status = InterviewSessionStatusEnum.IN_PROGRESS;
 
-    @Column(columnDefinition = "TEXT")
-    private String finalReport;
+    @Enumerated(EnumType.STRING)
+    private InterviewTypeEnum interviewType;
 
-    private Integer finalScore;
+    @Enumerated(EnumType.STRING)
+    private DifficultyLevelEnum difficultyLevel;
+
+    private Integer totalQuestions;
+    private Integer maxQuestions;
 
     @OneToMany(mappedBy = "interviewSession", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<InterviewMessage> messages;
+    private List<InterviewQuestion> questions;
+
+    @OneToOne(mappedBy = "interviewSession", cascade = CascadeType.ALL, orphanRemoval = true)
+    private InterviewReport interviewReport;
 
     // Audit fields
     private Instant startTime;

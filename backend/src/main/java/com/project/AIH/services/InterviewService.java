@@ -2,14 +2,14 @@ package com.project.AIH.services;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.project.AIH.models.Application;
-import com.project.AIH.models.InterviewMessage;
-import com.project.AIH.models.InterviewSession;
-import com.project.AIH.repositories.ApplicationRepository;
-import com.project.AIH.repositories.InterviewMessageRepository;
-import com.project.AIH.repositories.InterviewSessionRepository;
-import com.project.AIH.utils.constant.InterviewMessageRoleEnum;
+import com.project.AIH.dto.InterviewSubmitAnswerResponseDTO;
+import com.project.AIH.models.*;
+import com.project.AIH.repositories.*;
+import com.project.AIH.utils.constant.InterviewDecisionEnum;
 import com.project.AIH.utils.constant.InterviewSessionStatusEnum;
+import com.project.AIH.utils.constant.DifficultyLevelEnum;
+import com.project.AIH.utils.constant.InterviewTypeEnum;
+import com.project.AIH.utils.constant.QuestionTypeEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -17,6 +17,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.ArrayList;
+import java.math.BigDecimal;
+import com.project.AIH.utils.constant.InsightTypeEnum;
 
 @Service
 @Slf4j
@@ -24,7 +27,10 @@ import java.util.List;
 public class InterviewService {
 
     private final InterviewSessionRepository sessionRepository;
-    private final InterviewMessageRepository messageRepository;
+    private final InterviewQuestionRepository questionRepository;
+    private final InterviewAnswerRepository answerRepository;
+    private final InterviewEvaluationRepository evaluationRepository;
+    private final InterviewReportRepository reportRepository;
     private final ApplicationRepository applicationRepository;
     private final GeminiService geminiService;
     private final ObjectMapper objectMapper;
@@ -37,26 +43,32 @@ public class InterviewService {
         InterviewSession session = InterviewSession.builder()
                 .application(application)
                 .status(InterviewSessionStatusEnum.IN_PROGRESS)
+                .interviewType(InterviewTypeEnum.MIXED)
+                .difficultyLevel(DifficultyLevelEnum.ADAPTIVE)
+                .totalQuestions(1)
+                .maxQuestions(5)
                 .build();
         session = sessionRepository.save(session);
 
         String jobDesc = application.getJob().getDescription();
         String cvText = application.getResume().getExtractedText();
 
-        String initialQuestion = geminiService.generateInitialQuestion(jobDesc, cvText);
+        String initialQuestionText = geminiService.generateInitialQuestion(jobDesc, cvText);
 
-        InterviewMessage aiMessage = InterviewMessage.builder()
+        InterviewQuestion question = InterviewQuestion.builder()
                 .interviewSession(session)
-                .role(InterviewMessageRoleEnum.AI)
-                .content(initialQuestion)
+                .questionText(initialQuestionText)
+                .questionType(QuestionTypeEnum.TECHNICAL)
+                .difficulty(DifficultyLevelEnum.EASY)
+                .questionOrder(1)
                 .build();
-        messageRepository.save(aiMessage);
+        questionRepository.save(question);
 
         return session;
     }
 
     @Transactional
-    public InterviewMessage submitAnswer(Long sessionId, String answerText) {
+    public InterviewSubmitAnswerResponseDTO submitAnswer(Long sessionId, String answerText) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
@@ -64,43 +76,74 @@ public class InterviewService {
             throw new RuntimeException("Interview session is already finished");
         }
 
-        // 1. Save candidate answer
-        InterviewMessage candidateMessage = InterviewMessage.builder()
-                .interviewSession(session)
-                .role(InterviewMessageRoleEnum.CANDIDATE)
-                .content(answerText)
-                .build();
-        messageRepository.save(candidateMessage);
+        // 1. Find the current active question (the latest ordered question)
+        List<InterviewQuestion> questions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
+        if (questions.isEmpty()) {
+            throw new RuntimeException("No question found for this session");
+        }
+        InterviewQuestion currentQuestion = questions.get(questions.size() - 1);
 
-        // 2. Fetch history
-        String chatHistory = getChatHistory(sessionId);
+        if (currentQuestion.getInterviewAnswer() != null) {
+            throw new RuntimeException("The current question has already been answered");
+        }
+
+        // 2. Save candidate answer
+        InterviewAnswer answer = InterviewAnswer.builder()
+                .interviewQuestion(currentQuestion)
+                .answerText(answerText)
+                .build();
+        answer = answerRepository.save(answer);
+
+        // 3. Fetch chat history for Gemini context
+        String chatHistory = getChatHistory(questions, answerText);
         String jobDesc = session.getApplication().getJob().getDescription();
 
-        // 3. Evaluate and generate next question
+        // 4. Evaluate and generate next question
         String aiResponse = geminiService.evaluateAndGenerateNextQuestion(jobDesc, chatHistory, answerText);
         
         try {
             JsonNode resultNode = objectMapper.readTree(aiResponse);
             int score = resultNode.path("score").asInt();
             String feedback = resultNode.path("feedback").asText();
-            String nextQuestion = resultNode.path("next_question").asText();
+            String nextQuestionText = resultNode.path("next_question").asText();
 
-            // Update candidate message with score and feedback
-            candidateMessage.setScore(score);
-            candidateMessage.setFeedback(feedback);
-            messageRepository.save(candidateMessage);
-
-            // Save AI next question
-            InterviewMessage aiNextMessage = InterviewMessage.builder()
-                    .interviewSession(session)
-                    .role(InterviewMessageRoleEnum.AI)
-                    .content(nextQuestion)
+            // 5. Save AI Evaluation
+            InterviewEvaluation evaluation = InterviewEvaluation.builder()
+                    .interviewAnswer(answer)
+                    .score(score)
+                    .feedback(feedback)
                     .build();
-            return messageRepository.save(aiNextMessage);
+            evaluation = evaluationRepository.save(evaluation);
+
+            // 6. Check if we should ask the next question or finish
+            boolean isFinished = session.getTotalQuestions() >= session.getMaxQuestions();
+            InterviewQuestion nextQuestion = null;
+
+            if (!isFinished) {
+                // Increment total questions and save next question
+                int nextOrder = session.getTotalQuestions() + 1;
+                session.setTotalQuestions(nextOrder);
+                sessionRepository.save(session);
+
+                nextQuestion = InterviewQuestion.builder()
+                        .interviewSession(session)
+                        .questionText(nextQuestionText)
+                        .questionType(QuestionTypeEnum.TECHNICAL)
+                        .difficulty(DifficultyLevelEnum.MEDIUM)
+                        .questionOrder(nextOrder)
+                        .build();
+                nextQuestion = questionRepository.save(nextQuestion);
+            }
+
+            return InterviewSubmitAnswerResponseDTO.builder()
+                    .evaluation(evaluation)
+                    .nextQuestion(nextQuestion)
+                    .isFinished(isFinished)
+                    .build();
 
         } catch (Exception e) {
             log.error("Failed to parse Gemini evaluation response: {}", e.getMessage());
-            throw new RuntimeException("Error evaluating answer");
+            throw new RuntimeException("Error evaluating answer: " + e.getMessage());
         }
     }
 
@@ -109,36 +152,108 @@ public class InterviewService {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        String chatHistory = getChatHistory(sessionId);
+        if (session.getStatus() == InterviewSessionStatusEnum.COMPLETED) {
+            return session;
+        }
+
+        List<InterviewQuestion> questions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
+        String chatHistory = getChatHistoryForReport(questions);
         String jobDesc = session.getApplication().getJob().getDescription();
 
         String aiResponse = geminiService.generateFinalReport(jobDesc, chatHistory);
 
         try {
             JsonNode resultNode = objectMapper.readTree(aiResponse);
-            int finalScore = resultNode.path("final_score").asInt();
+            double finalScoreDouble = resultNode.path("final_score").asDouble();
+            String decisionStr = resultNode.path("decision").asText("CONSIDER");
+            String summary = resultNode.path("summary").asText();
             
-            session.setFinalReport(aiResponse);
-            session.setFinalScore(finalScore);
+            InterviewDecisionEnum decision = InterviewDecisionEnum.CONSIDER;
+            try {
+                decision = InterviewDecisionEnum.valueOf(decisionStr);
+            } catch (Exception ex) {
+                log.warn("Invalid decision string: {}, defaulting to CONSIDER", decisionStr);
+            }
+
+            // Create and save final report
+            InterviewReport report = InterviewReport.builder()
+                    .interviewSession(session)
+                    .finalScore(BigDecimal.valueOf(finalScoreDouble))
+                    .decision(decision)
+                    .summary(summary)
+                    .build();
+
+            List<InterviewInsight> insightsList = new ArrayList<>();
+
+            // Parse strengths
+            JsonNode strengthsNode = resultNode.path("strengths");
+            if (strengthsNode.isArray()) {
+                int index = 0;
+                for (JsonNode node : strengthsNode) {
+                    insightsList.add(InterviewInsight.builder()
+                            .interviewReport(report)
+                            .type(InsightTypeEnum.STRENGTH)
+                            .title(node.asText())
+                            .displayOrder(index++)
+                            .build());
+                }
+            }
+
+            // Parse weaknesses
+            JsonNode weaknessesNode = resultNode.path("weaknesses");
+            if (weaknessesNode.isArray()) {
+                int index = 0;
+                for (JsonNode node : weaknessesNode) {
+                    insightsList.add(InterviewInsight.builder()
+                            .interviewReport(report)
+                            .type(InsightTypeEnum.WEAKNESS)
+                            .title(node.asText())
+                            .displayOrder(index++)
+                            .build());
+                }
+            }
+
+            report.setInsights(insightsList);
+            reportRepository.save(report);
+
             session.setStatus(InterviewSessionStatusEnum.COMPLETED);
             session.setEndTime(Instant.now());
             
             return sessionRepository.save(session);
         } catch (Exception e) {
             log.error("Failed to parse Gemini final report response: {}", e.getMessage());
-            throw new RuntimeException("Error generating final report");
+            throw new RuntimeException("Error generating final report: " + e.getMessage());
         }
     }
 
-    public List<InterviewMessage> getSessionMessages(Long sessionId) {
-        return messageRepository.findByInterviewSessionIdOrderByCreatedAtAsc(sessionId);
+    @Transactional(readOnly = true)
+    public List<InterviewQuestion> getSessionQuestions(Long sessionId) {
+        log.debug("Fetching questions for interview session ID: {}", sessionId);
+        return questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
     }
 
-    private String getChatHistory(Long sessionId) {
-        List<InterviewMessage> messages = messageRepository.findByInterviewSessionIdOrderByCreatedAtAsc(sessionId);
+    private String getChatHistory(List<InterviewQuestion> questions, String latestAnswer) {
         StringBuilder sb = new StringBuilder();
-        for (InterviewMessage msg : messages) {
-            sb.append(msg.getRole().name()).append(": ").append(msg.getContent()).append("\n");
+        for (InterviewQuestion q : questions) {
+            sb.append("AI: ").append(q.getQuestionText()).append("\n");
+            if (q.getInterviewAnswer() != null) {
+                sb.append("CANDIDATE: ").append(q.getInterviewAnswer().getAnswerText()).append("\n");
+            }
+        }
+        // If the latest answer is not yet mapped in db relations
+        if (!questions.isEmpty() && questions.get(questions.size() - 1).getInterviewAnswer() == null) {
+            sb.append("CANDIDATE: ").append(latestAnswer).append("\n");
+        }
+        return sb.toString();
+    }
+
+    private String getChatHistoryForReport(List<InterviewQuestion> questions) {
+        StringBuilder sb = new StringBuilder();
+        for (InterviewQuestion q : questions) {
+            sb.append("AI: ").append(q.getQuestionText()).append("\n");
+            if (q.getInterviewAnswer() != null) {
+                sb.append("CANDIDATE: ").append(q.getInterviewAnswer().getAnswerText()).append("\n");
+            }
         }
         return sb.toString();
     }

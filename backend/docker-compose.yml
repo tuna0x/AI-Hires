@@ -7,18 +7,36 @@ services:
     restart: always
     environment:
       MYSQL_DATABASE: ai_hire
-      MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: "123456"  # Đã đồng bộ 100% với file application.yml trong Spring Boot
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     ports:
       - "3306:3306"
     volumes:
       - aih_mysql_data:/var/lib/mysql
+    networks:
+      - aih-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   redis:
     image: redis:7.0-alpine
     container_name: aih-redis
     restart: always
+    command: redis-server --appendonly yes  # Kích hoạt AOF để lưu trữ dữ liệu cache bền vững
     ports:
       - "6379:6379"
+    volumes:
+      - aih_redis_data:/data
+    networks:
+      - aih-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   rabbitmq:
     image: rabbitmq:3.11-management-alpine
@@ -30,6 +48,13 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    networks:
+      - aih-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   minio:
     image: minio/minio
@@ -44,7 +69,20 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - aih_minio_data:/data
+    networks:
+      - aih-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+networks:
+  aih-network:
+    name: aih-network
+    driver: bridge
 
 volumes:
   aih_mysql_data:
+  aih_redis_data:  # Volume lưu trữ bền vững cho Redis cache
   aih_minio_data:

@@ -10,6 +10,7 @@ import com.project.AIH.repositories.RoleRepository;
 import com.project.AIH.repositories.UserRepository;
 import com.project.AIH.utils.SecurityUtil;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +22,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 public class AuthenticationService {
     private final UserRepository repository;
@@ -31,8 +33,12 @@ public class AuthenticationService {
 
     @Transactional
     public RestLoginDTO register(RegisterRequest request) {
+        log.info("Registering user with email: {} and role: {}", request.getEmail(), request.getRole());
         var role = roleRepository.findByName(request.getRole())
-                .orElseThrow(() -> new RuntimeException("Role not found"));
+                .orElseThrow(() -> {
+                    log.error("Registration failed: Role {} not found", request.getRole());
+                    return new RuntimeException("Role not found");
+                });
         
         var user = User.builder()
                 .email(request.getEmail())
@@ -46,33 +52,51 @@ public class AuthenticationService {
         user.setUserProfile(profile);
 
         repository.save(user);
+        log.info("User registered successfully with ID: {}", user.getId());
         
         return buildLoginResponse(user);
     }
 
     @Transactional
     public RestLoginDTO authenticate(AuthenticationRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getEmail(),
-                        request.getPassword()
-                )
-        );
+        log.info("Attempting login for user: {}", request.getEmail());
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getEmail(),
+                            request.getPassword()
+                    )
+            );
+        } catch (Exception e) {
+            log.warn("Authentication failed for user: {}. Error: {}", request.getEmail(), e.getMessage());
+            throw e;
+        }
+        
         var user = repository.findByEmail(request.getEmail())
-                .orElseThrow();
+                .orElseThrow(() -> {
+                    log.error("Authenticated user email {} not found in database", request.getEmail());
+                    return new RuntimeException("User not found");
+                });
                 
+        log.info("Login successful for user: {}", request.getEmail());
         return buildLoginResponse(user);
     }
 
     @Transactional
     public RestLoginDTO refreshToken(String refreshToken, String email) {
+        log.info("Refreshing token for user: {}", email);
         var user = repository.findByRefreshTokenAndEmail(refreshToken, email)
-                .orElseThrow(() -> new RuntimeException("Invalid refresh token"));
+                .orElseThrow(() -> {
+                    log.warn("Invalid refresh token attempt for email: {}", email);
+                    return new RuntimeException("Invalid refresh token");
+                });
                 
+        log.info("Token refreshed successfully for user: {}", email);
         return buildLoginResponse(user);
     }
 
     private RestLoginDTO buildLoginResponse(User user) {
+        log.debug("Building login response for user ID: {}", user.getId());
         var role = user.getRole();
         List<String> permissions = role.getPermissions() != null ? 
                 role.getPermissions().stream().map(Permission::getName).collect(Collectors.toList()) : 
@@ -104,14 +128,25 @@ public class AuthenticationService {
 
     @Transactional
     public void logout(String email) {
-        var user = repository.findByEmail(email).orElseThrow();
+        log.info("Logging out user: {}", email);
+        var user = repository.findByEmail(email)
+                .orElseThrow(() -> {
+                    log.error("Logout failed: User with email {} not found", email);
+                    return new RuntimeException("User not found");
+                });
         user.setRefreshToken(null);
         repository.save(user);
+        log.info("User {} logged out successfully", email);
     }
 
+    @Transactional(readOnly = true)
     public RestLoginDTO.UserGetAccount getAccount(String email) {
+        log.debug("Fetching account information for email: {}", email);
         User user = repository.findByEmail(email).orElse(null);
-        if (user == null) return null;
+        if (user == null) {
+            log.warn("Account fetch failed: Email {} not found", email);
+            return null;
+        }
 
         var role = user.getRole();
         List<String> permissions = role.getPermissions() != null ? 
@@ -125,7 +160,6 @@ public class AuthenticationService {
         userLogin.setVerified(true);
         userLogin.setRole(role.getName());
         userLogin.setPermissions(permissions);
-
         return new RestLoginDTO.UserGetAccount(userLogin);
     }
 }

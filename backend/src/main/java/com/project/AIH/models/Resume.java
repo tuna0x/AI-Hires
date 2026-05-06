@@ -6,6 +6,9 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import com.project.AIH.utils.SecurityUtil;
 import java.time.Instant;
+import java.util.List;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
 
 @Entity
 @Table(name = "resumes")
@@ -20,7 +23,7 @@ public class Resume {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = true)
     @ToString.Exclude
     private User user;
 
@@ -38,6 +41,27 @@ public class Resume {
 
     @Enumerated(EnumType.STRING)
     private ResumeStatusEnum parseStatus = ResumeStatusEnum.PENDING;
+
+    @OneToOne(mappedBy = "resume", cascade = CascadeType.ALL)
+    private ResumeBasicInfo basicInfo;
+
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResumeSkill> skills;
+
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResumeExperience> experiences;
+
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResumeEducation> educations;
+
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResumeCertification> certifications;
+
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResumeProject> projects;
+
+    @OneToMany(mappedBy = "resume", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ResumeLanguage> languages;
 
     // Audit fields
     private Instant createdAt;

@@ -4,8 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.AIH.models.*;
 import com.project.AIH.repositories.*;
-import com.project.AIH.utils.constant.ApplicationStatusEnum;
-import com.project.AIH.utils.constant.ResumeStatusEnum;
+import com.project.AIH.utils.constant.*;
 import com.project.AIH.dto.CvScoringMessage;
 import com.project.AIH.config.RabbitMQConfig;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +13,11 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Slf4j
@@ -27,7 +31,7 @@ public class ResumeService {
     private final ResumeRepository resumeRepository;
     private final JobRepository jobRepository;
     private final ApplicationRepository applicationRepository;
-    private final AiScoreRepository aiScoreRepository;
+    private final CvScoreRepository cvScoreRepository;
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
 
@@ -55,6 +59,7 @@ public class ResumeService {
                 .extractedText(extractedText)
                 .parseStatus(ResumeStatusEnum.PROCESSING)
                 .build();
+        parseAndPopulateDetailedResume(resume, extractedText);
         resume = resumeRepository.save(resume);
 
         // 4. Create Application
@@ -95,10 +100,12 @@ public class ResumeService {
 
     @Transactional
     public Resume uploadAndParse(MultipartFile file, User user) {
-        log.info("Uploading and parsing resume for user: {}", user.getEmail());
+        String userEmail = (user != null) ? user.getEmail() : "anonymous";
+        String folderPath = (user != null) ? "resumes/" + user.getId() : "resumes/guest";
+        log.info("Uploading and parsing resume for user: {}", userEmail);
 
         // 1. Upload CV to MinIO
-        String fileName = fileService.uploadFile(file, "resumes/" + user.getId());
+        String fileName = fileService.uploadFile(file, folderPath);
 
         // 2. Extract Text
         String extractedText = "";
@@ -126,7 +133,189 @@ public class ResumeService {
                 .parsedData(parsedData)
                 .parseStatus(parsedData.isEmpty() ? ResumeStatusEnum.FAILED : ResumeStatusEnum.DONE)
                 .build();
-        
+        parseAndPopulateDetailedResume(resume, extractedText);
         return resumeRepository.save(resume);
+    }
+
+    private void parseAndPopulateDetailedResume(Resume resume, String extractedText) {
+        if (extractedText == null || extractedText.trim().isEmpty()) {
+            log.warn("Extracted text is empty, skipping detailed structured resume parsing.");
+            return;
+        }
+
+        try {
+            log.info("Calling Gemini to parse detailed resume structure for resume ID: {}", resume.getId());
+            String responseJson = geminiService.parseDetailedResume(extractedText);
+            JsonNode root = objectMapper.readTree(responseJson);
+
+            // 1. Basic Info
+            JsonNode basicNode = root.path("basicInfo");
+            if (!basicNode.isMissingNode() && !basicNode.isNull()) {
+                ResumeBasicInfo basicInfo = ResumeBasicInfo.builder()
+                        .resume(resume)
+                        .fullName(basicNode.path("fullName").asText(null))
+                        .email(basicNode.path("email").asText(null))
+                        .phone(basicNode.path("phone").asText(null))
+                        .address(basicNode.path("address").asText(null))
+                        .dateOfBirth(parseLocalDate(basicNode.path("dateOfBirth").asText(null)))
+                        .linkedinUrl(basicNode.path("linkedinUrl").asText(null))
+                        .githubUrl(basicNode.path("githubUrl").asText(null))
+                        .portfolioUrl(basicNode.path("portfolioUrl").asText(null))
+                        .objective(basicNode.path("objective").asText(null))
+                        .predictedLevel(parseEnum(CandidateLevelEnum.class, basicNode.path("predictedLevel").asText(null), null))
+                        .predictedIndustry(basicNode.path("predictedIndustry").asText(null))
+                        .build();
+                resume.setBasicInfo(basicInfo);
+            }
+
+            // 2. Skills
+            JsonNode skillsNode = root.path("skills");
+            if (skillsNode.isArray()) {
+                List<ResumeSkill> skills = new ArrayList<>();
+                for (JsonNode n : skillsNode) {
+                    skills.add(ResumeSkill.builder()
+                            .resume(resume)
+                            .skillName(n.path("skillName").asText(""))
+                            .category(parseEnum(SkillCategoryEnum.class, n.path("category").asText(null), SkillCategoryEnum.TECHNICAL))
+                            .proficiencyLevel(parseEnum(ProficiencyLevelEnum.class, n.path("proficiencyLevel").asText(null), ProficiencyLevelEnum.INTERMEDIATE))
+                            .yearsOfExperience(parseBigDecimal(n.path("yearsOfExperience").asText(null)))
+                            .build());
+                }
+                resume.setSkills(skills);
+            }
+
+            // 3. Experiences
+            JsonNode expNode = root.path("experiences");
+            if (expNode.isArray()) {
+                List<ResumeExperience> experiences = new ArrayList<>();
+                int order = 0;
+                for (JsonNode n : expNode) {
+                    experiences.add(ResumeExperience.builder()
+                            .resume(resume)
+                            .companyName(n.path("companyName").asText(""))
+                            .position(n.path("position").asText(""))
+                            .location(n.path("location").asText(null))
+                            .startDate(parseLocalDate(n.path("startDate").asText(null)))
+                            .endDate(parseLocalDate(n.path("endDate").asText(null)))
+                            .isCurrent(n.path("isCurrent").asBoolean(false))
+                            .description(n.path("description").asText(""))
+                            .achievements(n.path("achievements").asText(null))
+                            .displayOrder(order++)
+                            .build());
+                }
+                resume.setExperiences(experiences);
+            }
+
+            // 4. Educations
+            JsonNode eduNode = root.path("educations");
+            if (eduNode.isArray()) {
+                List<ResumeEducation> educations = new ArrayList<>();
+                int order = 0;
+                for (JsonNode n : eduNode) {
+                    educations.add(ResumeEducation.builder()
+                            .resume(resume)
+                            .institutionName(n.path("institutionName").asText(""))
+                            .degree(n.path("degree").asText(null))
+                            .fieldOfStudy(n.path("fieldOfStudy").asText(null))
+                            .startDate(parseLocalDate(n.path("startDate").asText(null)))
+                            .endDate(parseLocalDate(n.path("endDate").asText(null)))
+                            .gpa(parseBigDecimal(n.path("gpa").asText(null)))
+                            .description(n.path("description").asText(null))
+                            .displayOrder(order++)
+                            .build());
+                }
+                resume.setEducations(educations);
+            }
+
+            // 5. Certifications
+            JsonNode certNode = root.path("certifications");
+            if (certNode.isArray()) {
+                List<ResumeCertification> certifications = new ArrayList<>();
+                for (JsonNode n : certNode) {
+                    certifications.add(ResumeCertification.builder()
+                            .resume(resume)
+                            .name(n.path("name").asText(""))
+                            .issuingOrganization(n.path("issuingOrganization").asText(null))
+                            .issueDate(parseLocalDate(n.path("issueDate").asText(null)))
+                            .expiryDate(parseLocalDate(n.path("expiryDate").asText(null)))
+                            .credentialUrl(n.path("credentialUrl").asText(null))
+                            .build());
+                }
+                resume.setCertifications(certifications);
+            }
+
+            // 6. Projects
+            JsonNode projNode = root.path("projects");
+            if (projNode.isArray()) {
+                List<ResumeProject> projects = new ArrayList<>();
+                for (JsonNode n : projNode) {
+                    projects.add(ResumeProject.builder()
+                            .resume(resume)
+                            .name(n.path("name").asText(""))
+                            .role(n.path("role").asText(""))
+                            .technologies(n.path("technologies").asText(""))
+                            .description(n.path("description").asText(""))
+                            .url(n.path("url").asText(null))
+                            .startDate(parseLocalDate(n.path("startDate").asText(null)))
+                            .endDate(parseLocalDate(n.path("endDate").asText(null)))
+                            .build());
+                }
+                resume.setProjects(projects);
+            }
+
+            // 7. Languages
+            JsonNode langNode = root.path("languages");
+            if (langNode.isArray()) {
+                List<ResumeLanguage> languages = new ArrayList<>();
+                for (JsonNode n : langNode) {
+                    languages.add(ResumeLanguage.builder()
+                            .resume(resume)
+                            .language(n.path("language").asText(""))
+                            .proficiency(parseEnum(LanguageProficiencyEnum.class, n.path("proficiency").asText(null), LanguageProficiencyEnum.PROFESSIONAL))
+                            .build());
+                }
+                resume.setLanguages(languages);
+            }
+
+            log.info("Successfully structured detailed resume ID: {}", resume.getId());
+        } catch (Exception e) {
+            log.error("Failed to parse detailed resume structure for resume ID: {}. Error: {}", resume.getId(), e.getMessage());
+        }
+    }
+
+    private LocalDate parseLocalDate(String dateStr) {
+        if (dateStr == null || dateStr.trim().isEmpty() || dateStr.equalsIgnoreCase("null")) {
+            return null;
+        }
+        try {
+            return LocalDate.parse(dateStr.trim());
+        } catch (Exception e) {
+            log.warn("Failed to parse date string: '{}', ignoring.", dateStr);
+            return null;
+        }
+    }
+
+    private BigDecimal parseBigDecimal(String numStr) {
+        if (numStr == null || numStr.trim().isEmpty() || numStr.equalsIgnoreCase("null")) {
+            return null;
+        }
+        try {
+            return new BigDecimal(numStr.trim());
+        } catch (Exception e) {
+            log.warn("Failed to parse numeric string: '{}', ignoring.", numStr);
+            return null;
+        }
+    }
+
+    private <E extends Enum<E>> E parseEnum(Class<E> enumClass, String val, E defaultValue) {
+        if (val == null || val.trim().isEmpty() || val.equalsIgnoreCase("null")) {
+            return defaultValue;
+        }
+        try {
+            return Enum.valueOf(enumClass, val.trim().toUpperCase());
+        } catch (Exception e) {
+            log.warn("Failed to map enum value '{}' for class '{}', returning default.", val, enumClass.getSimpleName());
+            return defaultValue;
+        }
     }
 }
