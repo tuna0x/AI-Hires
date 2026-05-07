@@ -1,6 +1,8 @@
 package com.project.AIH.config;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
@@ -26,7 +28,33 @@ public class CorsConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        configuration.setAllowedOriginPatterns(Arrays.asList(frontendUrl, "http://localhost:5173", "http://localhost:3000"));
+        List<String> allowedOrigins = new ArrayList<>();
+        
+        // Support comma-separated URLs in frontendUrl configuration
+        if (frontendUrl != null && !frontendUrl.trim().isEmpty()) {
+            String[] urls = frontendUrl.split(",");
+            for (String url : urls) {
+                String trimmed = url.trim();
+                if (!trimmed.isEmpty()) {
+                    allowedOrigins.add(trimmed);
+                }
+            }
+        }
+        
+        // Add robust fallback defaults for development and production to prevent blockages
+        List<String> defaults = Arrays.asList(
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "https://www.intervio.online",
+            "https://intervio.online"
+        );
+        for (String d : defaults) {
+            if (!allowedOrigins.contains(d)) {
+                allowedOrigins.add(d);
+            }
+        }
+        
+        configuration.setAllowedOriginPatterns(allowedOrigins);
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -45,3 +73,4 @@ public class CorsConfig {
         return bean;
     }
 }
+
