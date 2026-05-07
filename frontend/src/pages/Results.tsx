@@ -45,7 +45,112 @@ function distributeScore(targetScore: number, itemsMax: number[]): number[] {
 // Reconstruct a rich, structured fallback matching the result scores in case rawGeminiData is missing (e.g., cached in local storage)
 function getRawGeminiDataWithFallback(result: AnalysisResult) {
   if (result.rawGeminiData && result.rawGeminiData.stage2_core) {
-    return result.rawGeminiData;
+    const data = { ...result.rawGeminiData };
+    
+    // Inject sub_tips if missing
+    if (!data.sub_tips) {
+      const getScoreVal = (str: string) => {
+        const match = str.match(/\+(\d+)\/(\d+)/);
+        return match ? { score: parseInt(match[1]), max: parseInt(match[2]) } : { score: 10, max: 10 };
+      };
+
+      const atsParse = getScoreVal(data.stage2_core.ats_format?.details?.[1] || "");
+      const typography = getScoreVal(data.stage2_core.ats_format?.details?.[2] || "");
+      const length = getScoreVal(data.stage2_core.ats_format?.details?.[3] || "");
+
+      const contact = getScoreVal(data.stage2_core.professional_foundation?.details?.[0] || "");
+      const summary = getScoreVal(data.stage2_core.professional_foundation?.details?.[1] || "");
+      const sections = getScoreVal(data.stage2_core.professional_foundation?.details?.[2] || "");
+      const org = getScoreVal(data.stage2_core.professional_foundation?.details?.[3] || "");
+
+      const lang = getScoreVal(data.stage2_core.content_quality?.details?.[0] || "");
+      const quant = getScoreVal(data.stage2_core.content_quality?.details?.[1] || "");
+      const kw = getScoreVal(data.stage2_core.content_quality?.details?.[2] || "");
+      const consistency = getScoreVal(data.stage2_core.content_quality?.details?.[3] || "");
+
+      const prog = getScoreVal(data.stage3_in_depth?.experience_eval?.details?.[0] || "");
+      const bullet = getScoreVal(data.stage3_in_depth?.experience_eval?.details?.[1] || "");
+      const scope = getScoreVal(data.stage3_in_depth?.experience_eval?.details?.[2] || "");
+
+      const techEv = getScoreVal(data.stage3_in_depth?.technical_evidence?.details?.[0] || "");
+      const proj = getScoreVal(data.stage3_in_depth?.projects?.details?.[0] || "");
+      const certs = getScoreVal(data.stage3_in_depth?.certs?.details?.[0] || "");
+
+      data.sub_tips = {
+        file_technical: null,
+        ats_parsability: atsParse.score < 6 ? "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn." : null,
+        typography: typography.score < 3 ? "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt." : null,
+        length: length.score < 3 ? "Rút gọn CV xuống còn 1 trang — bỏ thông tin không liên quan." : null,
+        contact: contact.score < 3 ? "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp." : null,
+        summary: summary.score < 4 ? "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại." : null,
+        sections: sections.score < 5 ? "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn." : null,
+        organization: org.score < 4 ? "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng." : null,
+        language: lang.score < 4 ? "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung." : null,
+        quantification: quant.score < 6 ? "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc." : null,
+        keywords: kw.score < 3 ? "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng." : null,
+        action_verbs_tone: kw.score < 3 ? "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành." : null,
+        consistency: consistency.score < 3 ? "Đảm bảo mốc thời gian, dấu chấm câu và cách giãn dòng đồng nhất." : null,
+        progression: prog.score < 3 ? "Làm rõ lộ trình thăng tiến, mở rộng trách nhiệm qua các năm làm việc." : null,
+        bullet_quality: bullet.score < 5 ? "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)." : null,
+        scope_impact: scope.score < 5 ? "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra." : null,
+        technical_evidence: techEv.score < 6 ? "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án." : null,
+        projects: proj.score < 4 ? "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn." : null,
+        certs: certs.score < 2 ? "Bổ sung các chứng chỉ chuyên môn quốc tế hoặc ngoại ngữ (IELTS/TOEIC)." : null,
+      };
+    }
+
+    if (!data.score_gaps) {
+      const getScoreVal = (str: string) => {
+        const match = str.match(/\+(\d+)\/(\d+)/);
+        return match ? { score: parseInt(match[1]), max: parseInt(match[2]) } : { score: 10, max: 10 };
+      };
+      
+      const atsParse = getScoreVal(data.stage2_core.ats_format?.details?.[1] || "");
+      const summary = getScoreVal(data.stage2_core.professional_foundation?.details?.[1] || "");
+      const quant = getScoreVal(data.stage2_core.content_quality?.details?.[1] || "");
+      const bullet = getScoreVal(data.stage3_in_depth?.experience_eval?.details?.[1] || "");
+      const proj = getScoreVal(data.stage3_in_depth?.projects?.details?.[0] || "");
+
+      data.score_gaps = [
+        {
+          section: "Quantification",
+          current: quant.score,
+          max: 8,
+          lost: 8 - quant.score,
+          tip: "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc."
+        },
+        {
+          section: "ATS Parsability",
+          current: atsParse.score,
+          max: 8,
+          lost: 8 - atsParse.score,
+          tip: "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn."
+        },
+        {
+          section: "Bullet Quality",
+          current: bullet.score,
+          max: 6,
+          lost: 6 - bullet.score,
+          tip: "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)."
+        },
+        {
+          section: "Summary",
+          current: summary.score,
+          max: 5,
+          lost: 5 - summary.score,
+          tip: "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại."
+        },
+        {
+          section: "Projects",
+          current: proj.score,
+          max: 5,
+          lost: 5 - proj.score,
+          tip: "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn."
+        }
+      ].filter(gap => gap.lost > 0).sort((a, b) => b.lost - a.lost).slice(0, 5);
+    }
+
+    return data;
   }
   
   const score = result.score;
@@ -149,6 +254,55 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
       { action: "Bổ sung thêm số liệu định lượng vào phần mô tả kinh nghiệm làm việc.", priority: "Cao" },
       { action: "Đưa thêm từ khóa chuyên ngành sát với bản mô tả công việc (JD).", priority: "Trung bình" }
     ],
+    sub_tips: {
+      file_technical: null,
+      ats_parsability: formattingDist[1] < 6 ? "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn." : null,
+      typography: formattingDist[2] < 3 ? "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt." : null,
+      length: formattingDist[3] < 3 ? "Rút gọn CV xuống còn 1 trang — bỏ thông tin không liên quan." : null,
+      contact: readabilityDist[0] < 3 ? "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp." : null,
+      summary: readabilityDist[1] < 4 ? "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại." : null,
+      sections: readabilityDist[2] < 5 ? "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn." : null,
+      organization: readabilityDist[3] < 4 ? "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng." : null,
+      language: keywordsDist[0] < 4 ? "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung." : null,
+      quantification: keywordsDist[1] < 6 ? "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc." : null,
+      keywords: keywordsDist[2] < 3 ? "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng." : null,
+      action_verbs_tone: keywordsDist[2] < 3 ? "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành." : null,
+      consistency: keywordsDist[3] < 3 ? "Đảm bảo mốc thời gian, dấu chấm câu và cách giãn dòng đồng nhất." : null,
+      progression: experienceDist[0] < 3 ? "Làm rõ lộ trình thăng tiến, mở rộng trách nhiệm qua các năm làm việc." : null,
+      bullet_quality: experienceDist[1] < 5 ? "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)." : null,
+      scope_impact: experienceDist[2] < 5 ? "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra." : null,
+      technical_evidence: skillsScore < 6 ? "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án." : null,
+      projects: educationDist[1] < 4 ? "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn." : null,
+      certs: educationDist[0] < 2 ? "Bổ sung các chứng chỉ chuyên môn quốc tế hoặc ngoại ngữ (IELTS/TOEIC)." : null,
+      leadership: bonusDist[0] < 2 ? "Chia sẻ thêm kinh nghiệm hướng dẫn người mới hoặc quản lý nhóm nhỏ." : null,
+      international: bonusDist[1] < 2 ? "Nhấn mạnh kỹ năng ngoại ngữ và kinh nghiệm làm việc đa quốc gia." : null,
+      awards: bonusDist[2] < 2 ? "Liệt kê các giải thưởng, học bổng hoặc thành tích xuất sắc đạt được." : null,
+      learning: bonusDist[3] < 2 ? "Nêu rõ các khóa học online hoặc kỹ năng mới bạn đang tự học nâng cao." : null,
+      category_specific: bonusDist[4] < 2 ? "Thêm liên kết danh mục sản phẩm (Portfolio/Behance/GitHub) phù hợp với nhóm ngành." : null
+    },
+    score_gaps: [
+      {
+        section: "Quantification",
+        current: keywordsDist[1],
+        max: 8,
+        lost: 8 - keywordsDist[1],
+        tip: "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc."
+      },
+      {
+        section: "ATS Parsability",
+        current: formattingDist[1],
+        max: 8,
+        lost: 8 - formattingDist[1],
+        tip: "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn."
+      },
+      {
+        section: "Bullet Quality",
+        current: experienceDist[1],
+        max: 6,
+        lost: 6 - experienceDist[1],
+        tip: "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)."
+      }
+    ].filter(gap => gap.lost > 0).sort((a, b) => b.lost - a.lost).slice(0, 5)
   };
 }
 
@@ -183,6 +337,35 @@ function parseSubDetail(detailStr: string) {
     max: null,
     desc: ""
   };
+}
+
+function getTipKeyForName(name: string): string {
+  const normalized = name.toLowerCase().trim();
+  if (normalized.includes("file technical")) return "file_technical";
+  if (normalized.includes("ats parsability")) return "ats_parsability";
+  if (normalized.includes("typography")) return "typography";
+  if (normalized.includes("length")) return "length";
+  if (normalized.includes("contact")) return "contact";
+  if (normalized.includes("summary")) return "summary";
+  if (normalized.includes("sections")) return "sections";
+  if (normalized.includes("organization")) return "organization";
+  if (normalized.includes("language")) return "language";
+  if (normalized.includes("quantification")) return "quantification";
+  if (normalized.includes("keywords")) return "keywords";
+  if (normalized.includes("action verbs")) return "action_verbs_tone";
+  if (normalized.includes("consistency")) return "consistency";
+  if (normalized.includes("progression")) return "progression";
+  if (normalized.includes("bullet quality")) return "bullet_quality";
+  if (normalized.includes("scope & impact")) return "scope_impact";
+  if (normalized.includes("bằng chứng kỹ năng")) return "technical_evidence";
+  if (normalized.includes("chất lượng dự án")) return "projects";
+  if (normalized.includes("chứng chỉ liên quan")) return "certs";
+  if (normalized.includes("leadership")) return "leadership";
+  if (normalized.includes("international")) return "international";
+  if (normalized.includes("awards")) return "awards";
+  if (normalized.includes("learning")) return "learning";
+  if (normalized.includes("category-specific")) return "category_specific";
+  return "";
 }
 
 export default function Results() {
@@ -230,6 +413,7 @@ export default function Results() {
             <Overview result={result} />
             <StrengthsSection result={result} />
             <PriorityActions result={result} />
+            <ScoreGapsSection result={result} />
             <AtsBreakdown result={result} />
             <SectionAnalysis result={result} />
             <Improve result={result} />
@@ -395,6 +579,83 @@ function PriorityActions({ result }: { result: AnalysisResult }) {
               <Badge className={`rounded-xl px-3 py-1 text-xs font-bold shrink-0 border-0 self-start sm:self-center ${sev.badge}`}>
                 {sev.label}
               </Badge>
+            </motion.div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ScoreGapsSection({ result }: { result: AnalysisResult }) {
+  const geminiData = getRawGeminiDataWithFallback(result);
+  const gaps = geminiData.score_gaps || [];
+  if (gaps.length === 0) return null;
+
+  const totalLost = gaps.reduce((acc, g) => acc + g.lost, 0);
+  if (totalLost === 0) return null;
+
+  return (
+    <section id="gaps" className="scroll-mt-24 space-y-4">
+      <div className="flex items-center gap-2.5 border-b border-border/40 pb-3">
+        <span className="p-1.5 rounded-xl bg-amber-500/10 text-amber-500">
+          <Sparkles className="h-5.5 w-5.5" />
+        </span>
+        <h2 className="text-xl lg:text-2xl font-bold tracking-tight text-foreground">Khoảng cách điểm số (Score Gaps)</h2>
+      </div>
+      <p className="text-muted-foreground text-sm">
+        Báo cáo chi tiết về các lỗ hổng điểm số lớn nhất trong CV của bạn và chiến lược lấy lại điểm tối đa.
+      </p>
+
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-amber-500/10 to-primary/5 border border-amber-500/20 p-5 shadow-soft flex items-start gap-3.5">
+        <Sparkles className="h-5 w-5 mt-0.5 text-amber-500 shrink-0 animate-pulse" />
+        <p className="text-sm font-semibold text-foreground/90 leading-relaxed">
+          Bạn có thể nâng tổng điểm CV của mình thêm tối đa <span className="text-amber-500 text-base font-extrabold">+{totalLost} điểm</span> bằng cách thực hiện các cải tiến bên dưới!
+        </p>
+      </div>
+
+      <div className="grid gap-4 mt-5">
+        {gaps.map((gap, i) => {
+          const percent = Math.round((gap.current / gap.max) * 100);
+          return (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 12 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: i * 0.05 }}
+              whileHover={{ y: -2 }}
+              className="bg-card rounded-2xl border border-border/60 p-5 shadow-soft flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all hover:border-amber-500/30"
+            >
+              <div className="space-y-1.5 flex-1">
+                <div className="flex items-center gap-2.5">
+                  <Badge variant="secondary" className="bg-amber-500/10 text-amber-500 font-extrabold text-[11px] px-2 rounded-lg border border-amber-500/10">
+                    Thiếu: -{gap.lost} điểm
+                  </Badge>
+                  <h3 className="font-extrabold text-foreground text-sm sm:text-base">{gap.section}</h3>
+                </div>
+                <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
+                  {gap.tip}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4 w-full md:w-auto shrink-0 border-t md:border-t-0 pt-3 md:pt-0 border-border/40">
+                <div className="space-y-1 w-full md:w-36">
+                  <div className="flex justify-between text-[11px] font-bold text-muted-foreground">
+                    <span>Điểm: {gap.current}/{gap.max}</span>
+                    <span>{percent}%</span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden relative">
+                    <div
+                      className="h-full bg-amber-500 rounded-full"
+                      style={{ width: `${percent}%` }}
+                    />
+                  </div>
+                </div>
+                <Badge className="bg-gradient-primary text-primary-foreground font-extrabold text-xs px-2.5 py-1.5 rounded-xl border-0 shadow-sm shrink-0">
+                  +{gap.lost}đ có thể nhận lại
+                </Badge>
+              </div>
             </motion.div>
           );
         })}
@@ -571,28 +832,39 @@ function AtsBreakdown({ result }: { result: AnalysisResult }) {
                                 ? "bg-amber-500/10 text-amber-500 border-amber-500/20" 
                                 : "bg-destructive/10 text-destructive border-destructive/20";
 
+                            const tipKey = getTipKeyForName(sub.name);
+                            const tip = geminiData.sub_tips?.[tipKey];
+
                             return (
-                              <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl border border-border/40 bg-card/70 hover:bg-card transition-all">
-                                <div className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold text-foreground text-sm">{sub.name}</span>
-                                    {sub.score !== null && (
-                                      <Badge variant="outline" className={`rounded-lg px-2 py-0.5 text-[11px] font-extrabold border ${scoreBadgeColor}`}>
-                                        +{sub.score}/{sub.max}
-                                      </Badge>
+                              <div key={index} className="flex flex-col gap-3 p-4 rounded-xl border border-border/40 bg-card/70 hover:bg-card transition-all">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                  <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold text-foreground text-sm">{sub.name}</span>
+                                      {sub.score !== null && (
+                                        <Badge variant="outline" className={`rounded-lg px-2 py-0.5 text-[11px] font-extrabold border ${scoreBadgeColor}`}>
+                                          +{sub.score}/{sub.max}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                    {sub.desc && (
+                                      <p className="text-xs text-muted-foreground leading-relaxed font-medium">{sub.desc}</p>
                                     )}
                                   </div>
-                                  {sub.desc && (
-                                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">{sub.desc}</p>
+
+                                  {sub.score !== null && sub.max !== null && (
+                                    <div className="w-24 sm:w-28 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
+                                      <div 
+                                        className={`h-full rounded-full ${isExcellent ? "bg-emerald-500" : isAverage ? "bg-amber-500" : "bg-destructive"}`} 
+                                        style={{ width: `${percent}%` }}
+                                      />
+                                    </div>
                                   )}
                                 </div>
-
-                                {sub.score !== null && sub.max !== null && (
-                                  <div className="w-24 sm:w-28 h-1.5 rounded-full bg-muted overflow-hidden shrink-0">
-                                    <div 
-                                      className={`h-full rounded-full ${isExcellent ? "bg-emerald-500" : isAverage ? "bg-amber-500" : "bg-destructive"}`} 
-                                      style={{ width: `${percent}%` }}
-                                    />
+                                {tip && (
+                                  <div className="flex items-start gap-1.5 text-xs text-amber-500 font-semibold bg-amber-500/5 border border-amber-500/10 rounded-lg p-2.5">
+                                    <Sparkles className="h-3.5 w-3.5 mt-0.5 shrink-0 text-amber-500" />
+                                    <span>Gợi ý: {tip}</span>
                                   </div>
                                 )}
                               </div>

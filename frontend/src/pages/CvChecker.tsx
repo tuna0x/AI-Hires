@@ -58,19 +58,29 @@ export default function CvChecker() {
     const isDemo = typeof selectedFile === "string";
     const fileName = isDemo ? selectedFile : selectedFile.name;
 
-    // Thiết lập thanh tiến trình chạy mượt lên 90% trong khoảng 8.5 giây
+    // Thiết lập tiến trình thông minh, giảm tốc tự nhiên (organic decelerating progress)
+    // Giúp thanh tiến trình chạy mượt mà, không bao giờ bị đứng khựng lại một chỗ
     const startTime = Date.now();
-    const maxSimulatedProgress = 90;
-    const duration = 8500;
+    let currentProgress = 0;
 
     const tick = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const progressPercent = Math.min(maxSimulatedProgress, (elapsed / duration) * maxSimulatedProgress);
-      const roundedP = Math.round(progressPercent);
-      
+
+      if (currentProgress < 30) {
+        currentProgress += 1.2; // Giai đoạn đầu chạy nhanh
+      } else if (currentProgress < 55) {
+        currentProgress += 0.6; // Chậm dần
+      } else if (currentProgress < 80) {
+        currentProgress += 0.25; // Chậm hơn nữa
+      } else if (currentProgress < 97) {
+        currentProgress += 0.06; // Rất chậm, len lỏi bò dần lên để không bao giờ bị khựng hoàn toàn
+      }
+
+      const roundedP = Math.min(97, Math.floor(currentProgress));
       setProgress(roundedP);
 
-      if (elapsed >= 7500 && roundedP < 100) {
+      // Nếu xử lý lâu hơn 9 giây, kích hoạt thông báo tối ưu phản hồi từ AI
+      if (elapsed >= 9000) {
         setIsTakingLonger(true);
       }
     }, 100);

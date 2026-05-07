@@ -126,14 +126,38 @@ public class GeminiService {
                                                 "      \"Category-Specific: +<điểm>/2 (Theo ngành: IT→GitHub/Portfolio/side project; Marketing→Case study/campaign result; Finance→CFA/CPA/số liệu P&L; Design→Behance/Dribbble link; Sales→Revenue quota attainment)\"\n" +
                                                 "    ]\n" +
                                                 "  },\n" +
-                                                "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"]\n," +
+                                                "  \"sub_tips\": {\n" +
+                                                "    \"file_technical\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"ats_parsability\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"typography\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"length\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"contact\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"summary\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"sections\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"organization\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"language\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"quantification\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"keywords\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"consistency\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"progression\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"bullet_quality\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"scope_impact\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"technical_evidence\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"projects\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"certs\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"leadership\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"international\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"awards\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"learning\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                                "    \"category_specific\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\"\n" +
+                                                "  },\n" +
+                                                "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"],\n" +
                                                 "  \"priority_actions\": [\n" +
                                                 "    { \"action\": \"<Hành động 1>\", \"priority\": \"Cao\" },\n" +
-                                                "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n"
-                                                +
+                                                "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n" +
                                                 "  ]\n" +
                                                 "}\n\n" +
-                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions). Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.",
+                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Chỉ sinh dữ liệu cho các sub-item đạt dưới 70% điểm tối đa (current < max * 0.7). Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.",
                                 jobDescription);
 
                 Map<String, Object> requestBody = Map.of(
@@ -209,8 +233,8 @@ public class GeminiService {
                                 "      \"details\": [\n" +
                                 "        \"Language: +<điểm>/5 (Ngữ pháp, động từ mạnh, từ vựng chuyên ngành)\",\n" +
                                 "        \"Quantification: +<điểm>/8 (Sử dụng số liệu định lượng, kết quả cụ thể)\",\n" +
-                                "        \"Consistency: +<điểm>/3 (Tính nhất quán về ngày tháng, format)\",\n" +
-                                "        \"Action Verbs & Tone: +<điểm>/4 (Dùng động từ hành động mạnh, tránh passive voice, ngôn ngữ chuyên nghiệp, tự tin)\"\n" +
+                                "        \"Keywords: +<điểm>/4 (Mức độ khớp từ khóa với JD)\",\n" +
+                                "        \"Consistency: +<điểm>/3 (Tính nhất quán về ngày tháng, format)\"\n" +
                                 "      ]\n" +
                                 "    }\n" +
                                 "  },\n" +
@@ -248,13 +272,47 @@ public class GeminiService {
                                 "      \"Category-Specific: +<điểm>/2 (Theo ngành: IT→GitHub/Portfolio/side project; Marketing→Case study/campaign result; Finance→CFA/CPA/số liệu P&L; Design→Behance/Dribbble link; Sales→Revenue quota attainment)\"\n" +
                                 "    ]\n" +
                                 "  },\n" +
-                                "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"]\n," +
+                                "  \"sub_tips\": {\n" +
+                                "    \"file_technical\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"ats_parsability\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"typography\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"length\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"contact\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"summary\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"sections\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"organization\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"language\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"quantification\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"keywords\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"consistency\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"progression\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"bullet_quality\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"scope_impact\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"technical_evidence\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"projects\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"certs\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"leadership\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"international\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"awards\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"learning\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n" +
+                                "    \"category_specific\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\"\n" +
+                                "  },\n" +
+                                "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"],\n" +
                                 "  \"priority_actions\": [\n" +
                                 "    { \"action\": \"<Hành động 1>\", \"priority\": \"Cao\" },\n" +
                                 "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n" +
+                                "  ],\n" +
+                                "  \"score_gaps\": [\n" +
+                                "    {\n" +
+                                "      \"section\": \"<Tên sub-item bị thiếu điểm>\",\n" +
+                                "      \"current\": <Điểm hiện tại>,\n" +
+                                "      \"max\": <Điểm tối đa của sub-item>,\n" +
+                                "      \"lost\": <max - current>,\n" +
+                                "      \"tip\": \"<Gợi ý 1 câu ngắn gọn, cụ thể, khả thi để cải thiện>\"\n" +
+                                "    }\n" +
                                 "  ]\n" +
                                 "}\n\n" +
-                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions). Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.";
+                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Quy tắc lọc sub_tips và score_gaps: Chỉ sinh dữ liệu cho các sub-item đạt dưới 70% điểm tối đa (current < max * 0.7). Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.";
 
                 Map<String, Object> requestBody = Map.of(
                                 "contents", List.of(

@@ -141,4 +141,14 @@ export interface GeminiParsedData {
     action: string;
     priority: "Cao" | "Trung bình" | "Thấp" | string;
   }[];
+  sub_tips?: {
+    [key: string]: string | null;
+  };
+  score_gaps?: {
+    section: string;
+    current: number;
+    max: number;
+    lost: number;
+    tip: string;
+  }[];
 }
