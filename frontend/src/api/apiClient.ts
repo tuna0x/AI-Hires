@@ -1,39 +1,101 @@
 import axios from "axios";
-import { supabase } from "@/integrations/supabase/client";
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || "http://localhost:8080",
+  withCredentials: true, // Kích hoạt tự động gửi cookie chéo nguồn (refresh_token HttpOnly)
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request Interceptor: Tự động đính kèm token truy cập từ Supabase nếu có
+// Request Interceptor: Tự động đính kèm access token từ localStorage
 apiClient.interceptors.request.use(
-  async (config) => {
-    try {
-      const { data } = await supabase.auth.getSession();
-      const accessToken = data.session?.access_token;
-      if (accessToken) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
-      }
-    } catch (error) {
-      console.error("Error fetching auth session for api client:", error);
+  (config) => {
+    const accessToken = localStorage.getItem("nextstep_access_token");
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response Interceptor: Xử lý phản hồi và lỗi tập trung
+// Flag để kiểm soát việc đang refresh token nhằm tránh lặp vô hạn
+let isRefreshing = false;
+let failedQueue: Array<{ resolve: (token: string) => void; reject: (err: any) => void }> = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach((prom) => {
+    if (token) {
+      prom.resolve(token);
+    } else {
+      prom.reject(error);
+    }
+  });
+  failedQueue = [];
+};
+
+// Response Interceptor: Trả về dữ liệu trực tiếp và xử lý Silent Refresh khi gặp lỗi 401
 apiClient.interceptors.response.use(
   (response) => {
-    // Trả về trực tiếp response body (đối tượng RestResponse chuẩn từ backend)
+    // Trả về trực tiếp phần dữ liệu chính của RestResponse từ Backend
     return response.data;
   },
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Nếu lỗi 401 và không phải là yêu cầu refresh token và chưa từng được thử lại (retry)
+    if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes("/auth/refresh")) {
+      if (isRefreshing) {
+        // Nếu đang trong quá trình refresh, xếp hàng các yêu cầu API khác lại
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token) => {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              resolve(apiClient(originalRequest));
+            },
+            reject: (err) => reject(err),
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        // Thực hiện Silent Refresh qua Cookie HttpOnly refresh_token
+        // Sử dụng một axios instance mới để tránh đụng độ interceptor
+        const refreshResponse = await axios.post(
+          `${apiClient.defaults.baseURL}/api/v1/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        const newAccessToken = refreshResponse.data?.data?.access_token;
+        if (newAccessToken) {
+          localStorage.setItem("nextstep_access_token", newAccessToken);
+          apiClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+          processQueue(null, newAccessToken);
+          return apiClient(originalRequest);
+        } else {
+          throw new Error("No access token returned from refresh endpoint");
+        }
+      } catch (refreshError) {
+        // Nếu refresh thất bại (hết hạn cookie), xóa token cũ và đẩy ra trang đăng nhập
+        localStorage.removeItem("nextstep_access_token");
+        processQueue(refreshError, null);
+        
+        // Chỉ chuyển hướng nếu đang ở trang riêng tư, tránh quấy rầy trang chủ
+        if (window.location.pathname !== "/" && window.location.pathname !== "/login" && window.location.pathname !== "/signup") {
+          window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+        }
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
     console.error("API Error Response:", error.response || error);
     return Promise.reject(error);
   }

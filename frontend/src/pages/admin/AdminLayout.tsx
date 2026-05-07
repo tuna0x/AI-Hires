@@ -34,7 +34,7 @@ export default function AdminLayout() {
   return (
     <>
       <Seo
-        title={`${current.label} — Quản trị · CareerAI`}
+        title={`${current.label} — Quản trị · NextStep AI`}
         description="Cấu hình trọng số chấm điểm CV, thiết lập sinh câu hỏi phỏng vấn, quản lý phân loại kỹ năng và xem nhật ký hệ thống."
         path={current.to}
         jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Quản trị", path: "/admin" }, { name: current.label, path: current.to }])}
@@ -46,7 +46,7 @@ export default function AdminLayout() {
             <header className="sticky top-0 z-30 h-16 flex items-center gap-3 border-b border-border/60 bg-background/80 backdrop-blur px-4 lg:px-8">
               <SidebarTrigger />
               <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
-                <Link to="/" className="hover:text-foreground">CareerAI</Link>
+                <Link to="/" className="hover:text-foreground">NextStep AI</Link>
                 <span>/</span>
                 <Link to="/admin" className="hover:text-foreground">Quản trị</Link>
                 <span>/</span>
@@ -102,7 +102,7 @@ function AdminSidebar() {
           </span>
           {!collapsed && (
             <div className="min-w-0">
-              <div className="font-bold text-sm leading-tight">Career<span className="text-primary">AI</span></div>
+              <div className="font-bold text-sm leading-tight">NextStep<span className="text-primary">AI</span></div>
               <div className="text-[11px] text-muted-foreground">Bảng quản trị</div>
             </div>
           )}

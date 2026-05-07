@@ -16,7 +16,7 @@ export default function BlogPost() {
   return (
     <SiteLayout>
       <Seo
-        title={`${post.title} — Cẩm nang CareerAI`}
+        title={`${post.title} — Cẩm nang NextStep AI`}
         description={post.description}
         path={path}
         type="article"

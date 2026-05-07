@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Sparkles } from "lucide-react";
+import { Sparkles, ArrowLeft } from "lucide-react";
+import { motion } from "framer-motion";
 import { Seo } from "@/lib/seo";
 
 export default function AuthShell({
@@ -21,50 +22,112 @@ export default function AuthShell({
   path: string;
 }) {
   return (
-    <div className="min-h-screen grid lg:grid-cols-2 bg-background">
+    <div className="min-h-screen relative flex items-center justify-center bg-[#0B0F19] px-4 py-16 overflow-hidden select-none">
       <Seo title={seoTitle} description={seoDescription} path={path} />
-      <aside className="hidden lg:flex relative overflow-hidden bg-gradient-primary text-primary-foreground p-12 flex-col justify-between">
-        <div className="absolute inset-0 opacity-30" style={{ background: "var(--gradient-glow)" }} />
-        <Link to="/" className="relative flex items-center gap-2 font-bold text-lg">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15 backdrop-blur">
-            <Sparkles className="h-5 w-5" />
-          </span>
-          CareerAI
-        </Link>
-        <div className="relative space-y-6 max-w-md">
-          <h2 className="text-4xl font-bold leading-tight tracking-tight">
-            Phân tích CV. <br /> Luyện phỏng vấn. <br /> Nhận được offer.
-          </h2>
-          <p className="text-primary-foreground/90 text-base leading-relaxed">
-            Hàng nghìn ứng viên đang dùng CareerAI để khắc phục lỗi ATS và luyện câu hỏi đúng vị trí ứng tuyển.
-          </p>
-          <ul className="space-y-2 text-sm text-primary-foreground/95">
-            <li>✓ Chấm điểm ATS kèm gợi ý sửa cụ thể</li>
-            <li>✓ Mock interview theo đúng CV của bạn</li>
-            <li>✓ Riêng tư — dữ liệu luôn thuộc về bạn</li>
-          </ul>
-        </div>
-        <p className="relative text-xs text-primary-foreground/60">© {new Date().getFullYear()} CareerAI</p>
-      </aside>
 
-      <main className="flex flex-col">
-        <div className="lg:hidden p-6 border-b border-border/60">
-          <Link to="/" className="flex items-center gap-2 font-bold">
-            <span className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-primary text-primary-foreground">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            CareerAI
-          </Link>
-        </div>
-        <div className="flex-1 grid place-items-center p-6 lg:p-12">
-          <div className="w-full max-w-md">
-            <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">{title}</h1>
-            {subtitle && <p className="text-sm text-muted-foreground mt-2">{subtitle}</p>}
-            <div className="mt-8">{children}</div>
-            {footer && <div className="mt-6 text-sm text-muted-foreground">{footer}</div>}
+      {/* Background Neon Glowing Blobs with Slow Hover Animations */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        {/* Blob 1: Emerald/Green */}
+        <div 
+          className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[120px]"
+          style={{
+            animation: "drift-slow 25s infinite alternate ease-in-out"
+          }}
+        />
+        {/* Blob 2: Cyan/Teal */}
+        <div 
+          className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] rounded-full bg-emerald-500/10 blur-[130px]"
+          style={{
+            animation: "drift-slow 30s infinite alternate-reverse ease-in-out 3s"
+          }}
+        />
+        {/* Blob 3: Purple/Indigo */}
+        <div 
+          className="absolute top-[30%] left-[40%] w-[40%] h-[40%] rounded-full bg-indigo-500/5 blur-[100px]"
+          style={{
+            animation: "drift-slow 20s infinite alternate ease-in-out 1s"
+          }}
+        />
+      </div>
+
+      {/* Floating Retro Grid / Subtle Overlay lines for Cyber Aesthetic */}
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.03]" 
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundSize: "24px 24px"
+        }}
+      />
+
+      {/* Sleek Floating Back Home Button in top left corner */}
+      <div className="absolute top-6 left-6 z-50">
+        <Link 
+          to="/" 
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium text-muted-foreground bg-secondary/30 border border-border/40 backdrop-blur-md hover:text-foreground hover:bg-secondary/60 hover:border-border/80 transition-all duration-300 shadow-soft"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Về trang chủ</span>
+        </Link>
+      </div>
+
+      {/* Main Glassmorphic Central Card with Smooth Framer Motion Entrance */}
+      <motion.div
+        initial={{ opacity: 0, y: 30, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ type: "spring", duration: 0.8, bounce: 0.15 }}
+        className="relative w-full max-w-[450px] z-10"
+      >
+        {/* Outer neon glow ring around the card */}
+        <div className="absolute -inset-[1px] bg-gradient-to-r from-primary/30 via-emerald-500/20 to-transparent rounded-2xl blur-sm" />
+
+        {/* Card Body */}
+        <div className="relative bg-[#111625]/85 border border-white/10 backdrop-blur-2xl rounded-2xl p-6 lg:p-8 shadow-elegant">
+          {/* Logo Brand Header */}
+          <div className="flex flex-col items-center text-center mb-4">
+            <Link to="/" className="inline-flex items-center gap-2.5 font-extrabold text-xl tracking-tight group">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow group-hover:scale-105 transition-transform duration-300">
+                <Sparkles className="h-5 w-5" />
+              </span>
+              <span className="text-white">
+                NextStep<span className="text-primary">AI</span>
+              </span>
+            </Link>
           </div>
+
+          {/* Title & Subtitle */}
+          <div className="space-y-1 mb-5 text-center">
+            <h1 className="text-xl lg:text-2xl font-extrabold text-white tracking-tight leading-none">
+              {title}
+            </h1>
+            {subtitle && (
+              <p className="text-xs text-muted-foreground/80 leading-relaxed max-w-[320px] mx-auto">
+                {subtitle}
+              </p>
+            )}
+          </div>
+
+          {/* Form Content */}
+          <div className="relative">
+            {children}
+          </div>
+
+          {/* Footnotes / Switching Links */}
+          {footer && (
+            <div className="mt-5 pt-4 border-t border-border/40 text-center text-xs text-muted-foreground/80">
+              {footer}
+            </div>
+          )}
         </div>
-      </main>
+      </motion.div>
+
+      {/* Global CSS for slow drifts */}
+      <style>{`
+        @keyframes drift-slow {
+          0% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(4%, 5%) scale(1.05); }
+          100% { transform: translate(-2%, -3%) scale(0.95); }
+        }
+      `}</style>
     </div>
   );
 }
