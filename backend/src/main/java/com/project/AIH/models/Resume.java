@@ -1,5 +1,6 @@
 package com.project.AIH.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.project.AIH.utils.constant.ResumeStatusEnum;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -25,6 +26,7 @@ public class Resume {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = true)
     @ToString.Exclude
+    @JsonIgnore
     private User user;
 
     @NotBlank(message = "File URL is required")

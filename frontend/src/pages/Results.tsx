@@ -78,24 +78,24 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
 
       data.sub_tips = {
         file_technical: null,
-        ats_parsability: atsParse.score < 6 ? "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn." : null,
-        typography: typography.score < 3 ? "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt." : null,
-        length: length.score < 3 ? "Rút gọn CV xuống còn 1 trang — bỏ thông tin không liên quan." : null,
-        contact: contact.score < 3 ? "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp." : null,
-        summary: summary.score < 4 ? "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại." : null,
-        sections: sections.score < 5 ? "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn." : null,
-        organization: org.score < 4 ? "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng." : null,
-        language: lang.score < 4 ? "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung." : null,
-        quantification: quant.score < 6 ? "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc." : null,
-        keywords: kw.score < 3 ? "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng." : null,
-        action_verbs_tone: kw.score < 3 ? "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành." : null,
-        consistency: consistency.score < 3 ? "Đảm bảo mốc thời gian, dấu chấm câu và cách giãn dòng đồng nhất." : null,
-        progression: prog.score < 3 ? "Làm rõ lộ trình thăng tiến, mở rộng trách nhiệm qua các năm làm việc." : null,
-        bullet_quality: bullet.score < 5 ? "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)." : null,
-        scope_impact: scope.score < 5 ? "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra." : null,
-        technical_evidence: techEv.score < 6 ? "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án." : null,
-        projects: proj.score < 4 ? "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn." : null,
-        certs: certs.score < 2 ? "Bổ sung các chứng chỉ chuyên môn quốc tế hoặc ngoại ngữ (IELTS/TOEIC)." : null,
+        ats_parsability: atsParse.score < atsParse.max ? "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn." : null,
+        typography: typography.score < typography.max ? "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt." : null,
+        length: length.score < length.max ? "Rút gọn CV xuống còn 1 trang — bỏ thông tin không liên quan." : null,
+        contact: contact.score < contact.max ? "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp." : null,
+        summary: summary.score < summary.max ? "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại." : null,
+        sections: sections.score < sections.max ? "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn." : null,
+        organization: org.score < org.max ? "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng." : null,
+        language: lang.score < lang.max ? "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung." : null,
+        quantification: quant.score < quant.max ? "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc." : null,
+        keywords: kw.score < kw.max ? "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng." : null,
+        action_verbs_tone: kw.score < kw.max ? "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành." : null,
+        consistency: consistency.score < consistency.max ? "Đảm bảo mốc thời gian, dấu chấm câu và cách giãn dòng đồng nhất." : null,
+        progression: prog.score < prog.max ? "Làm rõ lộ trình thăng tiến, mở rộng trách nhiệm qua các năm làm việc." : null,
+        bullet_quality: bullet.score < bullet.max ? "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)." : null,
+        scope_impact: scope.score < scope.max ? "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra." : null,
+        technical_evidence: techEv.score < techEv.max ? "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án." : null,
+        projects: proj.score < proj.max ? "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn." : null,
+        certs: certs.score < certs.max ? "Bổ sung các chứng chỉ chuyên môn quốc tế hoặc ngoại ngữ (IELTS/TOEIC)." : null,
       };
     }
 
@@ -256,23 +256,23 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
     ],
     sub_tips: {
       file_technical: null,
-      ats_parsability: formattingDist[1] < 6 ? "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn." : null,
-      typography: formattingDist[2] < 3 ? "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt." : null,
+      ats_parsability: formattingDist[1] < 8 ? "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn." : null,
+      typography: formattingDist[2] < 4 ? "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt." : null,
       length: formattingDist[3] < 3 ? "Rút gọn CV xuống còn 1 trang — bỏ thông tin không liên quan." : null,
-      contact: readabilityDist[0] < 3 ? "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp." : null,
-      summary: readabilityDist[1] < 4 ? "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại." : null,
-      sections: readabilityDist[2] < 5 ? "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn." : null,
-      organization: readabilityDist[3] < 4 ? "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng." : null,
-      language: keywordsDist[0] < 4 ? "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung." : null,
-      quantification: keywordsDist[1] < 6 ? "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc." : null,
-      keywords: keywordsDist[2] < 3 ? "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng." : null,
-      action_verbs_tone: keywordsDist[2] < 3 ? "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành." : null,
+      contact: readabilityDist[0] < 4 ? "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp." : null,
+      summary: readabilityDist[1] < 5 ? "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại." : null,
+      sections: readabilityDist[2] < 6 ? "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn." : null,
+      organization: readabilityDist[3] < 5 ? "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng." : null,
+      language: keywordsDist[0] < 5 ? "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung." : null,
+      quantification: keywordsDist[1] < 8 ? "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc." : null,
+      keywords: keywordsDist[2] < 4 ? "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng." : null,
+      action_verbs_tone: keywordsDist[2] < 4 ? "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành." : null,
       consistency: keywordsDist[3] < 3 ? "Đảm bảo mốc thời gian, dấu chấm câu và cách giãn dòng đồng nhất." : null,
       progression: experienceDist[0] < 3 ? "Làm rõ lộ trình thăng tiến, mở rộng trách nhiệm qua các năm làm việc." : null,
-      bullet_quality: experienceDist[1] < 5 ? "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)." : null,
-      scope_impact: experienceDist[2] < 5 ? "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra." : null,
-      technical_evidence: skillsScore < 6 ? "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án." : null,
-      projects: educationDist[1] < 4 ? "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn." : null,
+      bullet_quality: experienceDist[1] < 6 ? "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)." : null,
+      scope_impact: experienceDist[2] < 6 ? "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra." : null,
+      technical_evidence: skillsScore < 8 ? "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án." : null,
+      projects: educationDist[1] < 5 ? "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn." : null,
       certs: educationDist[0] < 2 ? "Bổ sung các chứng chỉ chuyên môn quốc tế hoặc ngoại ngữ (IELTS/TOEIC)." : null,
       leadership: bonusDist[0] < 2 ? "Chia sẻ thêm kinh nghiệm hướng dẫn người mới hoặc quản lý nhóm nhỏ." : null,
       international: bonusDist[1] < 2 ? "Nhấn mạnh kỹ năng ngoại ngữ và kinh nghiệm làm việc đa quốc gia." : null,
@@ -338,6 +338,33 @@ function parseSubDetail(detailStr: string) {
     desc: ""
   };
 }
+
+const FALLBACK_TIPS: Record<string, string> = {
+  file_technical: "Cung cấp file định dạng PDF chuẩn, không dùng file ảnh hoặc định dạng quét quét scan.",
+  ats_parsability: "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn.",
+  typography: "Dùng 1 font duy nhất (Arial/Calibri), căn lề trái, cỡ chữ 10–12pt.",
+  length: "Rút gọn CV xuống còn 1 trang — bỏ thông tin không liên quan.",
+  contact: "Bổ sung đầy đủ LinkedIn, GitHub, Email và Số điện thoại chuyên nghiệp.",
+  summary: "Viết lại mục tiêu nghề nghiệp: nêu rõ vị trí ứng tuyển, số năm kinh nghiệm và giá trị mang lại.",
+  sections: "Bổ sung đầy đủ các phần chính: Kinh nghiệm, Kỹ năng, Học vấn.",
+  organization: "Trình bày thông tin theo dòng thời gian đảo ngược chuẩn tuyển dụng.",
+  language: "Sử dụng nhiều động từ mạnh ở đầu gạch đầu dòng, tránh mô tả chung chung.",
+  quantification: "Đưa thêm con số %, $, tỷ lệ tăng trưởng vào mô tả kết quả công việc.",
+  keywords: "Cập nhật các kỹ năng và từ khóa chuyên môn sát với JD của nhà tuyển dụng.",
+  action_verbs_tone: "Hành văn với giọng điệu chủ động, tự tin và dùng thuật ngữ chuẩn ngành.",
+  consistency: "Đảm bảo mốc thời gian, dấu chấm câu và cách giãn dòng đồng nhất.",
+  progression: "Làm rõ lộ trình thăng tiến, mở rộng trách nhiệm qua các năm làm việc.",
+  bullet_quality: "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả).",
+  scope_impact: "Nêu rõ quy mô dự án và mức độ ảnh hưởng của kết quả bạn làm ra.",
+  technical_evidence: "Liệt kê các kỹ năng theo nhóm và cung cấp dẫn chứng cụ thể trong dự án.",
+  projects: "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn.",
+  certs: "Bổ sung các chứng chỉ chuyên môn quốc tế hoặc ngoại ngữ (IELTS/TOEIC).",
+  leadership: "Chia sẻ thêm kinh nghiệm hướng dẫn người mới hoặc quản lý nhóm nhỏ.",
+  international: "Nhấn mạnh kỹ năng ngoại ngữ và kinh nghiệm làm việc đa quốc gia.",
+  awards: "Liệt kê các giải thưởng, học bổng hoặc thành tích xuất sắc đạt được.",
+  learning: "Nêu rõ các khóa học online hoặc kỹ năng mới bạn đang tự học nâng cao.",
+  category_specific: "Thêm liên kết danh mục sản phẩm (Portfolio/Behance/GitHub) phù hợp với nhóm ngành."
+};
 
 function getTipKeyForName(name: string): string {
   const normalized = name.toLowerCase().trim();
@@ -833,7 +860,10 @@ function AtsBreakdown({ result }: { result: AnalysisResult }) {
                                 : "bg-destructive/10 text-destructive border-destructive/20";
 
                             const tipKey = getTipKeyForName(sub.name);
-                            const tip = geminiData.sub_tips?.[tipKey];
+                            let tip = geminiData.sub_tips?.[tipKey];
+                            if (!tip && sub.score !== null && sub.max !== null && sub.score < sub.max) {
+                              tip = FALLBACK_TIPS[tipKey];
+                            }
 
                             return (
                               <div key={index} className="flex flex-col gap-3 p-4 rounded-xl border border-border/40 bg-card/70 hover:bg-card transition-all">

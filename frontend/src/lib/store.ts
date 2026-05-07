@@ -18,6 +18,7 @@ export type AnalysisResult = {
   topIssues: { title: string; severity: "high" | "medium" | "low"; fix: string }[];
   rawGeminiData?: GeminiParsedData;
   createdAt: number;
+  resumeId?: number;
 };
 
 let state: { result: AnalysisResult | null } = { result: null };

@@ -214,5 +214,6 @@ export function mapResumeToAnalysisResult(resume: Resume): AnalysisResult {
     topIssues,
     rawGeminiData: geminiData,
     createdAt: Date.now(),
+    resumeId: resume.id,
   };
 }

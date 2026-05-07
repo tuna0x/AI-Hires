@@ -1,5 +1,6 @@
 package com.project.AIH.models;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.project.AIH.utils.constant.GenderEnum;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.*;
@@ -48,6 +49,7 @@ public class UserProfile {
 
     @OneToOne
     @JoinColumn(name = "user_id")
+    @JsonIgnore
     private User user;
 
     @PrePersist

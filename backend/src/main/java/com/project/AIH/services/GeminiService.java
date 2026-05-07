@@ -157,7 +157,7 @@ public class GeminiService {
                                                 "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n" +
                                                 "  ]\n" +
                                                 "}\n\n" +
-                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Chỉ sinh dữ liệu cho các sub-item đạt dưới 70% điểm tối đa (current < max * 0.7). Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.",
+                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.",
                                 jobDescription);
 
                 Map<String, Object> requestBody = Map.of(
@@ -312,7 +312,7 @@ public class GeminiService {
                                 "    }\n" +
                                 "  ]\n" +
                                 "}\n\n" +
-                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Quy tắc lọc sub_tips và score_gaps: Chỉ sinh dữ liệu cho các sub-item đạt dưới 70% điểm tối đa (current < max * 0.7). Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.";
+                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Quy tắc lọc sub_tips và score_gaps: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.";
 
                 Map<String, Object> requestBody = Map.of(
                                 "contents", List.of(
@@ -348,31 +348,87 @@ public class GeminiService {
                 }
         }
 
-        public String generateInitialQuestion(String jobDescription, String candidateCvText) {
+        private String getLevelInstruction(String level) {
+                if (level == null) return "INTERN/FRESHER";
+                String l = level.toUpperCase();
+                if (l.contains("INTERN") || l.contains("FRESHER") || l.contains("EASY")) {
+                        return "Ứng viên ở cấp độ INTERN/FRESHER. Tập trung hỏi về: Kiến thức cơ sở, lý thuyết lập trình cơ bản, lập trình hướng đối tượng (OOP) nếu là IT, các tác vụ CRUD database cơ bản, SQL đơn giản, hoặc tư duy logic căn bản và các đồ án môn học viết trong CV.";
+                } else if (l.contains("JUNIOR") || l.contains("MIDDLE") || l.contains("MEDIUM") || l.contains("MID")) {
+                        return "Ứng viên ở cấp độ JUNIOR/MIDDLE. Tập trung hỏi về: Tư duy viết code sạch (Clean Code), tối ưu hóa database (indexing, query optimization), kiến trúc REST API, áp dụng mẫu thiết kế phần mềm (Design Patterns), cơ chế xử lý lỗi, kiểm thử và các chức năng thực tế ứng viên đã từng triển khai trong CV.";
+                } else {
+                        return "Ứng viên ở cấp độ SENIOR/LEAD. Tập trung hỏi về: Thiết kế hệ thống phân tán (System Design), khả năng mở rộng hệ thống chịu tải (Scalability), tối ưu hóa hiệu năng cao (Performance tuning), xử lý bất đồng bộ/đồng thời phức tạp (concurrency/locking), bảo mật, microservices, giải quyết bài toán thắt nút cổ chai (Bottlenecks) và khả năng biện luận đưa ra các lựa chọn đánh đổi kiến trúc (Architectural Trade-offs) dựa trên các dự án lớn trong CV.";
+                }
+        }
+
+        public String generateInitialQuestion(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
+                String levelInstruction = getLevelInstruction(level);
                 String prompt = String.format(
-                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI khó tính. Hãy đóng vai trò là người phỏng vấn ứng viên.\n"
-                                                +
-                                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
-                                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
-                                                "Nhiệm vụ: Hãy đặt 1 câu hỏi đầu tiên thật chuyên sâu dựa trên kinh nghiệm của ứng viên trong CV và yêu cầu của JD. Chỉ đặt 1 câu hỏi, bằng Tiếng Việt, không kèm giải thích thừa.",
-                                jobDescription, candidateCvText);
+                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
+                                "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
+                                "Cấp độ yêu cầu của ứng viên: %s.\n" +
+                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
+                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
+                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
+                                "Nhiệm vụ: Hãy đặt 1 câu hỏi phỏng vấn đầu tiên bằng Tiếng Việt. Câu hỏi phải chuyên sâu, tập trung khai thác kỹ năng của ứng viên bám sát JD và CV.\n" +
+                                "Yêu cầu phản hồi: Trả về chuỗi JSON (KHÔNG CÓ MARKDOWN) theo cấu trúc:\n" +
+                                "{\n" +
+                                "  \"question\": \"<Nội dung câu hỏi phỏng vấn>\",\n" +
+                                "  \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV là cơ sở của câu hỏi, nếu có>\",\n" +
+                                "  \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD là cơ sở của câu hỏi, nếu có>\",\n" +
+                                "  \"can_reuse\": <true/false - Đánh giá xem câu hỏi này có mang tính chung chuyên môn và có thể lưu vào ngân hàng câu hỏi dùng chung để tái sử dụng hay không>\n" +
+                                "}",
+                                targetRole, industry, level, levelInstruction, jobDescription, candidateCvText);
                 return callTextOnlyGemini(prompt);
         }
 
-        public String evaluateAndGenerateNextQuestion(String jobDescription, String chatHistory, String latestAnswer) {
+        public String evaluateAndGenerateNextQuestion(String jobDescription, String chatHistory, String latestAnswer, String targetRole, String industry, String level) {
+                String levelInstruction = getLevelInstruction(level);
                 String prompt = String.format(
-                                "Bạn là chuyên gia tuyển dụng đang phỏng vấn ứng viên.\n" +
-                                                "JD:\n%s\n\n" +
-                                                "Lịch sử trò chuyện:\n%s\n\n" +
-                                                "Câu trả lời mới nhất của ứng viên:\n%s\n\n" +
-                                                "Nhiệm vụ trả về 1 chuỗi JSON (KHÔNG CÓ MARKDOWN) theo định dạng:\n" +
-                                                "{\n" +
-                                                "  \"score\": <Điểm 1-10 cho câu trả lời mới nhất>,\n" +
-                                                "  \"feedback\": \"<Nhận xét ngắn gọn về câu trả lời>\",\n" +
-                                                "  \"next_question\": \"<Câu hỏi tiếp theo, chuyên sâu hơn hoặc chuyển chủ đề tùy thuộc vào câu trả lời>\"\n"
-                                                +
-                                                "}",
-                                jobDescription, chatHistory, latestAnswer);
+                                "Bạn là chuyên gia tuyển dụng đang phỏng vấn ứng viên cho vị trí: %s, ngành nghề: %s, cấp độ: %s.\n" +
+                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
+                                "JD:\n%s\n\n" +
+                                "Lịch sử trò chuyện:\n%s\n\n" +
+                                "Câu trả lời mới nhất của ứng viên:\n%s\n\n" +
+                                "Nhiệm vụ: Chấm điểm câu trả lời và sinh câu hỏi tiếp theo.\n" +
+                                "Yêu cầu trả về đúng 1 chuỗi JSON duy nhất (KHÔNG CÓ MARKDOWN) theo định dạng sau:\n" +
+                                "{\n" +
+                                "  \"score\": <Tổng điểm 1-10 cho câu trả lời mới nhất>,\n" +
+                                "  \"feedback\": \"<Nhận xét ngắn gọn, khách quan về câu trả lời>\",\n" +
+                                "  \"scores\": {\n" +
+                                "    \"RELEVANCE\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Độ liên quan>\" },\n" +
+                                "    \"DEPTH\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Độ sâu kiến thức>\" },\n" +
+                                "    \"STRUCTURE\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Cấu trúc trình bày>\" },\n" +
+                                "    \"COMMUNICATION\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Khả năng diễn đạt/giao tiếp>\" }\n" +
+                                "  },\n" +
+                                "  \"next_question\": {\n" +
+                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn tiếp theo>\",\n" +
+                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu hỏi này, nếu có>\",\n" +
+                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu hỏi này, nếu có>\",\n" +
+                                "    \"can_reuse\": <true/false - Đánh giá xem câu hỏi mới này có mang tính chung chuyên môn và có thể lưu vào ngân hàng câu hỏi để tái sử dụng hay không>\n" +
+                                "  }\n" +
+                                "}",
+                                targetRole, industry, level, levelInstruction, jobDescription, chatHistory, latestAnswer);
+                return callTextOnlyGemini(prompt);
+        }
+
+        public String evaluateAnswerOnly(String questionText, String answerText, String targetRole, String industry, String level) {
+                String prompt = String.format(
+                                "Bạn là chuyên gia tuyển dụng đang đánh giá câu trả lời của ứng viên cho vị trí: %s, ngành: %s, trình độ: %s.\n\n" +
+                                "Câu hỏi: %s\n" +
+                                "Câu trả lời của ứng viên: %s\n\n" +
+                                "Nhiệm vụ: Chấm điểm câu trả lời một cách khách quan.\n" +
+                                "Yêu cầu trả về đúng 1 chuỗi JSON duy nhất (KHÔNG CÓ MARKDOWN) theo định dạng sau:\n" +
+                                "{\n" +
+                                "  \"score\": <Tổng điểm 1-10 cho câu trả lời>,\n" +
+                                "  \"feedback\": \"<Nhận xét ngắn gọn, mang tính xây dựng>\",\n" +
+                                "  \"scores\": {\n" +
+                                "    \"RELEVANCE\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Độ liên quan>\" },\n" +
+                                "    \"DEPTH\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Độ sâu kiến thức>\" },\n" +
+                                "    \"STRUCTURE\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Cấu trúc trình bày>\" },\n" +
+                                "    \"COMMUNICATION\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Khả năng diễn đạt/giao tiếp>\" }\n" +
+                                "  }\n" +
+                                "}",
+                                targetRole, industry, level, questionText, answerText);
                 return callTextOnlyGemini(prompt);
         }
 
