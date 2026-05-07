@@ -47,7 +47,9 @@ public class AuthenticationService {
                 .build();
 
         UserProfile profile = new UserProfile();
-        profile.setFullName("User_" + user.getEmail().split("@")[0]);
+        profile.setFullName(request.getFullName() != null && !request.getFullName().trim().isEmpty()
+                ? request.getFullName().trim()
+                : "User_" + user.getEmail().split("@")[0]);
         profile.setUser(user);
         user.setUserProfile(profile);
 

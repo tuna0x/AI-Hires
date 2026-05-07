@@ -38,7 +38,7 @@ export default function Navbar() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
             <Sparkles className="h-5 w-5" />
           </span>
-          <span className="text-foreground">Career<span className="text-primary">AI</span></span>
+          <span className="text-foreground">NextStep<span className="text-primary">AI</span></span>
         </Link>
 
         <div className="hidden lg:flex items-center gap-1">
@@ -64,7 +64,7 @@ export default function Navbar() {
           )}
           {user ? (
             <>
-              <span className="text-sm text-muted-foreground max-w-[160px] truncate">{user.email}</span>
+              <span className="text-sm text-muted-foreground max-w-[160px] truncate">{user.name || user.email}</span>
               <Button variant="ghost" onClick={handleSignOut}><LogOut className="h-4 w-4" /> Đăng xuất</Button>
               <Button asChild className="bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow transition-shadow">
                 <Link to="/dashboard">Tổng quan</Link>

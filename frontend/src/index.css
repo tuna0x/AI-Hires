@@ -8,7 +8,7 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* CareerAI — Dark theme, high-contrast (WCAG AA+)
+    /* NextStep AI — Dark theme, high-contrast (WCAG AA+)
        bg #0F172A · card #1E293B · primary #22C55E
        text #FFFFFF · secondary #CBD5F5 · muted #94A3B8 */
     --background: 222 47% 11%;            /* #0F172A */

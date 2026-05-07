@@ -1,84 +1,178 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
-import { z } from "zod";
-import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Loader2, Mail, Lock, Eye, EyeOff, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import AuthShell from "@/components/auth/AuthShell";
-import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useAuth } from "@/lib/auth";
 
-const schema = z.object({
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(6, "Min 6 characters").max(72),
+// Schema xác thực dữ liệu chặt chẽ bằng Zod
+const loginSchema = z.object({
+  email: z
+    .string()
+    .min(1, "Email không được để trống")
+    .email("Định dạng email không hợp lệ")
+    .max(255),
+  password: z
+    .string()
+    .min(1, "Mật khẩu không được để trống")
+    .min(6, "Mật khẩu phải chứa ít nhất 6 ký tự")
+    .max(72, "Mật khẩu quá dài (tối đa 72 ký tự)"),
 });
 
+type LoginFormData = z.infer<typeof loginSchema>;
+
 export default function Login() {
-  const { user, loading } = useAuth();
+  const { user, loading, login } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const next = params.get("next") || "/dashboard";
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  // Khởi tạo React Hook Form kết hợp Zod resolver
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  // Tránh hiển thị form nếu người dùng đã đăng nhập thành công
   if (!loading && user) return <Navigate to={next} replace />;
 
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const parsed = schema.safeParse({ email, password });
-    if (!parsed.success) return toast.error(parsed.error.issues[0].message);
+  async function onSubmit(data: LoginFormData) {
     setBusy(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: parsed.data.email,
-      password: parsed.data.password,
-    });
-    setBusy(false);
-    if (error) return toast.error(error.message);
-    toast.success("Chào mừng trở lại");
-    navigate(next, { replace: true });
-  }
-
-  async function onGoogle() {
-    setBusy(true);
-    const r = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + next });
-    if (r.error) { setBusy(false); toast.error("Đăng nhập Google thất bại"); }
+    try {
+      await login(data.email, data.password);
+      toast.success("Chào mừng trở lại! Đăng nhập thành công.");
+      navigate(next, { replace: true });
+    } catch (error: any) {
+      console.error("Login fail:", error);
+      const errorMsg = error.response?.data?.message || error.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.";
+      toast.error(errorMsg);
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
     <AuthShell
       title="Chào mừng trở lại"
-      subtitle="Đăng nhập để tiếp tục cải thiện CV và luyện phỏng vấn."
-      seoTitle="Đăng nhập — CareerAI"
-      seoDescription="Đăng nhập CareerAI để phân tích CV và luyện phỏng vấn."
+      subtitle="Đăng nhập để tiếp tục tối ưu hóa CV và bứt phá sự nghiệp."
+      seoTitle="Đăng nhập — NextStep AI"
+      seoDescription="Đăng nhập tài khoản NextStep AI để phân tích CV, chấm điểm ATS và mô phỏng phỏng vấn thông minh."
       path="/login"
-      footer={<>Chưa có tài khoản? <Link to="/signup" className="text-primary font-medium hover:underline">Tạo tài khoản</Link></>}
+      footer={
+        <>
+          Chưa có tài khoản?{" "}
+          <Link to="/signup" className="text-primary font-semibold hover:text-primary-glow hover:underline transition-all duration-300">
+            Đăng ký ngay
+          </Link>
+        </>
+      }
     >
-      <form onSubmit={onSubmit} className="space-y-4">
-        <Button type="button" variant="outline" className="w-full rounded-xl h-11" onClick={onGoogle} disabled={busy}>
-          <svg className="h-4 w-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.75h3.57c2.08-1.92 3.28-4.74 3.28-8.07z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.75c-.99.66-2.25 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.12c-.22-.66-.35-1.36-.35-2.12s.13-1.46.35-2.12V7.04H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.96l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.04l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"/></svg>
-          Tiếp tục với Google
-        </Button>
-        <div className="relative text-center text-xs text-muted-foreground">
-          <span className="bg-background px-2 relative z-10">hoặc đăng nhập bằng email</span>
-          <span className="absolute inset-x-0 top-1/2 h-px bg-border" />
-        </div>
-        <div>
-          <Label htmlFor="email">Email</Label>
-          <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1.5 h-11" required />
-        </div>
-        <div>
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password">Mật khẩu</Label>
-            <Link to="/forgot-password" className="text-xs text-primary hover:underline">Quên?</Link>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+        {/* Email Field */}
+        <div className="space-y-1.5 relative">
+          <Label htmlFor="email" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
+            Email của bạn
+          </Label>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-muted-foreground/60">
+              <Mail className="h-4 w-4" />
+            </span>
+            <Input
+              id="email"
+              type="email"
+              placeholder="ten@viethas.com"
+              autoComplete="email"
+              {...register("email")}
+              disabled={busy}
+              className={`pl-10 h-11 rounded-xl bg-secondary/20 border-white/10 text-white placeholder:text-muted-foreground/50 focus:border-primary/80 focus:ring-primary/20 transition-all duration-300 ${
+                errors.email ? "border-destructive/80 focus:border-destructive/90" : ""
+              }`}
+            />
           </div>
-          <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1.5 h-11" required />
+          {errors.email && (
+            <span className="text-xs text-destructive flex items-center gap-1 animate-fadeIn">
+              ⚠ {errors.email.message}
+            </span>
+          )}
         </div>
-        <Button type="submit" disabled={busy} className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow">
-          {busy && <Loader2 className="h-4 w-4 animate-spin" />} Đăng nhập
+
+        {/* Password Field */}
+        <div className="space-y-1.5 relative">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
+              Mật khẩu
+            </Label>
+            <Link 
+              to="/forgot-password" 
+              className="text-xs text-primary font-medium hover:text-primary-glow transition-all duration-300"
+            >
+              Quên mật khẩu?
+            </Link>
+          </div>
+          <div className="relative">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-muted-foreground/60">
+              <Lock className="h-4 w-4" />
+            </span>
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              autoComplete="current-password"
+              {...register("password")}
+              disabled={busy}
+              className={`pl-10 pr-10 h-11 rounded-xl bg-secondary/20 border-white/10 text-white placeholder:text-muted-foreground/50 focus:border-primary/80 focus:ring-primary/20 transition-all duration-300 ${
+                errors.password ? "border-destructive/80 focus:border-destructive/90" : ""
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              disabled={busy}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground/60 hover:text-white transition-colors duration-200"
+            >
+              {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
+            </button>
+          </div>
+          {errors.password && (
+            <span className="text-xs text-destructive flex items-center gap-1 animate-fadeIn">
+              ⚠ {errors.password.message}
+            </span>
+          )}
+        </div>
+
+        {/* Submit Button */}
+        <Button 
+          type="submit" 
+          disabled={busy} 
+          className="w-full h-11 rounded-xl bg-gradient-primary text-primary-foreground font-semibold shadow-soft hover:shadow-glow hover:scale-[1.01] active:scale-[0.99] transition-all duration-300 mt-2"
+        >
+          {busy ? (
+            <span className="flex items-center gap-2 justify-center">
+              <Loader2 className="h-4.5 w-4.5 animate-spin" />
+              Đang xác thực...
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5 justify-center">
+              <span>Đăng nhập ngay</span>
+              <Sparkles className="h-4 w-4" />
+            </span>
+          )}
         </Button>
       </form>
     </AuthShell>

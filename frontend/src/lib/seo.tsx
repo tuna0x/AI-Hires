@@ -9,7 +9,7 @@ export type SeoProps = {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 };
 
-const SITE = "https://careerai.app";
+const SITE = "https://nextstep.ai";
 
 export function Seo({
   title,
@@ -48,7 +48,7 @@ export function Seo({
 export const orgJsonLd: Record<string, unknown> = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "CareerAI — CV Analysis & Interview Practice",
+  name: "NextStep AI — CV Analysis & Interview Practice",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },

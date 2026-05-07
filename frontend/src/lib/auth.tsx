@@ -1,69 +1,131 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
-import type { Session, User } from "@supabase/supabase-js";
-import { supabase } from "@/integrations/supabase/client";
+import apiClient from "@/api/apiClient";
+
+export type AuthUser = {
+  id: number;
+  email: string;
+  name: string;
+  role: string;
+  verified: boolean;
+  permissions: string[];
+};
 
 type AuthCtx = {
-  user: User | null;
-  session: Session | null;
+  user: AuthUser | null;
   loading: boolean;
   isAdmin: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx>({
   user: null,
-  session: null,
   loading: true,
   isAdmin: false,
+  login: async () => {},
+  register: async () => {},
   signOut: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+
+  const isAdmin = useMemo(() => user?.role === "ADMIN", [user]);
+
+  // Đồng bộ session của người dùng khi ứng dụng khởi chạy
+  async function syncSession() {
+    const accessToken = localStorage.getItem("nextstep_access_token");
+    if (accessToken) {
+      try {
+        const response: any = await apiClient.get("/api/v1/auth/account");
+        if (response?.data?.user) {
+          setUser(response.data.user);
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Access token invalid, attempting silent refresh...", err);
+      }
+    }
+
+    // Nếu không có access token hoặc token cũ bị lỗi, thử Silent Refresh qua Cookie refresh_token
+    try {
+      const response: any = await apiClient.post("/api/v1/auth/refresh");
+      const newAccessToken = response?.data?.access_token;
+      const loggedUser = response?.data?.user;
+      if (newAccessToken && loggedUser) {
+        localStorage.setItem("nextstep_access_token", newAccessToken);
+        setUser(loggedUser);
+      } else {
+        setUser(null);
+        localStorage.removeItem("nextstep_access_token");
+      }
+    } catch (err) {
+      console.log("No active session or refresh token found");
+      setUser(null);
+      localStorage.removeItem("nextstep_access_token");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
-    // Set up listener FIRST
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      if (s?.user) {
-        // defer to avoid deadlock
-        setTimeout(() => checkAdmin(s.user.id), 0);
-      } else {
-        setIsAdmin(false);
-      }
-    });
-    // Then load existing session
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) checkAdmin(data.session.user.id);
-      setLoading(false);
-    });
-    return () => sub.subscription.unsubscribe();
+    syncSession();
   }, []);
 
-  async function checkAdmin(userId: string) {
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "admin")
-      .maybeSingle();
-    setIsAdmin(!!data);
+  async function login(email: string, password: string) {
+    const response: any = await apiClient.post("/api/v1/auth/login", { email, password });
+    const accessToken = response?.data?.access_token;
+    const loggedUser = response?.data?.user;
+    if (accessToken && loggedUser) {
+      localStorage.setItem("nextstep_access_token", accessToken);
+      setUser(loggedUser);
+    } else {
+      throw new Error("Thông tin phản hồi đăng nhập từ hệ thống không hợp lệ.");
+    }
+  }
+
+  async function register(email: string, password: string, fullName?: string) {
+    // Đăng ký tài khoản mới với vai trò mặc định CANDIDATE và fullName nếu có
+    const response: any = await apiClient.post("/api/v1/auth/register", {
+      email,
+      password,
+      role: "CANDIDATE",
+      fullName,
+    });
+    const accessToken = response?.data?.access_token;
+    const loggedUser = response?.data?.user;
+    if (accessToken && loggedUser) {
+      localStorage.setItem("nextstep_access_token", accessToken);
+      setUser(loggedUser);
+    } else {
+      throw new Error("Thông tin phản hồi đăng ký từ hệ thống không hợp lệ.");
+    }
+  }
+
+  async function signOut() {
+    try {
+      await apiClient.post("/api/v1/auth/logout");
+    } catch (err) {
+      console.error("Lỗi khi gọi API logout:", err);
+    } finally {
+      localStorage.removeItem("nextstep_access_token");
+      setUser(null);
+    }
   }
 
   const value = useMemo<AuthCtx>(
     () => ({
-      user: session?.user ?? null,
-      session,
+      user,
       loading,
       isAdmin,
-      signOut: async () => {
-        await supabase.auth.signOut();
-      },
+      login,
+      register,
+      signOut,
     }),
-    [session, loading, isAdmin],
+    [user, loading, isAdmin]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
