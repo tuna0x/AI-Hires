@@ -3,9 +3,9 @@ spring:
     name: AIH
   
   datasource:
-    url: jdbc:mysql://localhost:3306/ai_hire?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
-    username: root
-    password: 123456
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/ai_hire?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
   
   jpa:
@@ -18,13 +18,13 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
     rabbitmq:
-      host: localhost
-      port: 5672
-      username: guest
-      password: guest
+      host: ${RABBITMQ_HOST:localhost}
+      port: ${RABBITMQ_PORT:5672}
+      username: ${RABBITMQ_USERNAME:guest}
+      password: ${RABBITMQ_PASSWORD:guest}
 
   servlet:
     multipart:
@@ -38,12 +38,12 @@ app:
     access-token-expiration: 3600
     refresh-token-expiration: 86400
   minio:
-    endpoint: "http://localhost:9000"
-    accessKey: "minioadmin"
-    secretKey: "minioadmin"
-    bucket: "ai-hire-resumes"
+    endpoint: "${MINIO_ENDPOINT:http://localhost:9000}"
+    accessKey: "${MINIO_ACCESS_KEY:minioadmin}"
+    secretKey: "${MINIO_SECRET_KEY:minioadmin}"
+    bucket: "${MINIO_BUCKET:ai-hire-resumes}"
   gemini:
-    api-key: "[ENCRYPTION_KEY]"
+    api-key: "${GEMINI_API_KEY:xxx}"
     api-url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent"
 
 logging:
