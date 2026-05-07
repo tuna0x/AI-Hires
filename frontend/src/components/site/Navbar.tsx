@@ -38,7 +38,7 @@ export default function Navbar() {
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
             <Sparkles className="h-5 w-5" />
           </span>
-          <span className="text-foreground">NextStep<span className="text-primary">AI</span></span>
+          <span className="text-foreground">Intervio<span className="text-primary">.online</span></span>
         </Link>
 
         <div className="hidden lg:flex items-center gap-1">

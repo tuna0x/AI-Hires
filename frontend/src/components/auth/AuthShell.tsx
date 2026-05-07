@@ -89,7 +89,7 @@ export default function AuthShell({
                 <Sparkles className="h-5 w-5" />
               </span>
               <span className="text-white">
-                NextStep<span className="text-primary">AI</span>
+                Intervio<span className="text-primary">.online</span>
               </span>
             </Link>
           </div>

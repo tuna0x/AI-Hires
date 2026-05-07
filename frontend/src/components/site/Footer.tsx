@@ -11,7 +11,7 @@ export default function Footer() {
               <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground">
                 <Sparkles className="h-5 w-5" />
               </span>
-              <span>NextStep<span className="text-primary">AI</span></span>
+              <span>Intervio<span className="text-primary">.online</span></span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">
               Công cụ nghề nghiệp AI tập trung giúp bạn nâng cấp CV và chinh phục phỏng vấn. Phân tích, sửa lỗi, luyện tập, nhận offer.
@@ -40,7 +40,7 @@ export default function Footer() {
         </div>
 
         <div className="mt-12 pt-8 border-t border-border text-xs text-muted-foreground flex flex-col sm:flex-row gap-4 justify-between">
-          <p>© {new Date().getFullYear()} NextStep AI. Mọi quyền được bảo lưu.</p>
+          <p>© {new Date().getFullYear()} Intervio. Mọi quyền được bảo lưu.</p>
           <p>Phân tích. Cải thiện. Luyện tập. Thành công.</p>
         </div>
       </div>
