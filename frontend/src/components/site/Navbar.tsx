@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Menu, X, Sparkles, LogOut, Shield } from "lucide-react";
+import { Menu, X, Sparkles, LogOut, Shield, User as UserIcon, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { toast } from "sonner";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const links = [
   { href: "/dashboard", label: "Tổng quan" },
@@ -63,13 +72,49 @@ export default function Navbar() {
             <Button variant="ghost" asChild><Link to="/admin"><Shield className="h-4 w-4" /> Admin</Link></Button>
           )}
           {user ? (
-            <>
-              <span className="text-sm text-muted-foreground max-w-[160px] truncate">{user.name || user.email}</span>
-              <Button variant="ghost" onClick={handleSignOut}><LogOut className="h-4 w-4" /> Đăng xuất</Button>
-              <Button asChild className="bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow transition-shadow">
-                <Link to="/dashboard">Tổng quan</Link>
-              </Button>
-            </>
+            <div className="flex items-center gap-4">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full transition-all hover:opacity-95">
+                    <Avatar className="h-9 w-9 border border-primary/20 bg-primary/5 text-primary">
+                      <AvatarFallback className="font-bold text-xs bg-primary/10 text-primary">
+                        {user.name
+                          ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+                          : user.email.slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm font-semibold text-foreground max-w-[120px] truncate hidden md:inline-block">
+                      {user.name || user.email.split("@")[0]}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 mt-1 rounded-2xl border-border/60 shadow-card p-2 bg-card/95 backdrop-blur-md">
+                  <DropdownMenuLabel className="px-3 py-2 font-medium">
+                    <div className="flex flex-col">
+                      <span className="text-sm font-bold text-foreground truncate">{user.name || "Cá nhân"}</span>
+                      <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-border/60" />
+                  <DropdownMenuItem asChild className="rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                    <Link to="/profile" className="flex items-center gap-2">
+                      <UserIcon className="h-4 w-4" /> Trang cá nhân
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
+                    <Link to="/dashboard" className="flex items-center gap-2">
+                      <LayoutDashboard className="h-4 w-4" /> Bảng tổng quan
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-border/60" />
+                  <DropdownMenuItem onClick={handleSignOut} className="rounded-xl px-3 py-2 text-xs font-bold cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive">
+                    <div className="flex items-center gap-2">
+                      <LogOut className="h-4 w-4" /> Đăng xuất
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           ) : (
             <>
               <Button variant="ghost" asChild><Link to="/login">Đăng nhập</Link></Button>

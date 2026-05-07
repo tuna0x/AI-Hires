@@ -1,5 +1,6 @@
 package com.project.AIH.dto.user;
 
+import com.project.AIH.utils.constant.GenderEnum;
 import lombok.*;
 import java.time.Instant;
 
@@ -20,6 +21,9 @@ public class ResUserDTO {
     private Instant updatedAt;
     private String createdBy;
     private String updatedBy;
+    private String address;
+    private Integer age;
+    private GenderEnum gender;
     private RoleUser role;
 
     @Getter

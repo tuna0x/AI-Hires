@@ -1,6 +1,7 @@
 package com.project.AIH.controllers;
 
 import com.project.AIH.models.Application;
+import com.project.AIH.models.Resume;
 import com.project.AIH.models.User;
 import com.project.AIH.services.ResumeService;
 import com.project.AIH.services.UserService;
@@ -12,6 +13,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/resumes")
@@ -50,5 +52,20 @@ public class ResumeController {
         com.project.AIH.models.Resume resume = resumeService.uploadAndParse(file, user);
         log.info("Resume parsed successfully: {}", resume);
         return ResponseEntity.status(HttpStatus.CREATED).body(resume);
+    }
+
+    @GetMapping("/my-resumes")
+    @ApiMessage("Fetch user's resumes successfully")
+    public ResponseEntity<List<Resume>> getMyResumes() {
+        String email = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
+
+        User user = userService.fetchUserByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("Người dùng không tồn tại");
+        }
+
+        List<Resume> resumes = resumeService.getResumesByUser(user);
+        return ResponseEntity.ok(resumes);
     }
 }
