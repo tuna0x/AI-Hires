@@ -38,6 +38,9 @@ public class InterviewAnswer {
     @OneToOne(mappedBy = "interviewAnswer", cascade = CascadeType.ALL)
     private InterviewEvaluation interviewEvaluation;
 
+    @OneToMany(mappedBy = "interviewAnswer", cascade = CascadeType.ALL, orphanRemoval = true)
+    private java.util.List<AnswerScore> answerScores;
+
     @PrePersist
     public void handleBeforeCreate() {
         this.answeredAt = Instant.now();

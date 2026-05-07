@@ -89,6 +89,15 @@ public class DatabaseInitializer implements CommandLineRunner {
         // AI SCORES
         perms.add(new PermDef("Get AI Score", "/api/v1/ai-scores/**", "GET", "AI_SCORES", true, true));
 
+        // INTERVIEWS
+        perms.add(new PermDef("Start Interview", "/api/v1/interviews/start", "POST", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Start Mock Interview", "/api/v1/interviews/start-mock", "POST", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Get Interview Session", "/api/v1/interviews/{sessionId}", "GET", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Submit Interview Answer", "/api/v1/interviews/{sessionId}/answer", "POST", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Finish Interview Session", "/api/v1/interviews/{sessionId}/finish", "POST", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Get Interview Questions", "/api/v1/interviews/{sessionId}/questions", "GET", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Get Interview Report", "/api/v1/interviews/{sessionId}/report", "GET", "INTERVIEWS", true, true));
+
         for (PermDef def : perms) {
             Permission p = this.permissionRepository.findByModuleAndApiPathAndMethod(def.module, def.path, def.method);
             if (p == null) {

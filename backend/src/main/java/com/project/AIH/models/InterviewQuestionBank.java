@@ -5,68 +5,57 @@ import com.project.AIH.utils.constant.DifficultyLevelEnum;
 import com.project.AIH.utils.constant.QuestionTypeEnum;
 import jakarta.persistence.*;
 import lombok.*;
-import com.project.AIH.utils.SecurityUtil;
 import java.time.Instant;
 
 @Entity
-@Table(name = "interview_questions", indexes = {
-    @Index(name = "idx_interview_questions_session_id", columnList = "session_id")
+@Table(name = "interview_question_bank", indexes = {
+    @Index(name = "idx_interview_qbank_job_diff_order", columnList = "job_id, difficulty, question_order")
 })
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class InterviewQuestion {
+public class InterviewQuestionBank {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "session_id", nullable = false)
+    @JoinColumn(name = "job_id")
     @JsonIgnore
     @ToString.Exclude
-    private InterviewSession interviewSession;
+    private Job job;
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String questionText;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private QuestionTypeEnum questionType;
 
     @Enumerated(EnumType.STRING)
+    @Column(length = 50)
     private DifficultyLevelEnum difficulty;
 
     private String topic;
 
     @Column(columnDefinition = "TEXT")
-    private String expectedKeywords; // JSON array
+    private String sampleAnswer;
 
+    @Column(name = "question_order")
     private Integer questionOrder;
 
-    @Column(columnDefinition = "TEXT")
-    private String cvContext;
-
-    @Column(columnDefinition = "TEXT")
-    private String jdContext;
-
-    private Boolean canReuse;
-
-    private Long promotedToBankId;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_question_id")
-    @JsonIgnore
-    @ToString.Exclude
-    private InterviewQuestion parentQuestion;
-
-    @OneToOne(mappedBy = "interviewQuestion", cascade = CascadeType.ALL)
-    private InterviewAnswer interviewAnswer;
+    @Builder.Default
+    private Integer useCount = 0;
 
     private Instant createdAt;
 
     @PrePersist
     public void handleBeforeCreate() {
         this.createdAt = Instant.now();
+        if (this.useCount == null) {
+            this.useCount = 0;
+        }
     }
 }

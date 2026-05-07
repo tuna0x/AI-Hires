@@ -23,6 +23,8 @@ public class InterviewSession {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "application_id", nullable = false)
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @ToString.Exclude
     private Application application;
 
     @Enumerated(EnumType.STRING)
