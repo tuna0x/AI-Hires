@@ -53,6 +53,42 @@ public class InterviewSession {
     private String createdBy;
     private String updatedBy;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("jobTitle")
+    public String getJobTitle() {
+        try {
+            if (this.application != null && this.application.getJob() != null) {
+                return this.application.getJob().getTitle();
+            }
+        } catch (Exception e) {
+            // Safe fallback
+        }
+        return "Luyện tập phỏng vấn";
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("jobDescription")
+    public String getJobDescription() {
+        try {
+            if (this.application != null && this.application.getJob() != null) {
+                return this.application.getJob().getDescription();
+            }
+        } catch (Exception e) {
+            // Safe fallback
+        }
+        return null;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonProperty("resumeId")
+    public Long getResumeId() {
+        try {
+            if (this.application != null && this.application.getResume() != null) {
+                return this.application.getResume().getId();
+            }
+        } catch (Exception e) {
+            // Safe fallback
+        }
+        return null;
+    }
+
     @PrePersist
     public void handleBeforeCreate() {
         this.createdBy = SecurityUtil.getCurrentUserLogin().orElse("SYSTEM");

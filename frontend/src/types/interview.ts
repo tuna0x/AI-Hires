@@ -41,6 +41,9 @@ export interface InterviewSession {
   maxQuestions: number;
   startTime: string;
   endTime?: string;
+  jobTitle?: string;
+  jobDescription?: string;
+  resumeId?: number;
 }
 
 export interface InterviewInsight {

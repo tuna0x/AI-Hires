@@ -17,6 +17,7 @@ type AuthCtx = {
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   signOut: () => Promise<void>;
+  refreshUser: () => Promise<void>;
 };
 
 const Ctx = createContext<AuthCtx>({
@@ -26,6 +27,7 @@ const Ctx = createContext<AuthCtx>({
   login: async () => {},
   register: async () => {},
   signOut: async () => {},
+  refreshUser: async () => {},
 });
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -124,6 +126,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       login,
       register,
       signOut,
+      refreshUser: syncSession,
     }),
     [user, loading, isAdmin]
   );

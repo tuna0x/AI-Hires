@@ -158,6 +158,12 @@ public class ResumeService {
         return resume;
     }
 
+    @Transactional(readOnly = true)
+    public List<Resume> getResumesByUser(User user) {
+        log.info("Fetching resumes for user ID: {}", user.getId());
+        return resumeRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+    }
+
     private String calculateFileHash(byte[] fileBytes) {
         try {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");

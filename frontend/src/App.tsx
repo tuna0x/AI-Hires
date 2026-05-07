@@ -23,6 +23,7 @@ import Login from "./pages/auth/Login.tsx";
 import Signup from "./pages/auth/Signup.tsx";
 import ForgotPassword from "./pages/auth/ForgotPassword.tsx";
 import ResetPassword from "./pages/auth/ResetPassword.tsx";
+import Profile from "./pages/Profile.tsx";
 import { AuthProvider } from "./lib/auth";
 import { RequireAuth } from "./components/auth/RequireAuth";
 
@@ -43,6 +44,7 @@ const App = () => (
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+          <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/cv-analysis" element={<CvChecker />} />
           <Route path="/cv-checker" element={<CvChecker />} />
           <Route path="/results" element={<Results />} />

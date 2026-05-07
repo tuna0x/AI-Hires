@@ -61,6 +61,8 @@ public class DatabaseInitializer implements CommandLineRunner {
         perms.add(new PermDef("Update User", "/api/v1/users/**", "PUT", "USERS", false, false));
         perms.add(new PermDef("Delete User", "/api/v1/users/**", "DELETE", "USERS", false, false));
         perms.add(new PermDef("Get Users", "/api/v1/users", "GET", "USERS", false, false));
+        perms.add(new PermDef("Get User by Id", "/api/v1/users/{id}", "GET", "USERS", true, true));
+        perms.add(new PermDef("Update User Info", "/api/v1/users", "PUT", "USERS", true, true));
 
         // COMPANIES
         perms.add(new PermDef("Create Company", "/api/v1/companies", "POST", "COMPANIES", true, false));
@@ -81,6 +83,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         // RESUMES
         perms.add(new PermDef("Upload Resume", "/api/v1/resumes/upload", "POST", "RESUMES", true, true));
         perms.add(new PermDef("Get Resumes", "/api/v1/resumes", "GET", "RESUMES", true, false));
+        perms.add(new PermDef("Get My Resumes", "/api/v1/resumes/my-resumes", "GET", "RESUMES", true, true));
 
         // APPLICATIONS
         perms.add(new PermDef("Apply for Job", "/api/v1/resumes/apply", "POST", "APPLICATIONS", false, true));
@@ -97,6 +100,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         perms.add(new PermDef("Finish Interview Session", "/api/v1/interviews/{sessionId}/finish", "POST", "INTERVIEWS", true, true));
         perms.add(new PermDef("Get Interview Questions", "/api/v1/interviews/{sessionId}/questions", "GET", "INTERVIEWS", true, true));
         perms.add(new PermDef("Get Interview Report", "/api/v1/interviews/{sessionId}/report", "GET", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Get My Interview Sessions", "/api/v1/interviews/my-sessions", "GET", "INTERVIEWS", true, true));
 
         for (PermDef def : perms) {
             Permission p = this.permissionRepository.findByModuleAndApiPathAndMethod(def.module, def.path, def.method);

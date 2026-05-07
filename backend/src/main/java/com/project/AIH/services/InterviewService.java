@@ -64,6 +64,12 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
+    public List<InterviewSession> getSessionsByUser(User user) {
+        log.info("Fetching interview sessions for user ID: {}", user.getId());
+        return sessionRepository.findByUserId(user.getId());
+    }
+
+    @Transactional(readOnly = true)
     public java.util.Optional<InterviewReport> getReportBySessionId(Long sessionId) {
         return reportRepository.findByInterviewSessionId(sessionId);
     }

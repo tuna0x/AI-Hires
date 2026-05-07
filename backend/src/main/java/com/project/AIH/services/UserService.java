@@ -93,6 +93,15 @@ public class UserService {
             if (req.getAvatar() != null) {
                 profile.setAvatar(req.getAvatar());
             }
+            if (req.getAddress() != null) {
+                profile.setAddress(req.getAddress());
+            }
+            if (req.getAge() != null) {
+                profile.setAge(req.getAge());
+            }
+            if (req.getGender() != null) {
+                profile.setGender(req.getGender());
+            }
             
             User updatedUser = userRepository.save(currentUser);
             log.info("Successfully updated user with ID: {}", updatedUser.getId());
@@ -154,6 +163,9 @@ public class UserService {
             res.setFullName(profile.getFullName());
             res.setPhoneNumber(profile.getPhoneNumber());
             res.setAvatar(profile.getAvatar());
+            res.setAddress(profile.getAddress());
+            res.setAge(profile.getAge());
+            res.setGender(profile.getGender());
         }
         
         if (user.getRole() != null) {
