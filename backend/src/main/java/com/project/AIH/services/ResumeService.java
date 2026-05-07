@@ -27,6 +27,7 @@ public class ResumeService {
     private final FileService fileService;
     private final ResumeParserService parserService;
     private final GeminiService geminiService;
+    private final ScanMapperService scanMapperService;
     
     private final ResumeRepository resumeRepository;
     private final JobRepository jobRepository;
@@ -115,10 +116,19 @@ public class ResumeService {
             log.error("Failed to extract text: {}", e.getMessage());
         }
 
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (Exception e) {
+            fileBytes = new byte[0];
+        }
+        String fileHash = calculateFileHash(fileBytes);
+
         // 3. AI Analysis (General)
         String parsedData = "";
         try {
-            parsedData = geminiService.parseResume(file.getBytes(), file.getContentType());
+            parsedData = geminiService.parseResume(fileBytes, file.getContentType());
+            parsedData = scanMapperService.enrichAndCalculateGaps(parsedData);
         } catch (Exception e) {
             log.error("AI Analysis failed: {}", e.getMessage());
         }
@@ -134,7 +144,34 @@ public class ResumeService {
                 .parseStatus(parsedData.isEmpty() ? ResumeStatusEnum.FAILED : ResumeStatusEnum.DONE)
                 .build();
         parseAndPopulateDetailedResume(resume, extractedText);
-        return resumeRepository.save(resume);
+        resume = resumeRepository.save(resume);
+
+        // 5. Structure and Save in the normalized database schema
+        if (!parsedData.isEmpty()) {
+            try {
+                scanMapperService.saveScanResult(user, fileName, fileHash, parsedData);
+            } catch (Exception e) {
+                log.error("Failed to save scan results in structured tables: {}", e.getMessage());
+            }
+        }
+
+        return resume;
+    }
+
+    private String calculateFileHash(byte[] fileBytes) {
+        try {
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(fileBytes);
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            return java.util.UUID.randomUUID().toString();
+        }
     }
 
     private void parseAndPopulateDetailedResume(Resume resume, String extractedText) {

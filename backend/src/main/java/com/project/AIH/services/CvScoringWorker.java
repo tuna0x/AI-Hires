@@ -39,6 +39,7 @@ public class CvScoringWorker {
     private final ApplicationRepository applicationRepository;
     private final CvScoreRepository cvScoreRepository;
     private final ObjectMapper objectMapper;
+    private final ScanMapperService scanMapperService;
 
     @RabbitListener(queues = RabbitMQConfig.CV_SCORING_QUEUE)
     @Transactional
@@ -75,6 +76,7 @@ public class CvScoringWorker {
             } else {
                 aiResultText = cleaned;
             }
+            aiResultText = scanMapperService.enrichAndCalculateGaps(aiResultText);
             JsonNode resultNode = objectMapper.readTree(aiResultText);
 
             // 4. Save Score
@@ -129,6 +131,27 @@ public class CvScoringWorker {
             resume.setParsedData(aiResultText);
             resume.setParseStatus(ResumeStatusEnum.DONE);
             resumeRepository.save(resume);
+
+            // Structure and Save in the normalized database schema
+            try {
+                String fileHash = "";
+                try {
+                    java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+                    byte[] hashBytes = digest.digest(fileBytes);
+                    StringBuilder hexString = new StringBuilder();
+                    for (byte b : hashBytes) {
+                        String hex = Integer.toHexString(0xff & b);
+                        if (hex.length() == 1) hexString.append('0');
+                        hexString.append(hex);
+                    }
+                    fileHash = hexString.toString();
+                } catch (Exception e) {
+                    fileHash = java.util.UUID.randomUUID().toString();
+                }
+                scanMapperService.saveScanResult(resume.getUser(), message.getFileUrl(), fileHash, aiResultText);
+            } catch (Exception e) {
+                log.error("Failed to save scan results in structured tables: {}", e.getMessage());
+            }
 
             application.setStatus(ApplicationStatusEnum.INTERVIEWING); // Example status after screening
             applicationRepository.save(application);

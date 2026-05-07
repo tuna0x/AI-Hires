@@ -43,7 +43,7 @@ app:
     secretKey: "minioadmin"
     bucket: "ai-hire-resumes"
   gemini:
-    api-key: "AIzaSyBgqCxjIb5gFOSBR_Tsv8WZGHkqTDOpt8A"
+    api-key: "[ENCRYPTION_KEY]"
     api-url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent"
 
 logging:
