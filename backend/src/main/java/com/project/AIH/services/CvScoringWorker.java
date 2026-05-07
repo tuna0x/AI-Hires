@@ -67,7 +67,14 @@ public class CvScoringWorker {
                                       .path("content").path("parts").get(0)
                                       .path("text").asText();
             
-            aiResultText = aiResultText.replace("```json", "").replace("```", "").trim();
+            String cleaned = aiResultText.replace("```json", "").replace("```", "").trim();
+            java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{[\\s\\S]*\\}");
+            java.util.regex.Matcher matcher = pattern.matcher(cleaned);
+            if (matcher.find()) {
+                aiResultText = matcher.group();
+            } else {
+                aiResultText = cleaned;
+            }
             JsonNode resultNode = objectMapper.readTree(aiResultText);
 
             // 4. Save Score

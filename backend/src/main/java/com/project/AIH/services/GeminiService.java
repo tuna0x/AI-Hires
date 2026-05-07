@@ -36,11 +36,17 @@ public class GeminiService {
                                                 "Lưu ý quan trọng: Hãy 'nhìn' kỹ bố cục, định dạng, các biểu đồ kỹ năng và nội dung của file CV để đánh giá chính xác nhất. "
                                                 +
                                                 "Hệ thống phải xử lý mượt mà cả Tiếng Anh và Tiếng Việt.\n\n" +
+                                                "THANG ĐIỂM THAM CHIẾU (bắt buộc tuân thủ, chấm NGHIÊM KHẮC):\n" +
+                                                "- 85-100: Xuất sắc — top 5% ứng viên, CV gần như hoàn hảo\n" +
+                                                "- 70-84 : Tốt — cạnh tranh được ở thị trường\n" +
+                                                "- 55-69 : Trung bình — cần cải thiện đáng kể\n" +
+                                                "- Dưới 55: Yếu — cần làm lại CV từ đầu\n" +
+                                                "Hầu hết CV thực tế nằm ở mức 45-70. Không grade inflate.\n\n" +
                                                 "--- MÔ TẢ CÔNG VIỆC (JD) ---\n%s\n\n" +
                                                 "YÊU CẦU TRẢ VỀ ĐÚNG 1 OBJECT JSON DUY NHẤT (TUYỆT ĐỐI KHÔNG CÓ MARKDOWN HAY TEXT THỪA) THEO CẤU TRÚC SAU:\n"
                                                 +
                                                 "{\n" +
-                                                "  \"total_score\": <Tổng điểm 0-100>,\n" +
+                                                "  \"total_score\": <Tổng điểm = stage2_core.score + stage3_in_depth.score + stage4_bonus.score>,\n" +
                                                 "  \"stage1_detection\": {\n" +
                                                 "    \"name\": \"<Tên ứng viên>\",\n" +
                                                 "    \"level\": \"<Cấp độ dự đoán: Intern/Fresher/Junior/Middle/Senior>\",\n"
@@ -117,7 +123,7 @@ public class GeminiService {
                                                 "      \"International: +<điểm>/2\",\n" +
                                                 "      \"Awards: +<điểm>/2\",\n" +
                                                 "      \"Learning: +<điểm>/2\",\n" +
-                                                "      \"Category-Specific: +<điểm>/2\"\n" +
+                                                "      \"Category-Specific: +<điểm>/2 (Theo ngành: IT→GitHub/Portfolio/side project; Marketing→Case study/campaign result; Finance→CFA/CPA/số liệu P&L; Design→Behance/Dribbble link; Sales→Revenue quota attainment)\"\n" +
                                                 "    ]\n" +
                                                 "  },\n" +
                                                 "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"]\n," +
@@ -152,7 +158,7 @@ public class GeminiService {
                 }
         }
 
-        public String parseResume(byte[] fileBytes, String contentType) {
+         public String parseResume(byte[] fileBytes, String contentType) {
                 String base64File = Base64.getEncoder().encodeToString(fileBytes);
 
                 String promptText = "Bạn là hệ thống phân tích CV tự động (ATS) cấp cao và là một chuyên gia tuyển dụng (Headhunter) quốc tế. "
@@ -162,10 +168,16 @@ public class GeminiService {
                                 "Lưu ý quan trọng: Hãy 'nhìn' kỹ bố cục, định dạng, các biểu đồ kỹ năng và nội dung của file CV để đánh giá chính xác nhất. "
                                 +
                                 "Hệ thống phải xử lý mượt mà cả Tiếng Anh và Tiếng Việt.\n\n" +
+                                "THANG ĐIỂM THAM CHIẾU (bắt buộc tuân thủ, chấm NGHIÊM KHẮC):\n" +
+                                "- 85-100: Xuất sắc — top 5% ứng viên, CV gần như hoàn hảo\n" +
+                                "- 70-84 : Tốt — cạnh tranh được ở thị trường\n" +
+                                "- 55-69 : Trung bình — cần cải thiện đáng kể\n" +
+                                "- Dưới 55: Yếu — cần làm lại CV từ đầu\n" +
+                                "Hầu hết CV thực tế nằm ở mức 45-70. Không grade inflate.\n\n" +
                                 "YÊU CẦU TRẢ VỀ ĐÚNG 1 OBJECT JSON DUY NHẤT (TUYỆT ĐỐI KHÔNG CÓ MARKDOWN HAY TEXT THỪA) THEO CẤU TRÚC SAU:\n"
                                 +
                                 "{\n" +
-                                "  \"total_score\": <Tổng điểm 0-100>,\n" +
+                                "  \"total_score\": <Tổng điểm = stage2_core.score + stage3_in_depth.score + stage4_bonus.score>,\n" +
                                 "  \"stage1_detection\": {\n" +
                                 "    \"name\": \"<Tên ứng viên>\",\n" +
                                 "    \"level\": \"<Cấp độ dự đoán: Intern/Fresher/Junior/Middle/Senior>\",\n" +
@@ -196,9 +208,9 @@ public class GeminiService {
                                 "      \"score\": <Tối đa 20>,\n" +
                                 "      \"details\": [\n" +
                                 "        \"Language: +<điểm>/5 (Ngữ pháp, động từ mạnh, từ vựng chuyên ngành)\",\n" +
-                                "        \"Quantification: +<điểm>/8 (Sử dụng số liệu định lượng, kết quả cụ thể)\",\n"
-                                +
-                                "        \"Consistency: +<điểm>/3 (Tính nhất quán về ngày tháng, format)\"\n" +
+                                "        \"Quantification: +<điểm>/8 (Sử dụng số liệu định lượng, kết quả cụ thể)\",\n" +
+                                "        \"Consistency: +<điểm>/3 (Tính nhất quán về ngày tháng, format)\",\n" +
+                                "        \"Action Verbs & Tone: +<điểm>/4 (Dùng động từ hành động mạnh, tránh passive voice, ngôn ngữ chuyên nghiệp, tự tin)\"\n" +
                                 "      ]\n" +
                                 "    }\n" +
                                 "  },\n" +
@@ -233,7 +245,7 @@ public class GeminiService {
                                 "      \"International: +<điểm>/2\",\n" +
                                 "      \"Awards: +<điểm>/2\",\n" +
                                 "      \"Learning: +<điểm>/2\",\n" +
-                                "      \"Category-Specific: +<điểm>/2\"\n" +
+                                "      \"Category-Specific: +<điểm>/2 (Theo ngành: IT→GitHub/Portfolio/side project; Marketing→Case study/campaign result; Finance→CFA/CPA/số liệu P&L; Design→Behance/Dribbble link; Sales→Revenue quota attainment)\"\n" +
                                 "    ]\n" +
                                 "  },\n" +
                                 "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"]\n," +
@@ -265,7 +277,13 @@ public class GeminiService {
                         String aiResultText = root.path("candidates").get(0)
                                         .path("content").path("parts").get(0)
                                         .path("text").asText();
-                        return aiResultText.replace("```json", "").replace("```", "").trim();
+                        String cleaned = aiResultText.replace("```json", "").replace("```", "").trim();
+                        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\\{[\\s\\S]*\\}");
+                        java.util.regex.Matcher matcher = pattern.matcher(cleaned);
+                        if (matcher.find()) {
+                            return matcher.group();
+                        }
+                        return cleaned;
                 } catch (Exception e) {
                         log.error("Error calling Gemini API for general parsing: {}", e.getMessage());
                         throw new RuntimeException("AI Analysis service is temporarily unavailable", e);

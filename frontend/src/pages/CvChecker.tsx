@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import SiteLayout from "@/components/site/SiteLayout";
 import { Seo, breadcrumbLd } from "@/lib/seo";
 import { cvStore, generateMockResult } from "@/lib/store";
+import { useUploadCvMutation } from "@/hooks/queries/useCvQueries";
 
 const LOADER_STAGES = [
   {
@@ -44,43 +45,67 @@ export default function CvChecker() {
   const [progress, setProgress] = useState(0);
   const [isTakingLonger, setIsTakingLonger] = useState(false);
   const [successFinished, setSuccessFinished] = useState(false);
+  
+  const uploadCvMutation = useUploadCvMutation();
 
-  const startAnalysis = useCallback((name: string) => {
+  const startAnalysis = useCallback((selectedFile: File | string) => {
     setAnalyzing(true);
     setProgress(0);
     setIsTakingLonger(false);
     setSuccessFinished(false);
+    setError(null);
 
+    const isDemo = typeof selectedFile === "string";
+    const fileName = isDemo ? selectedFile : selectedFile.name;
+
+    // Thiết lập thanh tiến trình chạy mượt lên 90% trong khoảng 8.5 giây
     const startTime = Date.now();
-    const duration = 8000; // 8 seconds total for gradual honest loading
+    const maxSimulatedProgress = 90;
+    const duration = 8500;
 
     const tick = setInterval(() => {
       const elapsed = Date.now() - startTime;
-      
-      // Calculate smooth linear progress proportional to time
-      const p = Math.min(100, (elapsed / duration) * 100);
-      const roundedP = Math.round(p);
+      const progressPercent = Math.min(maxSimulatedProgress, (elapsed / duration) * maxSimulatedProgress);
+      const roundedP = Math.round(progressPercent);
       
       setProgress(roundedP);
 
-      // Trigger "taking longer" fallback warning if elapsed exceeds 7500ms
       if (elapsed >= 7500 && roundedP < 100) {
         setIsTakingLonger(true);
       }
+    }, 100);
 
-      // Trigger completion moment
-      if (roundedP >= 100) {
-        setSuccessFinished(true);
-      }
-
-      // Final navigation routing with 1.4s delay for satisfying completion feedback
-      if (elapsed >= 9400) {
+    if (isDemo) {
+      // CHẾ ĐỘ DEMO: Tự động chạy lên 100% sau 8.5s
+      setTimeout(() => {
         clearInterval(tick);
-        cvStore.setResult(generateMockResult(name));
-        navigate("/results");
-      }
-    }, 50);
-  }, [navigate]);
+        setProgress(100);
+        setSuccessFinished(true);
+        setTimeout(() => {
+          cvStore.setResult(generateMockResult(fileName));
+          navigate("/results");
+        }, 1400);
+      }, 8500);
+    } else {
+      // CHẾ ĐỘ API THẬT: Trigger upload lên backend Spring Boot
+      uploadCvMutation.mutate(selectedFile, {
+        onSuccess: () => {
+          clearInterval(tick);
+          setProgress(100);
+          setSuccessFinished(true);
+          setTimeout(() => {
+            navigate("/results");
+          }, 1400);
+        },
+        onError: (err: any) => {
+          clearInterval(tick);
+          setAnalyzing(false);
+          const errMsg = err.response?.data?.message || err.message || "Tải lên và phân tích CV thất bại. Vui lòng thử lại!";
+          setError(errMsg);
+        }
+      });
+    }
+  }, [navigate, uploadCvMutation]);
 
   useEffect(() => {
     if (params.get("demo") === "1") {
@@ -97,7 +122,8 @@ export default function CvChecker() {
     const f = accepted[0];
     if (!f) return;
     setFile(f);
-    startAnalysis(f.name);
+    // Truyền trực tiếp đối tượng File thật
+    startAnalysis(f);
   }, [startAnalysis]);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
