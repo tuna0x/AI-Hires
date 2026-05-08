@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from "react";
 import apiClient from "@/api/apiClient";
 
 export type AuthUser = {
@@ -39,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = useMemo(() => user?.role === "ADMIN", [user]);
 
   // Đồng bộ session của người dùng khi ứng dụng khởi chạy
-  async function syncSession() {
+  const syncSession = useCallback(async () => {
     const accessToken = localStorage.getItem("intervio_access_token");
     if (accessToken) {
       try {
@@ -73,13 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     syncSession();
-  }, []);
+  }, [syncSession]);
 
-  async function login(email: string, password: string) {
+  const login = useCallback(async (email: string, password: string) => {
     const response: any = await apiClient.post("/api/v1/auth/login", { email, password });
     const accessToken = response?.data?.access_token;
     const loggedUser = response?.data?.user;
@@ -89,10 +89,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       throw new Error("Thông tin phản hồi đăng nhập từ hệ thống không hợp lệ.");
     }
-  }
+  }, []);
 
-  async function register(email: string, password: string, fullName?: string) {
-    // Đăng ký tài khoản mới với vai trò mặc định CANDIDATE và fullName nếu có
+  const register = useCallback(async (email: string, password: string, fullName?: string) => {
     const response: any = await apiClient.post("/api/v1/auth/register", {
       email,
       password,
@@ -107,9 +106,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       throw new Error("Thông tin phản hồi đăng ký từ hệ thống không hợp lệ.");
     }
-  }
+  }, []);
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     try {
       await apiClient.post("/api/v1/auth/logout");
     } catch (err) {
@@ -118,9 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem("intervio_access_token");
       setUser(null);
     }
-  }
+  }, []);
 
-  async function loginWithGoogle(credential: string) {
+  const loginWithGoogle = useCallback(async (credential: string) => {
     const response: any = await apiClient.post("/api/v1/auth/google", { credential });
     const accessToken = response?.data?.access_token;
     const loggedUser = response?.data?.user;
@@ -130,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } else {
       throw new Error("Thông tin phản hồi đăng nhập bằng Google từ hệ thống không hợp lệ.");
     }
-  }
+  }, []);
 
   const value = useMemo<AuthCtx>(
     () => ({
@@ -143,7 +142,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut,
       refreshUser: syncSession,
     }),
-    [user, loading, isAdmin]
+    [user, loading, isAdmin, login, register, loginWithGoogle, signOut, syncSession]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
