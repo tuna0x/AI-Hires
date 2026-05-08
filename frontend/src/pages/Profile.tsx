@@ -8,7 +8,10 @@ import {
   Loader2,
   Activity,
   FileText,
-  ExternalLink
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +26,7 @@ import { cvStore } from "@/lib/store";
 import { interviewApi } from "@/api/interviewApi";
 import { InterviewQuestion, InterviewReport } from "@/types/interview";
 import { toast } from "sonner";
+import InteractivePagination from "@/components/site/InteractivePagination";
 
 
 export default function Profile() {
@@ -43,17 +47,25 @@ export default function Profile() {
   const [avatar, setAvatar] = useState("");
   const [avatarUploading, setAvatarUploading] = useState(false);
 
-  // Resume Tab States
+  // Resume Tab States (with Pagination)
   const [resumes, setResumes] = useState<any[]>([]);
   const [resumesLoading, setResumesLoading] = useState(false);
+  const [resumePage, setResumePage] = useState(1);
+  const [resumeTotalPages, setResumeTotalPages] = useState(1);
+  const [resumeTotal, setResumeTotal] = useState(0);
+  const resumePageSize = 5;
 
-  // Sessions Tab States
+  // Sessions Tab States (with Pagination)
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionTotalPages, setSessionTotalPages] = useState(1);
+  const [sessionTotal, setSessionTotal] = useState(0);
+  const sessionPageSize = 4;
 
 
 
-  // Load complete profile and history on mount for instant tab switching
+  // Load complete profile on mount
   useEffect(() => {
     async function loadProfile() {
       if (!user?.id) return;
@@ -78,16 +90,38 @@ export default function Profile() {
     }
     
     loadProfile();
-    loadResumes();
-    loadSessions();
   }, [user]);
 
-  async function loadResumes() {
+  // Load resumes when page or user changes
+  useEffect(() => {
+    if (user?.id) {
+      loadResumes(resumePage);
+    }
+  }, [user?.id, resumePage]);
+
+  // Load sessions when page or user changes
+  useEffect(() => {
+    if (user?.id) {
+      loadSessions(sessionPage);
+    }
+  }, [user?.id, sessionPage]);
+
+  async function loadResumes(page = resumePage) {
     setResumesLoading(true);
     try {
-      const response: any = await apiClient.get("/api/v1/resumes/my-resumes");
+      const response: any = await apiClient.get(`/api/v1/resumes/my-resumes?page=${page - 1}&size=${resumePageSize}&sort=createdAt,desc`);
       if (response?.data) {
-        setResumes(response.data);
+        if (response.data.result && Array.isArray(response.data.result)) {
+          setResumes(response.data.result);
+          if (response.data.meta) {
+            setResumeTotalPages(response.data.meta.pages || 1);
+            setResumeTotal(response.data.meta.total || 0);
+          }
+        } else if (Array.isArray(response.data)) {
+          setResumes(response.data);
+          setResumeTotalPages(1);
+          setResumeTotal(response.data.length);
+        }
       }
     } catch (err) {
       console.error("Error loading resumes:", err);
@@ -97,12 +131,22 @@ export default function Profile() {
     }
   }
 
-  async function loadSessions() {
+  async function loadSessions(page = sessionPage) {
     setSessionsLoading(true);
     try {
-      const response: any = await apiClient.get("/api/v1/interviews/my-sessions");
+      const response: any = await apiClient.get(`/api/v1/interviews/my-sessions?page=${page - 1}&size=${sessionPageSize}&sort=startTime,desc`);
       if (response?.data) {
-        setSessions(response.data);
+        if (response.data.result && Array.isArray(response.data.result)) {
+          setSessions(response.data.result);
+          if (response.data.meta) {
+            setSessionTotalPages(response.data.meta.pages || 1);
+            setSessionTotal(response.data.meta.total || 0);
+          }
+        } else if (Array.isArray(response.data)) {
+          setSessions(response.data);
+          setSessionTotalPages(1);
+          setSessionTotal(response.data.length);
+        }
       }
     } catch (err) {
       console.error("Error loading sessions:", err);
@@ -366,7 +410,8 @@ export default function Profile() {
                   <p className="text-xs text-muted-foreground/80 max-w-xs mx-auto">Vui lòng tải lên CV của bạn tại trang Phân tích CV để nhận báo cáo ATS tức thì.</p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-border/60 shadow-soft">
+                <>
+                  <div className="overflow-hidden rounded-2xl border border-border/60 shadow-soft">
                   <div className="overflow-x-auto">
                     <table className="w-full border-collapse text-left text-xs">
                       <thead>
@@ -430,6 +475,16 @@ export default function Profile() {
                     </table>
                   </div>
                 </div>
+                
+                <InteractivePagination
+                  currentPage={resumePage}
+                  totalPages={resumeTotalPages}
+                  totalElements={resumeTotal}
+                  pageSize={resumePageSize}
+                  onPageChange={setResumePage}
+                  typeLabel="CV"
+                />
+                </>
               )}
             </div>
           </TabsContent>
@@ -458,7 +513,8 @@ export default function Profile() {
                   <p className="text-xs text-muted-foreground/80 max-w-xs mx-auto">Hãy bắt đầu một phiên phỏng vấn thử AI mô phỏng 3 tầng dựa trên CV và JD của bạn.</p>
                 </div>
               ) : (
-                <div className="grid md:grid-cols-2 gap-4">
+                <>
+                  <div className="grid md:grid-cols-2 gap-4">
                   {sessions.map((ses) => {
                     const isFinished = ses.status === "COMPLETED";
                     return (
@@ -504,6 +560,16 @@ export default function Profile() {
                     );
                   })}
                 </div>
+                
+                <InteractivePagination
+                  currentPage={sessionPage}
+                  totalPages={sessionTotalPages}
+                  totalElements={sessionTotal}
+                  pageSize={sessionPageSize}
+                  onPageChange={setSessionPage}
+                  typeLabel="phiên phỏng vấn"
+                />
+                </>
               )}
             </div>
           </TabsContent>

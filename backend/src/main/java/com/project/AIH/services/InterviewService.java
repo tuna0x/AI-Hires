@@ -13,8 +13,12 @@ import com.project.AIH.utils.constant.QuestionTypeEnum;
 import com.project.AIH.utils.constant.CriteriaEnum;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.project.AIH.dto.ResultPaginationDTO;
 
 import java.time.Instant;
 import java.util.List;
@@ -64,9 +68,27 @@ public class InterviewService {
     }
 
     @Transactional(readOnly = true)
-    public List<InterviewSession> getSessionsByUser(User user) {
-        log.info("Fetching interview sessions for user ID: {}", user.getId());
-        return sessionRepository.findByUserId(user.getId());
+    public ResultPaginationDTO getSessionsByUser(Specification<InterviewSession> spec, Pageable pageable, User user) {
+        log.info("Fetching paginated interview sessions for user ID: {}", user.getId());
+
+        // Secure boundary: Force filtering by current user (join through application and resume)
+        Specification<InterviewSession> combinedSpec = (root, query, cb) -> cb.equal(root.get("application").get("resume").get("user").get("id"), user.getId());
+        if (spec != null) {
+            combinedSpec = combinedSpec.and(spec);
+        }
+
+        Page<InterviewSession> pageSession = sessionRepository.findAll(combinedSpec, pageable);
+
+        ResultPaginationDTO rs = new ResultPaginationDTO();
+        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta();
+        meta.setPage(pageSession.getNumber() + 1);
+        meta.setPageSize(pageSession.getSize());
+        meta.setPages(pageSession.getTotalPages());
+        meta.setTotal(pageSession.getTotalElements());
+        rs.setMeta(meta);
+        rs.setResult(pageSession.getContent());
+
+        return rs;
     }
 
     @Transactional(readOnly = true)

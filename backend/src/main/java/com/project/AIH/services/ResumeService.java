@@ -10,9 +10,13 @@ import com.project.AIH.config.RabbitMQConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import com.project.AIH.dto.ResultPaginationDTO;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -229,9 +233,27 @@ public class ResumeService {
     }
 
     @Transactional(readOnly = true)
-    public List<Resume> getResumesByUser(User user) {
-        log.info("Fetching resumes for user ID: {}", user.getId());
-        return resumeRepository.findByUserIdOrderByCreatedAtDesc(user.getId());
+    public ResultPaginationDTO getResumesByUser(Specification<Resume> spec, Pageable pageable, User user) {
+        log.info("Fetching paginated resumes for user ID: {}", user.getId());
+
+        // Secure boundary: Force filtering by current user
+        Specification<Resume> combinedSpec = (root, query, cb) -> cb.equal(root.get("user").get("id"), user.getId());
+        if (spec != null) {
+            combinedSpec = combinedSpec.and(spec);
+        }
+
+        Page<Resume> pageResume = resumeRepository.findAll(combinedSpec, pageable);
+
+        ResultPaginationDTO rs = new ResultPaginationDTO();
+        ResultPaginationDTO.Meta meta = new ResultPaginationDTO.Meta();
+        meta.setPage(pageResume.getNumber() + 1);
+        meta.setPageSize(pageResume.getSize());
+        meta.setPages(pageResume.getTotalPages());
+        meta.setTotal(pageResume.getTotalElements());
+        rs.setMeta(meta);
+        rs.setResult(pageResume.getContent());
+
+        return rs;
     }
 
     private String calculateFileHash(byte[] fileBytes) {
