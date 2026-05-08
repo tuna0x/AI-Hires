@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,6 +11,7 @@ export default function AuthLayout() {
   const navigate = useNavigate();
   const { loginWithGoogle } = useAuth();
   const path = location.pathname;
+  const lastRenderedPath = useRef<string | null>(null);
 
   let seoTitle = "Đăng nhập — Intervio";
   let seoDescription = "Đăng nhập tài khoản Intervio để phân tích CV, chấm điểm ATS và mô phỏng phỏng vấn thông minh.";
@@ -67,12 +68,21 @@ export default function AuthLayout() {
 
   // Centralized Google One Tap and Identity Sign-In rendering
   useEffect(() => {
-    if (!showGoogleAuth) return;
+    if (!showGoogleAuth) {
+      lastRenderedPath.current = null;
+      return;
+    }
 
     let isMounted = true;
 
     const renderGoogleBtn = () => {
       if (!isMounted) return;
+      
+      // Guard: Nếu nút của trang này đã được render rồi thì không render lại nữa (Tránh nhấp nháy, lặp request)
+      if (lastRenderedPath.current === path) {
+        return;
+      }
+
       const googleClient = (window as any).google;
       const btnContainer = document.getElementById("googleAuthBtn");
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -107,6 +117,9 @@ export default function AuthLayout() {
             shape: "rectangular", // Clean rectangular design matching input corners!
           }
         );
+
+        // Lưu vết trang đã render thành công
+        lastRenderedPath.current = path;
       }
     };
 
