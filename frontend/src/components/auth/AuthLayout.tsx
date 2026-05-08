@@ -69,26 +69,34 @@ export default function AuthLayout() {
   useEffect(() => {
     if (!showGoogleAuth) return;
 
-    const initGoogle = () => {
+    let isMounted = true;
+
+    const renderGoogleBtn = () => {
+      if (!isMounted) return;
       const googleClient = (window as any).google;
       const btnContainer = document.getElementById("googleAuthBtn");
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
       if (googleClient && btnContainer && clientId) {
-        googleClient.accounts.id.initialize({
-          client_id: clientId,
-          callback: async (response: any) => {
-            try {
-              await loginWithGoogle(response.credential);
-              toast.success("Đăng nhập bằng Google thành công!");
-              navigate("/dashboard", { replace: true });
-            } catch (err: any) {
-              console.error("Google auth fail:", err);
-              toast.error(err.message || "Xác thực qua Google thất bại.");
-            }
-          },
-        });
+        // Prevent calling initialize() multiple times (fixes warning & erratic behavior)
+        if (!(window as any).gsiInitialized) {
+          googleClient.accounts.id.initialize({
+            client_id: clientId,
+            callback: async (response: any) => {
+              try {
+                await loginWithGoogle(response.credential);
+                toast.success("Đăng nhập bằng Google thành công!");
+                navigate("/dashboard", { replace: true });
+              } catch (err: any) {
+                console.error("Google auth fail:", err);
+                toast.error(err.message || "Xác thực qua Google thất bại.");
+              }
+            },
+          });
+          (window as any).gsiInitialized = true;
+        }
 
+        // Render the button directly onto the persistent container
         googleClient.accounts.id.renderButton(
           btnContainer,
           {
@@ -102,14 +110,18 @@ export default function AuthLayout() {
       }
     };
 
+    // Safely wait for container to be ready in the DOM
     const timer = setInterval(() => {
-      if ((window as any).google?.accounts?.id) {
+      if ((window as any).google?.accounts?.id && document.getElementById("googleAuthBtn")) {
         clearInterval(timer);
-        initGoogle();
+        renderGoogleBtn();
       }
-    }, 100);
+    }, 80);
 
-    return () => clearInterval(timer);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
   }, [path, showGoogleAuth, loginWithGoogle, navigate]);
 
   return (
@@ -183,7 +195,7 @@ export default function AuthLayout() {
             </Link>
           </div>
 
-          {/* Dynamic Content Transitions */}
+          {/* Dynamic Content Transitions (Transitioning inputs, titles and descriptions) */}
           <AnimatePresence mode="wait">
             <motion.div
               key={path}
@@ -209,23 +221,6 @@ export default function AuthLayout() {
                 <Outlet />
               </div>
 
-              {/* Persistent Google Authenticator (Maintains mounting inside the card body!) */}
-              {showGoogleAuth && (
-                <div className="mt-4">
-                  {/* Separator */}
-                  <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-white/10"></div>
-                    <span className="flex-shrink mx-3 text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">Hoặc</span>
-                    <div className="flex-grow border-t border-white/10"></div>
-                  </div>
-
-                  {/* Google Sign In Button Container */}
-                  <div className="w-full flex justify-center py-0.5">
-                    <div id="googleAuthBtn" className="min-h-[40px] w-full flex justify-center" />
-                  </div>
-                </div>
-              )}
-
               {/* Dynamic Footer Switching Link */}
               {footer && (
                 <div className="mt-5 pt-4 border-t border-border/40 text-center text-xs text-muted-foreground/80">
@@ -234,6 +229,23 @@ export default function AuthLayout() {
               )}
             </motion.div>
           </AnimatePresence>
+
+          {/* Persistent Google Authenticator & Separator OUTSIDE AnimatePresence (Prevents unmounting, flashing & network cancels!) */}
+          {showGoogleAuth && (
+            <div className="mt-4">
+              {/* Separator */}
+              <div className="relative flex py-2 items-center">
+                <div className="flex-grow border-t border-white/10"></div>
+                <span className="flex-shrink mx-3 text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">Hoặc</span>
+                <div className="flex-grow border-t border-white/10"></div>
+              </div>
+
+              {/* Google Sign In Button Container */}
+              <div className="w-full flex justify-center py-0.5">
+                <div id="googleAuthBtn" className="min-h-[40px] w-full flex justify-center" />
+              </div>
+            </div>
+          )}
         </div>
       </motion.div>
 
