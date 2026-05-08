@@ -67,12 +67,16 @@ public class AuthenticationController {
             return ResponseEntity.status(401).build();
         }
         
-        Jwt decodedToken = securityUtil.checkValidToken(refreshToken);
-        String email = decodedToken.getSubject();
-        
-        RestLoginDTO res = service.refreshToken(refreshToken, email);
-        setRefreshTokenCookie(response, res.getRefreshToken());
-        return ResponseEntity.ok(res);
+        try {
+            Jwt decodedToken = securityUtil.checkValidToken(refreshToken);
+            String email = decodedToken.getSubject();
+            
+            RestLoginDTO res = service.refreshToken(refreshToken, email);
+            setRefreshTokenCookie(response, res.getRefreshToken());
+            return ResponseEntity.ok(res);
+        } catch (Exception e) {
+            return ResponseEntity.status(401).build();
+        }
     }
 
     @PostMapping("/logout")

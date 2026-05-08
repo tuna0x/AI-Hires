@@ -138,34 +138,80 @@ public class InterviewService {
             industry = "IT";
         }
 
-        // --- HYBRID FLOW: Question 1 lookup and cache ---
+        // --- HYBRID FLOW: Questions 1, 2, 3 lookup and cache ---
         String initialQuestionText = null;
         String cvContext = null;
         String jdContext = null;
         Boolean canReuse = false;
 
-        java.util.Optional<InterviewQuestionBank> cachedQ = questionBankRepository
+        // Check if all Questions 1, 2, 3 exist in bank for this job and difficulty
+        java.util.Optional<InterviewQuestionBank> cachedQ1 = questionBankRepository
                 .findByJobIdAndDifficultyAndQuestionOrder(job.getId(), difficulty, 1);
+        java.util.Optional<InterviewQuestionBank> cachedQ2 = questionBankRepository
+                .findByJobIdAndDifficultyAndQuestionOrder(job.getId(), difficulty, 2);
+        java.util.Optional<InterviewQuestionBank> cachedQ3 = questionBankRepository
+                .findByJobIdAndDifficultyAndQuestionOrder(job.getId(), difficulty, 3);
 
-        if (cachedQ.isPresent()) {
-            log.info("Loaded cached Question 1 from Bank for Job ID: {}, Level: {}", job.getId(), difficulty);
-            InterviewQuestionBank qBank = cachedQ.get();
-            initialQuestionText = qBank.getQuestionText();
-            qBank.setUseCount(qBank.getUseCount() + 1);
-            questionBankRepository.save(qBank);
+        if (cachedQ1.isPresent() && cachedQ2.isPresent() && cachedQ3.isPresent()) {
+            log.info("All questions Q1, Q2, Q3 found in cache for Job ID: {}, Level: {}", job.getId(), difficulty);
+            InterviewQuestionBank bankQ1 = cachedQ1.get();
+            initialQuestionText = bankQ1.getQuestionText();
+            bankQ1.setUseCount(bankQ1.getUseCount() + 1);
+            questionBankRepository.save(bankQ1);
+            
+            // Increment use counts for cached Q2 and Q3
+            InterviewQuestionBank bankQ2 = cachedQ2.get();
+            bankQ2.setUseCount(bankQ2.getUseCount() + 1);
+            questionBankRepository.save(bankQ2);
+
+            InterviewQuestionBank bankQ3 = cachedQ3.get();
+            bankQ3.setUseCount(bankQ3.getUseCount() + 1);
+            questionBankRepository.save(bankQ3);
         } else {
-            log.info("No cached question found. Generating standard Question 1 using Gemini for Job ID: {}, Level: {}", job.getId(), difficulty);
-            String aiResponse = geminiService.generateInitialQuestion(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name());
+            log.info("Some cached questions missing. Generating standard Questions 1, 2, 3 using Gemini...");
+            String aiResponse = geminiService.generateInitialQuestions(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name());
             try {
-                JsonNode resultNode = objectMapper.readTree(aiResponse);
-                initialQuestionText = resultNode.path("question").asText();
-                cvContext = resultNode.path("cv_context").asText();
-                jdContext = resultNode.path("jd_context").asText();
-                canReuse = resultNode.path("can_reuse").asBoolean(false);
+                JsonNode questionsArray = objectMapper.readTree(aiResponse);
+                if (questionsArray.isArray() && questionsArray.size() >= 3) {
+                    for (int i = 0; i < 3; i++) {
+                        JsonNode qNode = questionsArray.get(i);
+                        String qText = qNode.path("question").asText();
+                        String qCvCtx = qNode.path("cv_context").asText();
+                        String qJdCtx = qNode.path("jd_context").asText();
+                        boolean qCanReuse = qNode.path("can_reuse").asBoolean(true);
+                        int order = i + 1;
 
-                // Auto cache standard Q1 if reusable and linked to a real job description
-                if (canReuse && job.getId() != null) {
-                    InterviewQuestionBank qBank = InterviewQuestionBank.builder()
+                        // Save to Bank
+                        InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
+                                .job(job)
+                                .questionText(qText)
+                                .questionType(QuestionTypeEnum.TECHNICAL)
+                                .difficulty(difficulty)
+                                .topic(targetRole)
+                                .questionOrder(order)
+                                .useCount(1)
+                                .build();
+                        questionBankRepository.save(bankQ);
+
+                        if (order == 1) {
+                            initialQuestionText = qText;
+                            cvContext = qCvCtx;
+                            jdContext = qJdCtx;
+                            canReuse = qCanReuse;
+                        }
+                    }
+                } else {
+                    // Fallback if array parse fails
+                    log.warn("Gemini didn't return an array of 3 questions, falling back to legacy single generator");
+                    String legacyResponse = geminiService.generateInitialQuestion(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name());
+                    JsonNode legacyNode = objectMapper.readTree(legacyResponse);
+                    initialQuestionText = legacyNode.path("question").asText();
+                    cvContext = legacyNode.path("cv_context").asText();
+                    jdContext = legacyNode.path("jd_context").asText();
+                    canReuse = legacyNode.path("can_reuse").asBoolean(false);
+                    
+                    // Save Question 1 to Bank
+                    InterviewQuestionBank bankQ1 = InterviewQuestionBank.builder()
                             .job(job)
                             .questionText(initialQuestionText)
                             .questionType(QuestionTypeEnum.TECHNICAL)
@@ -174,11 +220,11 @@ public class InterviewService {
                             .questionOrder(1)
                             .useCount(1)
                             .build();
-                    questionBankRepository.save(qBank);
+                    questionBankRepository.save(bankQ1);
                 }
             } catch (Exception e) {
-                log.warn("Failed to parse initial question JSON, fallback to raw text response", e);
-                initialQuestionText = aiResponse;
+                log.error("Failed to parse initial questions JSON array, fallback to safe default question", e);
+                initialQuestionText = "Hãy giới thiệu bản thân và tóm tắt những dự án nổi bật nhất mà bạn từng thực hiện.";
             }
         }
 
@@ -212,6 +258,17 @@ public class InterviewService {
             throw new RuntimeException("No question found for this session");
         }
         InterviewQuestion currentQuestion = questions.get(questions.size() - 1);
+
+        log.info("--- submitAnswer Diagnostic ---");
+        log.info("Session ID: {}, maxQuestions: {}", session.getId(), session.getMaxQuestions());
+        log.info("Questions in DB (size: {}):", questions.size());
+        for (int i = 0; i < questions.size(); i++) {
+            InterviewQuestion q = questions.get(i);
+            log.info("  [{}] ID: {}, Order: {}, Text: '{}', HasAnswer: {}", 
+                i, q.getId(), q.getQuestionOrder(), q.getQuestionText(), q.getInterviewAnswer() != null);
+        }
+        log.info("Selected currentQuestion ID: {}, Order: {}, Text: '{}'", 
+            currentQuestion.getId(), currentQuestion.getQuestionOrder(), currentQuestion.getQuestionText());
 
         if (currentQuestion.getInterviewAnswer() != null) {
             throw new RuntimeException("The current question has already been answered");
@@ -289,15 +346,39 @@ public class InterviewService {
                 throw new RuntimeException("Error evaluating answer: " + e.getMessage());
             }
         }
-        // CASE B: Full Evaluation and Next Question generation path
+        // CASE B: Full Evaluation and Next Question generation path (PARALLEL COMPLETABLEFUTURE)
         else {
-            log.info("Executing Full Evaluation & Question Generation path for session order: {}", currentOrder);
-            String chatHistory = getChatHistory(questions, answerText);
-            String aiResponse = geminiService.evaluateAndGenerateNextQuestion(jobDesc, chatHistory, answerText, targetRole, industry, level);
+            log.info("Executing Parallel Evaluation & Question Generation path for session order: {}", currentOrder);
+            
+            // 1. Prepare running summary context
+            final String runningSummary = session.getRunningSummary();
+            final String finalQText = currentQuestion.getQuestionText();
+            final String finalAnswerText = answerText;
+            final String finalTargetRole = targetRole;
+            final String finalIndustry = industry;
+            final String finalLevel = level;
+            final String finalJobDesc = jobDesc;
+            
+            // 2. Call Gemini concurrently
+            java.util.concurrent.CompletableFuture<String> evalFuture = java.util.concurrent.CompletableFuture.supplyAsync(() -> 
+                geminiService.evaluateAnswerOnly(finalQText, finalAnswerText, finalTargetRole, finalIndustry, finalLevel)
+            );
+            
+            java.util.concurrent.CompletableFuture<String> questionFuture = java.util.concurrent.CompletableFuture.supplyAsync(() -> 
+                geminiService.generateNextQuestion(finalJobDesc, runningSummary, finalQText, finalAnswerText, finalTargetRole, finalIndustry, finalLevel)
+            );
+
             try {
-                JsonNode resultNode = objectMapper.readTree(aiResponse);
-                int score = resultNode.path("score").asInt(1);
-                String feedback = resultNode.path("feedback").asText("");
+                // Wait for both futures to complete
+                java.util.concurrent.CompletableFuture.allOf(evalFuture, questionFuture).join();
+                
+                String evalResponse = evalFuture.get();
+                String questionResponse = questionFuture.get();
+
+                // 3. Process Evaluation Response
+                JsonNode evalNode = objectMapper.readTree(evalResponse);
+                int score = evalNode.path("score").asInt(1);
+                String feedback = evalNode.path("feedback").asText("");
 
                 evaluation = InterviewEvaluation.builder()
                         .interviewAnswer(answer)
@@ -307,29 +388,14 @@ public class InterviewService {
                 evaluation = evaluationRepository.save(evaluation);
 
                 // Save detailed scores per criteria
-                saveCriteriaScores(answer, resultNode.path("scores"));
+                saveCriteriaScores(answer, evalNode.path("scores"));
 
-                // Parse next question details
-                JsonNode nextQNode = resultNode.path("next_question");
-                String nextQuestionText = nextQNode.isObject() ? nextQNode.path("question").asText() : resultNode.path("next_question").asText();
-                String cvCtx = nextQNode.isObject() ? nextQNode.path("cv_context").asText() : null;
-                String jdCtx = nextQNode.isObject() ? nextQNode.path("jd_context").asText() : null;
-                boolean canReuse = nextQNode.isObject() ? nextQNode.path("can_reuse").asBoolean(false) : false;
-
-                // Cache next question to Bank if marked as reusable (only applicable to Standard Q2, Q3)
-                if (nextOrder <= 3 && canReuse) {
-                    InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
-                            .job(session.getApplication().getJob())
-                            .questionText(nextQuestionText)
-                            .questionType(QuestionTypeEnum.TECHNICAL)
-                            .difficulty(session.getDifficultyLevel())
-                            .topic(targetRole)
-                            .questionOrder(nextOrder)
-                            .useCount(1)
-                            .build();
-                    questionBankRepository.save(bankQ);
-                    log.info("Cached newly generated Question {} in Bank for Job ID: {}", nextOrder, session.getApplication().getJob().getId());
-                }
+                // 4. Process Question Generation Response
+                JsonNode qNode = objectMapper.readTree(questionResponse);
+                String nextQuestionText = qNode.path("question").asText();
+                String cvCtx = qNode.path("cv_context").asText();
+                String jdCtx = qNode.path("jd_context").asText();
+                boolean canReuse = qNode.path("can_reuse").asBoolean(false);
 
                 nextQuestion = InterviewQuestion.builder()
                         .interviewSession(session)
@@ -347,9 +413,35 @@ public class InterviewService {
                 sessionRepository.save(session);
 
             } catch (Exception e) {
-                log.error("Failed to execute full answer evaluation: {}", e.getMessage());
+                log.error("Failed to execute parallel answer evaluation and question generation: {}", e.getMessage());
                 throw new RuntimeException("Error evaluating answer: " + e.getMessage());
             }
+        }
+
+        // Trigger background running summary update (Non-blocking)
+        if (evaluation != null) {
+            final String currentSummary = session.getRunningSummary();
+            final String qText = currentQuestion.getQuestionText();
+            final String aText = answerText;
+            final int currentScore = evaluation.getScore();
+            final Long sessId = session.getId();
+            
+            java.util.concurrent.CompletableFuture.runAsync(() -> {
+                try {
+                    log.info("Running background update for session ID: {} runningSummary...", sessId);
+                    String updatedSummary = geminiService.updateRunningSummary(currentSummary, qText, aText, currentScore);
+                    
+                    // Retrieve session and save
+                    InterviewSession sess = sessionRepository.findById(sessId).orElse(null);
+                    if (sess != null) {
+                        sess.setRunningSummary(updatedSummary);
+                        sessionRepository.save(sess);
+                        log.info("Successfully updated runningSummary for session ID: {}", sessId);
+                    }
+                } catch (Exception ex) {
+                    log.error("Failed to update runningSummary asynchronously for session ID: {}", sessId, ex);
+                }
+            });
         }
 
         return InterviewSubmitAnswerResponseDTO.builder()

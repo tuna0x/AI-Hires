@@ -4,33 +4,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
   Mail,
-  Phone,
-  MapPin,
-  Calendar,
   Sparkles,
   Loader2,
-  Award,
-  Trophy,
   Activity,
   FileText,
-  CheckCircle2,
-  AlertCircle,
-  XCircle,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp,
-  BookOpen,
-  Cpu,
-  ArrowRight,
-  ShieldAlert,
-  ArrowLeft
+  ExternalLink
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import SiteLayout from "@/components/site/SiteLayout";
 import { useAuth } from "@/lib/auth";
 import apiClient from "@/api/apiClient";
@@ -39,39 +23,7 @@ import { cvStore } from "@/lib/store";
 import { interviewApi } from "@/api/interviewApi";
 import { InterviewQuestion, InterviewReport } from "@/types/interview";
 import { toast } from "sonner";
-import {
-  Radar,
-  RadarChart,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
-  ResponsiveContainer,
-} from "recharts";
 
-const getAnswerStatus = (score: number) => {
-  if (score >= 8) {
-    return {
-      label: "Đạt (Correct / Good)",
-      color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-      icon: <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />,
-      desc: "Câu trả lời xuất sắc, trình bày mạch lạc, bám sát yêu cầu chuyên môn và thể hiện kiến thức sâu rộng."
-    };
-  } else if (score >= 5) {
-    return {
-      label: "Cần cải thiện (Needs Improvement)",
-      color: "bg-amber-500/10 text-amber-500 border-amber-500/20",
-      icon: <AlertCircle className="h-4 w-4 text-amber-500 shrink-0" />,
-      desc: "Câu trả lời đúng hướng nhưng còn sơ sài, thiếu ví dụ thực tế hoặc cần cấu trúc chặt chẽ hơn."
-    };
-  } else {
-    return {
-      label: "Chưa đạt / Sai lệch kiến thức (Poor)",
-      color: "bg-destructive/10 text-destructive border-destructive/20",
-      icon: <XCircle className="h-4 w-4 text-destructive shrink-0" />,
-      desc: "Câu trả lời chưa đúng trọng tâm, sai lệch kiến thức hoặc bỏ qua câu hỏi. Cần ôn tập kỹ lại chủ đề này."
-    };
-  }
-};
 
 export default function Profile() {
   const { user, refreshUser } = useAuth();
@@ -97,13 +49,7 @@ export default function Profile() {
   const [sessions, setSessions] = useState<any[]>([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
-  // Detailed Modal View States
-  const [selectedSession, setSelectedSession] = useState<any | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [modalLoading, setModalLoading] = useState(false);
-  const [report, setReport] = useState<InterviewReport | null>(null);
-  const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
-  const [expandedQuestionId, setExpandedQuestionId] = useState<number | null>(null);
+
 
   // Fetch complete profile on mount
   useEffect(() => {
@@ -205,26 +151,7 @@ export default function Profile() {
   }
 
   async function handleViewSessionDetails(session: any) {
-    setSelectedSession(session);
-    setModalOpen(true);
-    setModalLoading(true);
-    setReport(null);
-    setQuestions([]);
-    setExpandedQuestionId(null);
-    try {
-      const [finalReport, questionList] = await Promise.all([
-        interviewApi.getReport(session.id),
-        interviewApi.getQuestions(session.id)
-      ]);
-      setReport(finalReport);
-      setQuestions(questionList);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Lỗi tải chi tiết phiên phỏng vấn. Có thể phiên này chưa hoàn thành báo cáo.");
-      setModalOpen(false);
-    } finally {
-      setModalLoading(false);
-    }
+    navigate(`/interview/results/${session.id}`);
   }
 
   return (
@@ -506,200 +433,6 @@ export default function Profile() {
           </TabsContent>
 
         </Tabs>
-
-        {/* MODAL / DRAWER INTERVIEW DETAIL EVALUATION VIEW */}
-        <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-          <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 lg:p-8 bg-background border-border/60">
-            <DialogHeader className="mb-6">
-              <DialogTitle className="text-lg font-bold text-foreground flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" /> Chi tiết kết quả phỏng vấn phiên #{selectedSession?.id}
-              </DialogTitle>
-              <DialogDescription className="text-xs text-muted-foreground">
-                Vị trí mục tiêu: {selectedSession?.jobTitle || "Luyện tập phỏng vấn"}. Cấp độ: {selectedSession?.difficultyLevel === "EASY" ? "Intern/Fresher" : selectedSession?.difficultyLevel === "MEDIUM" ? "Junior/Middle" : "Senior/Lead"}.
-              </DialogDescription>
-            </DialogHeader>
-
-            {modalLoading ? (
-              <div className="h-64 flex flex-col items-center justify-center gap-3">
-                <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                <p className="text-xs text-muted-foreground animate-pulse font-semibold">AI đang tổng hợp và kết xuất báo cáo lịch sử...</p>
-              </div>
-            ) : report ? (
-              <div className="space-y-6">
-                
-                {/* Circular gauge & summary feedback card */}
-                <div className="grid md:grid-cols-[1fr_360px] gap-6">
-                  
-                  {/* Radar Chart */}
-                  <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-soft flex flex-col justify-between">
-                    <div>
-                      <h4 className="font-bold text-xs text-foreground flex items-center gap-2">
-                        <Award className="h-4 w-4 text-primary" /> Phân tích đa tiêu chí (Radar Chart)
-                      </h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 mb-2">
-                        Biểu đồ mạng nhện đánh giá năng lực phỏng vấn của bạn.
-                      </p>
-                    </div>
-
-                    <div className="h-[200px] w-full flex items-center justify-center">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart cx="50%" cy="50%" radius="70%" data={[
-                          { criteria: "Độ liên quan", score: questions.reduce((sum, q) => sum + (q.interviewAnswer?.answerScores?.find(s => s.criteria === "RELEVANCE")?.score || 5), 0) / (questions.length || 1) },
-                          { criteria: "Chiều sâu", score: questions.reduce((sum, q) => sum + (q.interviewAnswer?.answerScores?.find(s => s.criteria === "DEPTH")?.score || 5), 0) / (questions.length || 1) },
-                          { criteria: "Diễn đạt", score: questions.reduce((sum, q) => sum + (q.interviewAnswer?.answerScores?.find(s => s.criteria === "COMMUNICATION")?.score || 5), 0) / (questions.length || 1) },
-                          { criteria: "Cấu trúc", score: questions.reduce((sum, q) => sum + (q.interviewAnswer?.answerScores?.find(s => s.criteria === "STRUCTURE")?.score || 5), 0) / (questions.length || 1) },
-                        ]}>
-                          <PolarGrid stroke="#e2e8f0" />
-                          <PolarAngleAxis dataKey="criteria" tick={{ fill: "#64748b", fontSize: 9, fontWeight: "bold" }} />
-                          <PolarRadiusAxis angle={30} domain={[0, 10]} stroke="#cbd5e1" />
-                          <Radar name="Cá nhân" dataKey="score" stroke="#0066ff" fill="#3b82f6" fillOpacity={0.2} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Summary Scores & Pass Decision */}
-                  <div className="bg-card rounded-2xl border border-border/60 p-5 shadow-soft flex flex-col justify-between space-y-4">
-                    <div className="text-center">
-                      <div className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-2">Điểm tổng kết</div>
-                      
-                      {/* Gauge */}
-                      <div className="relative inline-flex items-center justify-center h-24 w-24 mb-2">
-                        <div className="absolute inset-0 rounded-full border-6 border-muted" />
-                        <div className="flex flex-col items-center">
-                          <span className="text-3xl font-extrabold text-primary">
-                            {Math.round(report.finalScore)}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">/ 100</span>
-                        </div>
-                      </div>
-
-                      <div>
-                        <Badge className={`px-3 py-0.5 text-xs font-bold rounded-full ${
-                          report.decision === "PASS" 
-                            ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 hover:bg-emerald-500/10" 
-                            : report.decision === "CONSIDER"
-                            ? "bg-amber-500/10 text-amber-500 border border-amber-500/20 hover:bg-amber-500/10"
-                            : "bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/10"
-                        }`}>
-                          {report.decision === "PASS" ? "PASS" : report.decision === "CONSIDER" ? "CONSIDER" : "FAIL"}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="bg-secondary/40 border border-border/40 p-3.5 rounded-xl text-[10px] leading-relaxed">
-                      <div className="font-bold text-foreground mb-1">AI Đánh giá tổng quan:</div>
-                      <p className="text-muted-foreground line-clamp-3">
-                        {report.summary}
-                      </p>
-                    </div>
-                  </div>
-
-                </div>
-
-                {/* Insights Panel: Strengths & Weaknesses */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-card rounded-2xl border border-emerald-500/20 p-4.5 shadow-soft">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-500 mb-2.5 flex items-center gap-1">
-                      <CheckCircle2 className="h-4 w-4" /> Điểm mạnh
-                    </div>
-                    <ul className="space-y-1.5 text-[10px] text-muted-foreground">
-                      {report.insights.filter(i => i.type === "STRENGTH").map((ins) => (
-                        <li key={ins.id} className="flex items-start gap-1.5">
-                          <span className="h-4 w-4 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center font-bold shrink-0 text-[9px]">✓</span>
-                          <span>{ins.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  <div className="bg-card rounded-2xl border border-amber-500/20 p-4.5 shadow-soft">
-                    <div className="text-[10px] font-bold uppercase tracking-wider text-amber-500 mb-2.5 flex items-center gap-1">
-                      <AlertCircle className="h-4 w-4" /> Điểm cần cải thiện
-                    </div>
-                    <ul className="space-y-1.5 text-[10px] text-muted-foreground">
-                      {report.insights.filter(i => i.type === "WEAKNESS").map((ins) => (
-                        <li key={ins.id} className="flex items-start gap-1.5">
-                          <span className="h-4 w-4 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold shrink-0 text-[9px]">!</span>
-                          <span>{ins.title}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-
-                {/* Dialog Transcript Conversation Accordion list */}
-                <div className="space-y-3">
-                  <div className="border-t border-border/60 pt-4">
-                    <h4 className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                      <BookOpen className="h-4.5 w-4.5 text-primary" /> Lịch sử đối thoại & Chấm điểm từng câu hỏi
-                    </h4>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 mb-3">Xem chi tiết câu hỏi, câu trả lời và nhận xét của trợ lý AI cho cả 5 câu phỏng vấn.</p>
-                  </div>
-
-                  <div className="space-y-3">
-                    {questions.map((q, index) => {
-                      const isExpanded = expandedQuestionId === q.id;
-                      const score = q.interviewAnswer?.interviewEvaluation?.score || 5;
-                      const status = getAnswerStatus(score);
-
-                      return (
-                        <div key={q.id} className={`border rounded-2xl overflow-hidden transition-all ${
-                          isExpanded ? "border-primary/30 shadow-soft bg-card" : "border-border/60"
-                        }`}>
-                          <button type="button" onClick={() => setExpandedQuestionId(isExpanded ? null : q.id)} className="w-full text-left p-3.5 flex justify-between items-center bg-secondary/10 hover:bg-secondary/20 transition-all gap-4">
-                            <div className="space-y-0.5">
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                <Badge className="bg-primary/10 text-primary border border-primary/10 hover:bg-primary/10 text-[9px] font-bold">Câu {index + 1}</Badge>
-                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[8px] font-bold border ${status.color}`}>
-                                  {status.label.split(" (")[0]}
-                                </span>
-                              </div>
-                              <p className="font-bold text-xs text-foreground line-clamp-1">{q.questionText}</p>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs font-extrabold text-foreground bg-primary/5 px-2 py-1 rounded-lg border border-border/40">{score}/10</span>
-                              {isExpanded ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
-                            </div>
-                          </button>
-
-                          {isExpanded && (
-                            <div className="p-4 border-t border-border/40 bg-card/40 space-y-3 text-[10px]">
-                              <div>
-                                <span className="font-bold text-foreground">Câu hỏi của AI:</span>
-                                <p className="text-foreground p-3.5 rounded-xl bg-secondary/20 border border-border/40 mt-1 font-medium">{q.questionText}</p>
-                              </div>
-                              <div>
-                                <span className="font-bold text-muted-foreground">Câu trả lời của bạn:</span>
-                                <p className="text-muted-foreground p-3.5 rounded-xl bg-secondary/40 border border-border/60 mt-1 whitespace-pre-wrap leading-relaxed">{q.interviewAnswer?.answerText || "Không có phản hồi."}</p>
-                              </div>
-                              
-                              {q.interviewAnswer?.interviewEvaluation && (
-                                <div className="p-3 rounded-xl border border-primary/10 bg-primary/5 space-y-1.5">
-                                  <div className="font-bold text-primary flex items-center gap-1">
-                                    <Cpu className="h-3.5 w-3.5 text-primary" /> Phân tích nhận xét từ AI:
-                                  </div>
-                                  <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{q.interviewAnswer.interviewEvaluation.feedback}</p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-              </div>
-            ) : (
-              <div className="text-center py-12 space-y-2">
-                <ShieldAlert className="h-10 w-10 text-destructive mx-auto" />
-                <p className="font-semibold text-sm">Không thể kết xuất báo cáo phỏng vấn</p>
-                <p className="text-xs text-muted-foreground">Có thể phiên phỏng vấn này chưa được hoàn thành hoặc có lỗi phân tích từ AI.</p>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
 
       </div>
     </SiteLayout>

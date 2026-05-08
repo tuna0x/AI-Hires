@@ -10,6 +10,7 @@ import CvChecker from "./pages/CvChecker.tsx";
 import Results from "./pages/Results.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Interview from "./pages/Interview.tsx";
+import InterviewResult from "./pages/InterviewResult.tsx";
 import AdminLayout from "./pages/admin/AdminLayout.tsx";
 import Scoring from "./pages/admin/Scoring.tsx";
 import Questions from "./pages/admin/Questions.tsx";
@@ -49,6 +50,7 @@ const App = () => (
           <Route path="/cv-checker" element={<CvChecker />} />
           <Route path="/results" element={<Results />} />
           <Route path="/interview" element={<Interview />} />
+          <Route path="/interview/results/:sessionId" element={<RequireAuth><InterviewResult /></RequireAuth>} />
           <Route path="/admin" element={<RequireAuth adminOnly><AdminLayout /></RequireAuth>}>
             <Route index element={<Navigate to="/admin/scoring" replace />} />
             <Route path="scoring" element={<Scoring />} />
