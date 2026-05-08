@@ -43,10 +43,8 @@ export default function Navbar() {
       className="sticky top-0 z-50 w-full border-b border-border/40 glass"
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link to="/" className="flex items-center gap-2 font-bold text-lg">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
-            <Sparkles className="h-5 w-5" />
-          </span>
+        <Link to="/" className="flex items-center gap-2 font-bold text-lg group">
+          <img src="/logo2.png" alt="Intervio" className="h-9 w-9 object-contain group-hover:scale-105 transition-transform duration-300" />
           <span className="text-foreground">Intervio<span className="text-primary">.online</span></span>
         </Link>
 
