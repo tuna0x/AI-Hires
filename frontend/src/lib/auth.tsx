@@ -8,6 +8,7 @@ export type AuthUser = {
   role: string;
   verified: boolean;
   permissions: string[];
+  avatar?: string;
 };
 
 type AuthCtx = {

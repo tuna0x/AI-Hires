@@ -22,7 +22,12 @@ import {
   Cpu,
   User,
   ExternalLink,
-  XCircle
+  XCircle,
+  UploadCloud,
+  Trash2,
+  Loader2,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -82,6 +87,42 @@ export default function Interview() {
   const [targetRole, setTargetRole] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [selectedLevel, setSelectedLevel] = useState<"EASY" | "MEDIUM" | "HARD">("MEDIUM");
+  
+  // JD Upload States
+  const [jdInputMode, setJdInputMode] = useState<"text" | "file">("text");
+  const [jdFile, setJdFile] = useState<File | null>(null);
+  const [isExtractingJd, setIsExtractingJd] = useState(false);
+  const [showExtractedEditor, setShowExtractedEditor] = useState(false);
+
+  const handleJdFileChange = async (file: File) => {
+    if (!file) return;
+    
+    // Check file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("⚠️ Dung lượng file quá lớn. Vui lòng chọn tệp nhỏ hơn 5MB!");
+      return;
+    }
+    
+    setJdFile(file);
+    setIsExtractingJd(true);
+    setShowExtractedEditor(false);
+    
+    try {
+      const extractedText = await interviewApi.extractJdText(file);
+      if (extractedText && extractedText.trim()) {
+        setJobDescription(extractedText);
+        toast.success(`🎉 Tải lên và trích xuất thành công ${extractedText.split(/\s+/).filter(Boolean).length} từ từ tệp ${file.name}!`);
+      } else {
+        toast.error("⚠️ Nội dung trích xuất trống hoặc định dạng không được hỗ trợ!");
+      }
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.response?.data?.message || "❌ Trích xuất văn bản từ tệp thất bại. Vui lòng thử lại!");
+      setJdFile(null);
+    } finally {
+      setIsExtractingJd(false);
+    }
+  };
   
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
@@ -379,16 +420,157 @@ export default function Interview() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="jd" className="font-semibold text-sm">Bản mô tả công việc (JD tuyển dụng)</Label>
-                <Textarea 
-                  id="jd" 
-                  rows={6} 
-                  placeholder="Dán nội dung chi tiết bản tuyển dụng (Job Description) vào đây để AI phân tích cấu trúc, kỹ năng trọng tâm và sinh câu hỏi..." 
-                  value={jobDescription} 
-                  onChange={(e) => setJobDescription(e.target.value)} 
-                  className="mt-1.5 rounded-xl border-border/80 leading-relaxed text-sm"
-                />
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <Label className="font-semibold text-sm">Bản mô tả công việc (JD tuyển dụng)</Label>
+                  
+                  {/* Premium Mode Toggle Tabs */}
+                  <div className="inline-flex p-1 bg-muted/60 border border-border/40 rounded-xl max-w-xs text-xs font-bold self-start sm:self-auto">
+                    <button
+                      type="button"
+                      onClick={() => setJdInputMode("text")}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        jdInputMode === "text"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Dán văn bản trực tiếp
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setJdInputMode("file")}
+                      className={`px-3 py-1.5 rounded-lg transition-all ${
+                        jdInputMode === "file"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Tải lên tệp JD
+                    </button>
+                  </div>
+                </div>
+
+                {jdInputMode === "text" ? (
+                  <Textarea 
+                    id="jd" 
+                    rows={6} 
+                    placeholder="Dán nội dung chi tiết bản tuyển dụng (Job Description) vào đây để AI phân tích cấu trúc, kỹ năng trọng tâm và sinh câu hỏi..." 
+                    value={jobDescription} 
+                    onChange={(e) => setJobDescription(e.target.value)} 
+                    className="rounded-xl border-border/80 leading-relaxed text-sm focus-visible:ring-primary/40"
+                  />
+                ) : (
+                  <div className="space-y-3">
+                    {!jdFile ? (
+                      <div 
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const file = e.dataTransfer.files?.[0];
+                          if (file) handleJdFileChange(file);
+                        }}
+                        className={`border-2 border-dashed border-border/80 hover:border-primary/50 bg-muted/15 hover:bg-primary/[0.02] rounded-2xl p-6 text-center cursor-pointer transition-all ${
+                          isExtractingJd ? "opacity-60 pointer-events-none" : ""
+                        }`}
+                        onClick={() => {
+                          const input = document.createElement("input");
+                          input.type = "file";
+                          input.accept = ".pdf,.docx,.txt";
+                          input.onchange = (e) => {
+                            const file = (e.target as HTMLInputElement).files?.[0];
+                            if (file) handleJdFileChange(file);
+                          };
+                          input.click();
+                        }}
+                      >
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                            <UploadCloud className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">Kéo thả file JD vào đây hoặc click để chọn file</p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">Hỗ trợ PDF, DOCX, TXT · Tối đa 5MB</p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {/* File details card */}
+                        <div className="flex items-center justify-between p-4 bg-emerald-500/[0.04] border border-emerald-500/20 rounded-2xl">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="h-9 w-9 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 shrink-0">
+                              <FileText className="h-4.5 w-4.5" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-bold text-foreground truncate max-w-[280px]" title={jdFile.name}>
+                                {jdFile.name}
+                              </p>
+                              <p className="text-[10px] text-muted-foreground">
+                                {(jdFile.size / 1024).toFixed(1)} KB · Trích xuất thành công {jobDescription.split(/\s+/).filter(Boolean).length} từ
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setShowExtractedEditor(!showExtractedEditor)}
+                              className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                            >
+                              {showExtractedEditor ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setJdFile(null);
+                                setJobDescription("");
+                                setShowExtractedEditor(false);
+                              }}
+                              className="h-8 w-8 p-0 rounded-lg text-destructive hover:text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+
+                        {/* Collapsible extracted text preview/editor */}
+                        <AnimatePresence>
+                          {showExtractedEditor && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="overflow-hidden space-y-1.5"
+                            >
+                              <Label htmlFor="extracted-jd" className="text-xs text-muted-foreground font-semibold">
+                                Biên tập lại văn bản trích xuất (nếu cần)
+                              </Label>
+                              <Textarea
+                                id="extracted-jd"
+                                rows={6}
+                                value={jobDescription}
+                                onChange={(e) => setJobDescription(e.target.value)}
+                                className="rounded-xl border-border/80 leading-relaxed text-xs focus-visible:ring-primary/40 bg-muted/10"
+                              />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    )}
+
+                    {/* Extraction progress indicator */}
+                    {isExtractingJd && (
+                      <div className="flex items-center gap-2 justify-center py-2 text-xs font-semibold text-primary">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        AI đang đọc tệp và trích xuất thông tin tuyển dụng...
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between border-t border-border/60 pt-6">

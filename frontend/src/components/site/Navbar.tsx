@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, Sparkles, LogOut, Shield, User as UserIcon, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,7 +14,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const links = [
   { href: "/dashboard", label: "Tổng quan" },
@@ -49,44 +49,45 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden lg:flex items-center gap-1">
-          {links.map((l) => (
-            <Link
-              key={l.href}
-              to={l.href}
-              className={cn(
-                "px-3 py-2 text-sm font-medium rounded-lg transition-colors",
-                pathname === l.href
-                  ? "text-primary bg-primary-light"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted",
-              )}
-            >
-              {l.label}
-            </Link>
-          ))}
+          {links.map((l) => {
+            const isActive = pathname === l.href || (l.href !== "/" && pathname.startsWith(l.href));
+            return (
+              <Link
+                key={l.href}
+                to={l.href}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium rounded-lg transition-all duration-300",
+                  isActive
+                    ? "text-primary bg-primary-light font-semibold"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted",
+                )}
+              >
+                {l.label}
+              </Link>
+            );
+          })}
         </div>
 
         <div className="hidden lg:flex items-center gap-2">
-          {isAdmin && (
-            <Button variant="ghost" asChild><Link to="/admin"><Shield className="h-4 w-4" /> Admin</Link></Button>
-          )}
           {user ? (
             <div className="flex items-center gap-4">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full transition-all hover:opacity-95">
-                    <Avatar className="h-9 w-9 border border-primary/20 bg-primary/5 text-primary">
+                  <button className="relative group flex items-center focus:outline-none rounded-full transition-all">
+                    {/* Avatar tròn với viền mỏng và hiệu ứng hover phát sáng ngọc lục bảo */}
+                    <Avatar className="h-9 w-9 border border-primary/20 bg-primary/5 text-primary group-hover:border-primary/50 group-hover:scale-105 transition-all duration-300 shadow-sm group-hover:shadow-[0_0_12px_rgba(16,185,129,0.25)]">
+                      {user?.avatar && (
+                        <AvatarImage src={user.avatar} className="object-cover" />
+                      )}
                       <AvatarFallback className="font-bold text-xs bg-primary/10 text-primary">
-                        {user.name
-                          ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
-                          : user.email.slice(0, 2).toUpperCase()}
+                        {user?.name && user.name.trim() !== ""
+                          ? user.name.trim().split(/\s+/).map((n) => n[0]).slice(0, 2).join("").toUpperCase()
+                          : (user?.email ? user.email.slice(0, 2).toUpperCase() : "US")}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="text-sm font-semibold text-foreground max-w-[120px] truncate hidden md:inline-block">
-                      {user.name || user.email.split("@")[0]}
-                    </span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 mt-1 rounded-2xl border-border/60 shadow-card p-2 bg-card/95 backdrop-blur-md">
+                <DropdownMenuContent align="end" className="w-56 mt-2 rounded-2xl border-border/60 shadow-elegant p-2 bg-card/95 backdrop-blur-md">
                   <DropdownMenuLabel className="px-3 py-2 font-medium">
                     <div className="flex flex-col">
                       <span className="text-sm font-bold text-foreground truncate">{user.name || "Cá nhân"}</span>
@@ -94,6 +95,19 @@ export default function Navbar() {
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator className="bg-border/60" />
+                  
+                  {/* Tích hợp lối tắt Admin ngay trong danh mục tài khoản của Quản trị viên */}
+                  {isAdmin && (
+                    <>
+                      <DropdownMenuItem asChild className="rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer text-primary bg-primary/5 hover:bg-primary-light hover:text-primary transition-all duration-200">
+                        <Link to="/admin" className="flex items-center gap-2">
+                          <Shield className="h-4 w-4" /> Bảng quản trị (Admin)
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator className="bg-border/60" />
+                    </>
+                  )}
+
                   <DropdownMenuItem asChild className="rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer text-muted-foreground hover:text-foreground">
                     <Link to="/profile" className="flex items-center gap-2">
                       <UserIcon className="h-4 w-4" /> Trang cá nhân
@@ -132,34 +146,46 @@ export default function Navbar() {
         </button>
       </nav>
 
-      {open && (
-        <motion.div
-          initial={{ height: 0, opacity: 0 }}
-          animate={{ height: "auto", opacity: 1 }}
-          className="lg:hidden border-t border-border/40 bg-background"
-        >
-          <div className="px-4 py-3 space-y-1">
-            {links.map((l) => (
-              <Link
-                key={l.href}
-                to={l.href}
-                onClick={() => setOpen(false)}
-                className="block px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-muted"
-              >
-                {l.label}
-              </Link>
-            ))}
-            {user ? (
-              <Button onClick={() => { setOpen(false); handleSignOut(); }} variant="outline" className="w-full mt-2"><LogOut className="h-4 w-4" /> Đăng xuất</Button>
-            ) : (
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                <Button asChild variant="outline"><Link to="/login" onClick={() => setOpen(false)}>Đăng nhập</Link></Button>
-                <Button asChild className="bg-gradient-primary text-primary-foreground"><Link to="/signup" onClick={() => setOpen(false)}>Bắt đầu</Link></Button>
-              </div>
-            )}
-          </div>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2, ease: "easeInOut" }}
+            className="lg:hidden border-t border-border/40 bg-background/95 backdrop-blur-lg overflow-hidden"
+          >
+            <div className="px-4 py-3 space-y-1">
+              {links.map((l) => {
+                const isActive = pathname === l.href || (l.href !== "/" && pathname.startsWith(l.href));
+                return (
+                  <Link
+                    key={l.href}
+                    to={l.href}
+                    onClick={() => setOpen(false)}
+                    className={cn(
+                      "block px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200",
+                      isActive
+                        ? "text-primary bg-primary-light font-semibold"
+                        : "text-foreground hover:bg-muted"
+                    )}
+                  >
+                    {l.label}
+                  </Link>
+                );
+              })}
+              {user ? (
+                <Button onClick={() => { setOpen(false); handleSignOut(); }} variant="outline" className="w-full mt-2"><LogOut className="h-4 w-4" /> Đăng xuất</Button>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  <Button asChild variant="outline"><Link to="/login" onClick={() => setOpen(false)}>Đăng nhập</Link></Button>
+                  <Button asChild className="bg-gradient-primary text-primary-foreground"><Link to="/signup" onClick={() => setOpen(false)}>Bắt đầu</Link></Button>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { useForm, useWatch, Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Loader2, Mail, Lock, Eye, EyeOff, Sparkles, Check, X, User as UserIcon } from "lucide-react";
@@ -56,7 +56,7 @@ export default function Signup() {
   const {
     register,
     handleSubmit,
-    watch,
+    control,
     formState: { errors },
   } = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -67,15 +67,6 @@ export default function Signup() {
       confirmPassword: "",
     },
   });
-
-
-
-  const passwordValue = watch("password", "");
-
-  // Đánh giá các tiêu chí mật khẩu trực quan (Password strength checklist)
-  const isMinLength = passwordValue.length >= 8;
-  const hasLetter = /[A-Za-z]/.test(passwordValue);
-  const hasNumberOrSpec = /[0-9\W]/.test(passwordValue);
 
   if (!loading && user) return <Navigate to="/dashboard" replace />;
 
@@ -196,34 +187,8 @@ export default function Signup() {
             </span>
           )}
 
-          {/* Dynamic Compact Password Strength Bar */}
-          {passwordValue && (
-            <div className="space-y-1 mt-1.5 animate-fadeIn">
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground/75">
-                <span>Độ mạnh mật khẩu:</span>
-                <span className={
-                  !isMinLength ? "text-destructive font-medium" :
-                  (!hasLetter || !hasNumberOrSpec) ? "text-amber-500 font-medium" : "text-emerald-400 font-bold"
-                }>
-                  {!isMinLength ? "Yếu" :
-                   (!hasLetter || !hasNumberOrSpec) ? "Trung bình" : "Mạnh (Đạt chuẩn)"}
-                </span>
-              </div>
-              <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full transition-all duration-300 ${
-                    !isMinLength ? "w-1/3 bg-destructive" :
-                    (!hasLetter || !hasNumberOrSpec) ? "w-2/3 bg-amber-500" : "w-full bg-emerald-500"
-                  }`}
-                />
-              </div>
-              {(!isMinLength || !hasLetter || !hasNumberOrSpec) && (
-                <div className="text-[10px] text-muted-foreground/55 leading-tight">
-                  Yêu cầu: {!isMinLength && "tối thiểu 8 ký tự"} {!hasLetter && "• có chữ cái"} {!hasNumberOrSpec && "• số/ký tự đặc biệt"}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Dynamic Compact Password Strength Bar (Isolated re-render) */}
+          <PasswordStrengthIndicator control={control} />
         </div>
 
         {/* Confirm Password Field */}
@@ -285,5 +250,48 @@ export default function Signup() {
           Bằng việc đăng ký, bạn đồng ý với Điều khoản Sử dụng và Chính sách Bảo mật của Intervio.
         </p>
       </form>
+  );
+}
+
+// Component con cô lập re-render khi gõ mật khẩu
+function PasswordStrengthIndicator({ control }: { control: Control<SignupFormData> }) {
+  const passwordValue = useWatch({
+    control,
+    name: "password",
+    defaultValue: "",
+  });
+
+  if (!passwordValue) return null;
+
+  const isMinLength = passwordValue.length >= 8;
+  const hasLetter = /[A-Za-z]/.test(passwordValue);
+  const hasNumberOrSpec = /[0-9\W]/.test(passwordValue);
+
+  return (
+    <div className="space-y-1 mt-1.5 animate-fadeIn">
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground/75">
+        <span>Độ mạnh mật khẩu:</span>
+        <span className={
+          !isMinLength ? "text-destructive font-medium" :
+          (!hasLetter || !hasNumberOrSpec) ? "text-amber-500 font-medium" : "text-emerald-400 font-bold"
+        }>
+          {!isMinLength ? "Yếu" :
+           (!hasLetter || !hasNumberOrSpec) ? "Trung bình" : "Mạnh (Đạt chuẩn)"}
+        </span>
+      </div>
+      <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
+        <div 
+          className={`h-full transition-all duration-300 ${
+            !isMinLength ? "w-1/3 bg-destructive" :
+            (!hasLetter || !hasNumberOrSpec) ? "w-2/3 bg-amber-500" : "w-full bg-emerald-500"
+          }`}
+        />
+      </div>
+      {(!isMinLength || !hasLetter || !hasNumberOrSpec) && (
+        <div className="text-[10px] text-muted-foreground/55 leading-tight">
+          Yêu cầu: {!isMinLength && "tối thiểu 8 ký tự"} {!hasLetter && "• có chữ cái"} {!hasNumberOrSpec && "• số/ký tự đặc biệt"}
+        </div>
+      )}
+    </div>
   );
 }
