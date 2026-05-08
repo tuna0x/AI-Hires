@@ -957,7 +957,6 @@ function SectionAnalysis({ result }: { result: AnalysisResult }) {
 }
 
 function Improve({ result }: { result: AnalysisResult }) {
-  const [applied, setApplied] = useState<number[]>([]);
   return (
     <section id="improve" className="scroll-mt-24 space-y-4">
       <div className="flex items-center gap-2.5 border-b border-border/40 pb-3">
@@ -970,7 +969,6 @@ function Improve({ result }: { result: AnalysisResult }) {
       
       <div className="mt-5 space-y-4">
         {result.suggestions.map((s, i) => {
-          const isApplied = applied.includes(i);
           return (
             <motion.div key={i} initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.05 }} className="bg-card rounded-2xl border border-border/60 p-6 shadow-soft space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
@@ -990,14 +988,7 @@ function Improve({ result }: { result: AnalysisResult }) {
               </div>
               
               <div className="flex gap-2.5 pt-1">
-                <Button
-                  size="sm"
-                  className={`rounded-xl font-bold ${isApplied ? "bg-emerald-500 text-white hover:bg-emerald-600" : "bg-gradient-primary text-primary-foreground shadow-sm hover:opacity-95"}`}
-                  onClick={() => { setApplied([...applied, i]); toast.success("Đã áp dụng đề xuất cải thiện vào CV!"); }}
-                >
-                  {isApplied ? <><CheckCircle2 className="mr-1.5 h-4 w-4" /> Đã áp dụng</> : "Áp dụng đề xuất"}
-                </Button>
-                <Button size="sm" variant="outline" className="rounded-xl border-2 font-bold" onClick={() => { navigator.clipboard.writeText(s.after); toast.success("Đã sao chép phiên bản tối ưu!"); }}>
+                <Button size="sm" className="rounded-xl font-bold bg-gradient-primary text-primary-foreground shadow-sm hover:opacity-95" onClick={() => { navigator.clipboard.writeText(s.after); toast.success("Đã sao chép phiên bản tối ưu!"); }}>
                   <Copy className="mr-1.5 h-4 w-4" /> Sao chép văn bản
                 </Button>
               </div>
