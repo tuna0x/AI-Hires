@@ -29,6 +29,7 @@ public class RestLoginDTO {
         private Boolean verified;
         private String role;
         private List<String> permissions;
+        private String avatar;
     }
 
     @Getter

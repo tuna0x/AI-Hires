@@ -69,6 +69,7 @@ public class SecurityConfig {
                                 "/api/v1/auth/logout",
                                 "/api/v1/auth/social-login",
                                 "/api/v1/resumes/upload",
+                                "/api/v1/interviews/extract-text",
                                 "/websocket/**",
                                 "/actuator/health",
                                 "/v3/api-docs",

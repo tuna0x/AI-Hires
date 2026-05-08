@@ -20,6 +20,21 @@ export const interviewApi = {
     return res.data;
   },
 
+  extractJdText: async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await apiClient.post<any, RestResponse<{ text: string }>>(
+      "/api/v1/interviews/extract-text",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return res.data.text;
+  },
+
   getSession: async (sessionId: number): Promise<InterviewSession> => {
     const res = await apiClient.get<any, RestResponse<InterviewSession>>(`/api/v1/interviews/${sessionId}`);
     return res.data;

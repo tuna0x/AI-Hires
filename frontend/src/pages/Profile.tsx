@@ -40,6 +40,8 @@ export default function Profile() {
   const [gender, setGender] = useState("MALE");
   const [address, setAddress] = useState("");
   const [saving, setSaving] = useState(false);
+  const [avatar, setAvatar] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   // Resume Tab States
   const [resumes, setResumes] = useState<any[]>([]);
@@ -51,7 +53,7 @@ export default function Profile() {
 
 
 
-  // Fetch complete profile on mount
+  // Load complete profile and history on mount for instant tab switching
   useEffect(() => {
     async function loadProfile() {
       if (!user?.id) return;
@@ -65,6 +67,7 @@ export default function Profile() {
           setAge(d.age || "");
           setGender(d.gender || "MALE");
           setAddress(d.address || "");
+          setAvatar(d.avatar || "");
         }
       } catch (err) {
         console.error("Error fetching user profile:", err);
@@ -73,17 +76,11 @@ export default function Profile() {
         setProfileLoading(false);
       }
     }
+    
     loadProfile();
+    loadResumes();
+    loadSessions();
   }, [user]);
-
-  // Lazy load resumes when clicking on CV history tab
-  useEffect(() => {
-    if (activeTab === "resumes") {
-      loadResumes();
-    } else if (activeTab === "sessions") {
-      loadSessions();
-    }
-  }, [activeTab]);
 
   async function loadResumes() {
     setResumesLoading(true);
@@ -115,18 +112,59 @@ export default function Profile() {
     }
   }
 
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check size limit (max 1.5MB for Base64 storage in database)
+    if (file.size > 1.5 * 1024 * 1024) {
+      toast.error("⚠️ Dung lượng ảnh đại diện quá lớn. Vui lòng chọn ảnh nhỏ hơn 1.5MB!");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = async () => {
+      const base64String = reader.result as string;
+      setAvatarUploading(true);
+      try {
+        // Only send ID and avatar to bypass validation checks on other unchanged fields
+        await apiClient.put("/api/v1/users", {
+          id: user?.id,
+          avatar: base64String,
+        });
+        setAvatar(base64String);
+        toast.success("🎉 Cập nhật ảnh đại diện thành công!");
+        await refreshUser(); // Sync top-right navbar instantly!
+      } catch (err) {
+        console.error(err);
+        toast.error("Không thể lưu ảnh đại diện. Vui lòng thử lại!");
+      } finally {
+        setAvatarUploading(false);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
   async function handleUpdateProfile(e: React.FormEvent) {
     e.preventDefault();
     if (!user?.id) return;
+
+    // Frontend validation
+    if (!fullName.trim()) {
+      toast.error("⚠️ Họ và tên không được để trống!");
+      return;
+    }
+
     setSaving(true);
     try {
       await apiClient.put("/api/v1/users", {
         id: user.id,
-        fullName,
-        phoneNumber,
+        fullName: fullName.trim(),
+        phoneNumber: phoneNumber.trim() || null, // convert empty string to null to bypass database @Pattern validator
         age: age ? parseInt(age.toString()) : null,
         gender,
-        address,
+        address: address.trim() || null, // convert empty string to null
+        avatar: avatar || null,
       });
       toast.success("🎉 Cập nhật thông tin hồ sơ thành công!");
       await refreshUser(); // sync with Navbar names
@@ -163,8 +201,35 @@ export default function Profile() {
           <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-br from-primary/10 to-transparent rounded-bl-full pointer-events-none" />
           
           <div className="flex items-center gap-5">
-            <div className="h-16 w-16 lg:h-20 lg:w-20 rounded-2xl bg-gradient-primary text-primary-foreground flex items-center justify-center text-2xl lg:text-3xl font-extrabold shadow-glow">
-              {fullName ? fullName.split(" ").pop()?.slice(0, 2).toUpperCase() : user?.email.slice(0, 2).toUpperCase()}
+            <div className="relative group shrink-0">
+              <div className="h-16 w-16 lg:h-20 lg:w-20 rounded-2xl overflow-hidden bg-gradient-primary text-primary-foreground flex items-center justify-center text-2xl lg:text-3xl font-extrabold shadow-glow border border-primary/20 relative">
+                {avatarUploading ? (
+                  <div className="absolute inset-0 bg-background/60 flex items-center justify-center">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  </div>
+                ) : avatar ? (
+                  <img src={avatar} alt="Avatar" className="h-full w-full object-cover" />
+                ) : (
+                  fullName ? fullName.split(" ").pop()?.slice(0, 2).toUpperCase() : user?.email.slice(0, 2).toUpperCase()
+                )}
+
+                {/* Hover Edit Overlay */}
+                <label 
+                  htmlFor="avatar-upload" 
+                  className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[10px] lg:text-xs font-bold text-white cursor-pointer transition-all duration-300 gap-1"
+                >
+                  <User className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
+                  <span>Thay đổi</span>
+                </label>
+              </div>
+              <input 
+                id="avatar-upload" 
+                type="file" 
+                accept="image/png, image/jpeg, image/jpg, image/webp" 
+                className="hidden" 
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+              />
             </div>
             <div className="space-y-1.5">
               <h1 className="text-xl lg:text-2xl font-extrabold text-foreground flex items-center gap-2">
@@ -189,15 +254,26 @@ export default function Profile() {
         {/* Tabbed content space */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
           
-          <TabsList className="bg-muted/40 p-1 border border-border/60 rounded-2xl grid grid-cols-3 max-w-lg">
+          {/* h-auto giúp thanh tab tự động ôm vừa vặn và cách viền p-1 hoàn hảo không bị tràn */}
+          <TabsList className="h-auto bg-muted/40 p-1 border border-border/60 rounded-2xl grid grid-cols-3 max-w-lg">
             <TabsTrigger value="info" className="rounded-xl font-bold text-xs py-2.5 transition-all">
               <User className="h-4 w-4 mr-1.5 shrink-0" /> Hồ sơ cá nhân
             </TabsTrigger>
-            <TabsTrigger value="resumes" className="rounded-xl font-bold text-xs py-2.5 transition-all">
+            <TabsTrigger value="resumes" className="rounded-xl font-bold text-xs py-2.5 transition-all flex items-center justify-center">
               <FileText className="h-4 w-4 mr-1.5 shrink-0" /> Lịch sử quét CV
+              {resumes.length > 0 && (
+                <span className="ml-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">
+                  {resumes.length}
+                </span>
+              )}
             </TabsTrigger>
-            <TabsTrigger value="sessions" className="rounded-xl font-bold text-xs py-2.5 transition-all">
+            <TabsTrigger value="sessions" className="rounded-xl font-bold text-xs py-2.5 transition-all flex items-center justify-center">
               <Activity className="h-4 w-4 mr-1.5 shrink-0" /> Phỏng vấn thử
+              {sessions.length > 0 && (
+                <span className="ml-1.5 rounded-full bg-primary/10 px-2 py-0.5 text-[9px] font-bold text-primary">
+                  {sessions.length}
+                </span>
+              )}
             </TabsTrigger>
           </TabsList>
 

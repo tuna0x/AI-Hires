@@ -112,6 +112,7 @@ public class AuthenticationService {
         userLogin.setVerified(true); // Default to true for now
         userLogin.setRole(role.getName());
         userLogin.setPermissions(permissions);
+        userLogin.setAvatar(user.getUserProfile() != null ? user.getUserProfile().getAvatar() : null);
 
         RestLoginDTO res = new RestLoginDTO();
         res.setUser(userLogin);
@@ -163,6 +164,7 @@ public class AuthenticationService {
         userLogin.setVerified(true);
         userLogin.setRole(role.getName());
         userLogin.setPermissions(permissions);
+        userLogin.setAvatar(user.getUserProfile() != null ? user.getUserProfile().getAvatar() : null);
         return new RestLoginDTO.UserGetAccount(userLogin);
     }
 

@@ -123,13 +123,32 @@ export default function AuthLayout() {
       }
     };
 
-    // Safely wait for container to be ready in the DOM
-    const timer = setInterval(() => {
-      if ((window as any).google?.accounts?.id && document.getElementById("googleAuthBtn")) {
-        clearInterval(timer);
+    // Tránh dùng setInterval nếu tài nguyên và container đã sẵn sàng ngay lập tức
+    const checkAndRender = () => {
+      if (!isMounted) return false;
+      const googleClient = (window as any).google;
+      const btnContainer = document.getElementById("googleAuthBtn");
+      
+      if (googleClient?.accounts?.id && btnContainer) {
         renderGoogleBtn();
+        return true;
       }
-    }, 80);
+      return false;
+    };
+
+    // Kiểm tra trực tiếp để hiển thị ngay tức thì (giảm trễ 80ms)
+    if (checkAndRender()) {
+      return () => {
+        isMounted = false;
+      };
+    }
+
+    // Chỉ dùng vòng lặp nếu Google Client hoặc DOM chưa sẵn sàng tải xong
+    const timer = setInterval(() => {
+      if (checkAndRender()) {
+        clearInterval(timer);
+      }
+    }, 50);
 
     return () => {
       isMounted = false;

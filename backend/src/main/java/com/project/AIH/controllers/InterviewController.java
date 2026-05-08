@@ -7,11 +7,13 @@ import com.project.AIH.models.InterviewReport;
 import com.project.AIH.models.User;
 import com.project.AIH.services.InterviewService;
 import com.project.AIH.services.UserService;
+import com.project.AIH.services.ResumeParserService;
 import com.project.AIH.utils.SecurityUtil;
 import com.project.AIH.utils.annotation.ApiMessage;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -23,6 +25,18 @@ public class InterviewController {
 
     private final InterviewService interviewService;
     private final UserService userService;
+    private final ResumeParserService resumeParserService;
+
+    @PostMapping("/extract-text")
+    @ApiMessage("Extract text from file successfully")
+    public ResponseEntity<Map<String, String>> extractText(@RequestParam("file") MultipartFile file) {
+        try {
+            String text = resumeParserService.extractText(file.getInputStream());
+            return ResponseEntity.ok(Map.of("text", text));
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể trích xuất văn bản từ tệp tin JD: " + e.getMessage(), e);
+        }
+    }
 
     @PostMapping("/start")
     public ResponseEntity<InterviewSession> startInterview(@RequestBody Map<String, Object> request) {
