@@ -45,7 +45,7 @@ export default function CvChecker() {
   const [progress, setProgress] = useState(0);
   const [isTakingLonger, setIsTakingLonger] = useState(false);
   const [successFinished, setSuccessFinished] = useState(false);
-  
+
   const uploadCvMutation = useUploadCvMutation();
 
   const startAnalysis = useCallback((selectedFile: File | string) => {
@@ -226,8 +226,8 @@ export default function CvChecker() {
                         {progress >= 100 ? "Phân tích CV hoàn tất!" : "Đang phân tích CV của bạn"}
                       </h3>
                       <p className="text-xs text-slate-300 mt-1.5 leading-relaxed font-medium">
-                        {progress >= 100 
-                          ? "Đã chấm điểm toàn bộ nội dung thành công." 
+                        {progress >= 100
+                          ? "Đã chấm điểm toàn bộ nội dung thành công."
                           : `AI đang phân tích CV · Giai đoạn ${currentStageNum} / 4`
                         }
                       </p>
@@ -259,7 +259,7 @@ export default function CvChecker() {
                       key={stage.id}
                       className="relative flex items-start gap-4"
                       initial={{ opacity: 0.4, x: 0 }}
-                      animate={{ 
+                      animate={{
                         opacity: isActive || isCompleted ? 1 : 0.4,
                         x: isActive ? 6 : 0,
                         scale: isActive ? 1.01 : 1
@@ -371,7 +371,7 @@ export default function CvChecker() {
                     <div>
                       <p className="text-xs font-bold text-blue-400">Trình xử lý AI đang hoạt động</p>
                       <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
-                        Phân tích chuẩn tuyển dụng ATS diễn ra tự động trong 8 giây. Vui lòng không đóng tab hoặc tải lại trang này.
+                        Phân tích chuẩn tuyển dụng ATS diễn ra tự động từ 10 - 30 giây. Vui lòng không đóng tab hoặc tải lại trang này.
                       </p>
                     </div>
                   </div>

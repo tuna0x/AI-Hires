@@ -30,6 +30,7 @@ public class ResumeService {
     private final ScanMapperService scanMapperService;
     
     private final ResumeRepository resumeRepository;
+    private final ResumeScanRepository resumeScanRepository;
     private final JobRepository jobRepository;
     private final ApplicationRepository applicationRepository;
     private final CvScoreRepository cvScoreRepository;
@@ -105,7 +106,67 @@ public class ResumeService {
         String folderPath = (user != null) ? "resumes/" + user.getId() : "resumes/guest";
         log.info("Uploading and parsing resume for user: {}", userEmail);
 
-        // 1. Upload CV to MinIO
+        // Calculate file hash FIRST to check for cached results
+        byte[] fileBytes;
+        try {
+            fileBytes = file.getBytes();
+        } catch (Exception e) {
+            fileBytes = new byte[0];
+        }
+        String fileHash = calculateFileHash(fileBytes);
+
+        // Check if we have an existing scan for this hash
+        java.util.Optional<ResumeScan> existingScan = resumeScanRepository.findByFileHash(fileHash);
+        if (existingScan.isPresent()) {
+            ResumeScan scan = existingScan.get();
+            log.info("Found cached ResumeScan for file hash: {}. Reconstructing JSON...", fileHash);
+            
+            // Check if there's an existing Resume with this same file name/url
+            java.util.Optional<Resume> existingResume = resumeRepository.findByFileUrl(scan.getFileName());
+            if (existingResume.isPresent()) {
+                Resume cachedResume = existingResume.get();
+                
+                boolean isSameUser = false;
+                if (user == null && cachedResume.getUser() == null) {
+                    isSameUser = true;
+                } else if (user != null && cachedResume.getUser() != null && user.getId().equals(cachedResume.getUser().getId())) {
+                    isSameUser = true;
+                }
+                
+                if (isSameUser) {
+                    log.info("Returning existing cached Resume (ID: {}) for the same user.", cachedResume.getId());
+                    return cachedResume;
+                }
+                
+                // If it belongs to a different user, create a new Resume record for the current user,
+                // but populate all parsed details from the cached resume (takes ~0ms and avoids Gemini)
+                log.info("Copying parsed CV data from cache for different user.");
+                Resume newResume = Resume.builder()
+                        .user(user)
+                        .fileUrl(scan.getFileName()) // Reuse the existing file Url
+                        .contentType(file.getContentType())
+                        .fileSize(file.getSize())
+                        .extractedText(cachedResume.getExtractedText())
+                        .parsedData(cachedResume.getParsedData())
+                        .parseStatus(cachedResume.getParseStatus())
+                        .build();
+                
+                // Copy detailed fields to save database queries/calls
+                parseAndPopulateDetailedResume(newResume, cachedResume.getExtractedText());
+                newResume = resumeRepository.save(newResume);
+                
+                // Also create a ResumeScan link for this new user so they can find their scan result in their scan list
+                try {
+                    scanMapperService.saveScanResult(user, scan.getFileName(), fileHash, cachedResume.getParsedData());
+                } catch (Exception e) {
+                    log.error("Failed to copy scan result for new user: {}", e.getMessage());
+                }
+                
+                return newResume;
+            }
+        }
+
+        // 1. Upload CV to MinIO (Cache Miss path)
         String fileName = fileService.uploadFile(file, folderPath);
 
         // 2. Extract Text
@@ -115,14 +176,6 @@ public class ResumeService {
         } catch (Exception e) {
             log.error("Failed to extract text: {}", e.getMessage());
         }
-
-        byte[] fileBytes;
-        try {
-            fileBytes = file.getBytes();
-        } catch (Exception e) {
-            fileBytes = new byte[0];
-        }
-        String fileHash = calculateFileHash(fileBytes);
 
         // 3. AI Analysis (General)
         String parsedData = "";
