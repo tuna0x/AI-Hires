@@ -16,6 +16,7 @@ type AuthCtx = {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
+  loginWithGoogle: (credential: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -26,6 +27,7 @@ const Ctx = createContext<AuthCtx>({
   isAdmin: false,
   login: async () => {},
   register: async () => {},
+  loginWithGoogle: async () => {},
   signOut: async () => {},
   refreshUser: async () => {},
 });
@@ -118,6 +120,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  async function loginWithGoogle(credential: string) {
+    const response: any = await apiClient.post("/api/v1/auth/google", { credential });
+    const accessToken = response?.data?.access_token;
+    const loggedUser = response?.data?.user;
+    if (accessToken && loggedUser) {
+      localStorage.setItem("nextstep_access_token", accessToken);
+      setUser(loggedUser);
+    } else {
+      throw new Error("Thông tin phản hồi đăng nhập bằng Google từ hệ thống không hợp lệ.");
+    }
+  }
+
   const value = useMemo<AuthCtx>(
     () => ({
       user,
@@ -125,6 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       login,
       register,
+      loginWithGoogle,
       signOut,
       refreshUser: syncSession,
     }),

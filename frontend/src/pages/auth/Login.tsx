@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -28,7 +28,7 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function Login() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, loginWithGoogle } = useAuth();
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const next = params.get("next") || "/dashboard";
@@ -48,6 +48,49 @@ export default function Login() {
       password: "",
     },
   });
+ 
+  useEffect(() => {
+    const initGoogle = () => {
+      const btnContainer = document.getElementById("googleSignInBtn");
+      if ((window as any).google?.accounts?.id && btnContainer) {
+        (window as any).google.accounts.id.initialize({
+          client_id: "683526189569-4rcm86be6336e1n93hmdgq38cl0gdrgp.apps.googleusercontent.com",
+          callback: async (response: any) => {
+            setBusy(true);
+            try {
+              await loginWithGoogle(response.credential);
+              toast.success("Đăng nhập bằng tài khoản Google thành công!");
+              navigate(next, { replace: true });
+            } catch (err: any) {
+              console.error("Google auth fail:", err);
+              toast.error(err.message || "Đăng nhập Google thất bại.");
+            } finally {
+              setBusy(false);
+            }
+          },
+        });
+        (window as any).google.accounts.id.renderButton(
+          btnContainer,
+          {
+            theme: "filled_black",
+            size: "large",
+            width: "386",
+            text: "signin_with",
+            shape: "pill",
+          }
+        );
+      }
+    };
+
+    const timer = setInterval(() => {
+      if ((window as any).google?.accounts?.id) {
+        clearInterval(timer);
+        initGoogle();
+      }
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [loginWithGoogle, navigate, next]);
 
   // Tránh hiển thị form nếu người dùng đã đăng nhập thành công
   if (!loading && user) return <Navigate to={next} replace />;
@@ -71,8 +114,8 @@ export default function Login() {
     <AuthShell
       title="Chào mừng trở lại"
       subtitle="Đăng nhập để tiếp tục tối ưu hóa CV và bứt phá sự nghiệp."
-      seoTitle="Đăng nhập — NextStep AI"
-      seoDescription="Đăng nhập tài khoản NextStep AI để phân tích CV, chấm điểm ATS và mô phỏng phỏng vấn thông minh."
+      seoTitle="Đăng nhập — Intervio"
+      seoDescription="Đăng nhập tài khoản Intervio để phân tích CV, chấm điểm ATS và mô phỏng phỏng vấn thông minh."
       path="/login"
       footer={
         <>
@@ -174,6 +217,18 @@ export default function Login() {
             </span>
           )}
         </Button>
+
+        {/* Separator */}
+        <div className="relative flex py-1.5 items-center">
+          <div className="flex-grow border-t border-white/10"></div>
+          <span className="flex-shrink mx-3 text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">Hoặc</span>
+          <div className="flex-grow border-t border-white/10"></div>
+        </div>
+
+        {/* Google Sign In Button Container */}
+        <div className="w-full flex justify-center py-0.5">
+          <div id="googleSignInBtn" className="min-h-[40px] w-full" />
+        </div>
       </form>
     </AuthShell>
   );

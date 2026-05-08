@@ -102,6 +102,17 @@ public class AuthenticationController {
                 .build();
     }
 
+    @PostMapping("/google")
+    @ApiMessage("Google login successfully")
+    public ResponseEntity<RestLoginDTO> googleLogin(
+            @Valid @RequestBody GoogleTokenRequest request,
+            HttpServletResponse response
+    ) {
+        RestLoginDTO res = service.googleLogin(request.getCredential());
+        setRefreshTokenCookie(response, res.getRefreshToken());
+        return ResponseEntity.ok(res);
+    }
+
     private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
         ResponseCookie cookie = ResponseCookie.from("refresh_token", refreshToken)
                 .httpOnly(true)
@@ -111,5 +122,18 @@ public class AuthenticationController {
                 .maxAge(refreshTokenExpiration)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    public static class GoogleTokenRequest {
+        @jakarta.validation.constraints.NotBlank(message = "Credential token is required")
+        private String credential;
+
+        public String getCredential() {
+            return credential;
+        }
+
+        public void setCredential(String credential) {
+            this.credential = credential;
+        }
     }
 }

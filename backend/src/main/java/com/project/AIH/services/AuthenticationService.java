@@ -30,6 +30,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final SecurityUtil securityUtil;
     private final AuthenticationManager authenticationManager;
+    private final org.springframework.web.client.RestTemplate restTemplate;
 
     @Transactional
     public RestLoginDTO register(RegisterRequest request) {
@@ -163,5 +164,57 @@ public class AuthenticationService {
         userLogin.setRole(role.getName());
         userLogin.setPermissions(permissions);
         return new RestLoginDTO.UserGetAccount(userLogin);
+    }
+
+    @Transactional
+    public RestLoginDTO googleLogin(String credential) {
+        log.info("Processing Google login for token credential");
+        String url = "https://oauth2.googleapis.com/tokeninfo?id_token=" + credential;
+        GoogleTokenInfo tokenInfo;
+        try {
+            tokenInfo = restTemplate.getForObject(url, GoogleTokenInfo.class);
+        } catch (Exception e) {
+            log.error("Failed to verify Google ID token with tokeninfo API: {}", e.getMessage());
+            throw new RuntimeException("Xác thực Google ID Token thất bại: " + e.getMessage());
+        }
+
+        if (tokenInfo == null || tokenInfo.getEmail() == null) {
+            log.error("Google ID token is invalid or does not contain email claim");
+            throw new RuntimeException("Xác thực tài khoản Google thất bại.");
+        }
+
+        String email = tokenInfo.getEmail();
+        String name = tokenInfo.getName() != null ? tokenInfo.getName() : "Người dùng Google";
+
+        log.info("Google verification successful for email: {}", email);
+        User user = repository.findByEmail(email).orElseGet(() -> {
+            log.info("Email {} not found in database, auto-registering new Google user", email);
+            var role = roleRepository.findByName("CANDIDATE")
+                    .orElseThrow(() -> new RuntimeException("Mặc định quyền CANDIDATE không tồn tại."));
+
+            User newUser = User.builder()
+                    .email(email)
+                    .password(passwordEncoder.encode("google-oauth-dummy-pw-" + java.util.UUID.randomUUID()))
+                    .role(role)
+                    .build();
+
+            UserProfile profile = new UserProfile();
+            profile.setFullName(name);
+            profile.setUser(newUser);
+            newUser.setUserProfile(profile);
+
+            return repository.save(newUser);
+        });
+
+        return buildLoginResponse(user);
+    }
+
+    @lombok.Data
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public static class GoogleTokenInfo {
+        private String email;
+        private String name;
+        private String sub;
+        private String picture;
     }
 }

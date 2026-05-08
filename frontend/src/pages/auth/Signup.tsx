@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -47,7 +47,7 @@ const signupSchema = z
 type SignupFormData = z.infer<typeof signupSchema>;
 
 export default function Signup() {
-  const { user, loading, register: registerUser } = useAuth();
+  const { user, loading, register: registerUser, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -68,6 +68,49 @@ export default function Signup() {
       confirmPassword: "",
     },
   });
+
+  useEffect(() => {
+    const initGoogle = () => {
+      const btnContainer = document.getElementById("googleSignUpBtn");
+      if ((window as any).google?.accounts?.id && btnContainer) {
+        (window as any).google.accounts.id.initialize({
+          client_id: "683526189569-4rcm86be6336e1n93hmdgq38cl0gdrgp.apps.googleusercontent.com",
+          callback: async (response: any) => {
+            setBusy(true);
+            try {
+              await loginWithGoogle(response.credential);
+              toast.success("Đăng ký tài khoản bằng Google thành công!");
+              navigate("/dashboard", { replace: true });
+            } catch (err: any) {
+              console.error("Google auth fail:", err);
+              toast.error(err.message || "Đăng ký bằng Google thất bại.");
+            } finally {
+              setBusy(false);
+            }
+          },
+        });
+        (window as any).google.accounts.id.renderButton(
+          btnContainer,
+          {
+            theme: "filled_black",
+            size: "large",
+            width: "386",
+            text: "signup_with",
+            shape: "pill",
+          }
+        );
+      }
+    };
+
+    const timer = setInterval(() => {
+      if ((window as any).google?.accounts?.id) {
+        clearInterval(timer);
+        initGoogle();
+      }
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [loginWithGoogle, navigate]);
 
   const passwordValue = watch("password", "");
 
@@ -97,8 +140,8 @@ export default function Signup() {
     <AuthShell
       title="Tạo tài khoản"
       subtitle="Miễn phí trải nghiệm phân tích CV và chuẩn bị phỏng vấn thông minh."
-      seoTitle="Đăng ký — NextStep AI"
-      seoDescription="Tạo tài khoản NextStep AI để bắt đầu tối ưu hóa hồ sơ xin việc chuẩn ATS và luyện tập phỏng vấn AI."
+      seoTitle="Đăng ký — Intervio"
+      seoDescription="Tạo tài khoản Intervio để bắt đầu tối ưu hóa hồ sơ xin việc chuẩn ATS và luyện tập phỏng vấn AI."
       path="/signup"
       footer={
         <>
@@ -286,8 +329,20 @@ export default function Signup() {
         </Button>
 
         <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed">
-          Bằng việc đăng ký, bạn đồng ý với Điều khoản Sử dụng và Chính sách Bảo mật của NextStep AI.
+          Bằng việc đăng ký, bạn đồng ý với Điều khoản Sử dụng và Chính sách Bảo mật của Intervio.
         </p>
+
+        {/* Separator */}
+        <div className="relative flex py-1 items-center">
+          <div className="flex-grow border-t border-white/10"></div>
+          <span className="flex-shrink mx-3 text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">Hoặc</span>
+          <div className="flex-grow border-t border-white/10"></div>
+        </div>
+
+        {/* Google Sign In Button Container */}
+        <div className="w-full flex justify-center py-0.5">
+          <div id="googleSignUpBtn" className="min-h-[40px] w-full" />
+        </div>
       </form>
     </AuthShell>
   );
