@@ -54,7 +54,7 @@ export default function Login() {
       const btnContainer = document.getElementById("googleSignInBtn");
       if ((window as any).google?.accounts?.id && btnContainer) {
         (window as any).google.accounts.id.initialize({
-          client_id: "683526189569-4rcm86be6336e1n93hmdgq38cl0gdrgp.apps.googleusercontent.com",
+          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "683526189569-4rcm86be6336e1n93hmdgq38cl0gdrgp.apps.googleusercontent.com",
           callback: async (response: any) => {
             setBusy(true);
             try {
