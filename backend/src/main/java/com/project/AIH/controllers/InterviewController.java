@@ -14,6 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import com.turkraft.springfilter.boot.Filter;
+import com.project.AIH.dto.ResultPaginationDTO;
 
 import java.util.List;
 import java.util.Map;
@@ -86,7 +90,10 @@ public class InterviewController {
 
     @GetMapping("/my-sessions")
     @ApiMessage("Fetch user's mock interview sessions successfully")
-    public ResponseEntity<List<InterviewSession>> getMySessions() {
+    public ResponseEntity<ResultPaginationDTO> getMySessions(
+            @Filter Specification<InterviewSession> spec,
+            Pageable pageable
+    ) {
         String email = SecurityUtil.getCurrentUserLogin()
                 .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
 
@@ -95,7 +102,7 @@ public class InterviewController {
             throw new RuntimeException("Người dùng không tồn tại");
         }
 
-        List<InterviewSession> sessions = interviewService.getSessionsByUser(user);
+        ResultPaginationDTO sessions = interviewService.getSessionsByUser(spec, pageable, user);
         return ResponseEntity.ok(sessions);
     }
 }

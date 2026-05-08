@@ -13,6 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
+import com.turkraft.springfilter.boot.Filter;
+import com.project.AIH.dto.ResultPaginationDTO;
 import java.util.List;
 
 @RestController
@@ -56,7 +60,10 @@ public class ResumeController {
 
     @GetMapping("/my-resumes")
     @ApiMessage("Fetch user's resumes successfully")
-    public ResponseEntity<List<Resume>> getMyResumes() {
+    public ResponseEntity<ResultPaginationDTO> getMyResumes(
+            @Filter Specification<Resume> spec,
+            Pageable pageable
+    ) {
         String email = SecurityUtil.getCurrentUserLogin()
                 .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
 
@@ -65,7 +72,7 @@ public class ResumeController {
             throw new RuntimeException("Người dùng không tồn tại");
         }
 
-        List<Resume> resumes = resumeService.getResumesByUser(user);
+        ResultPaginationDTO resumes = resumeService.getResumesByUser(spec, pageable, user);
         return ResponseEntity.ok(resumes);
     }
 }
