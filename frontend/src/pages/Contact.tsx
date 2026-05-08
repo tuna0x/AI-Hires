@@ -22,8 +22,8 @@ export default function Contact() {
   return (
     <SiteLayout>
       <Seo
-        title="Liên hệ — Đội ngũ phát triển NextStep AI"
-        description="Bạn có câu hỏi về NextStep AI, đề xuất tính năng hay hợp tác doanh nghiệp? Hãy gửi lời nhắn và chúng tôi sẽ phản hồi sớm nhất."
+        title="Liên hệ — Đội ngũ phát triển Intervio"
+        description="Bạn có câu hỏi về Intervio, đề xuất tính năng hay hợp tác doanh nghiệp? Hãy gửi lời nhắn và chúng tôi sẽ phản hồi sớm nhất."
         path="/contact"
         jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Liên hệ", path: "/contact" }])}
       />
@@ -33,9 +33,9 @@ export default function Contact() {
         <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 grid lg:grid-cols-[1fr_1.4fr] gap-10">
           <div className="space-y-5">
             {[
-              { icon: Mail, t: "Hòm thư chung", v: "hello@nextstep.ai" },
+              { icon: Mail, t: "Hòm thư chung", v: "hello@intervio.online" },
               { icon: MessageSquare, t: "Hỗ trợ kỹ thuật", v: "Phản hồi trong 4h (T2 - T6)" },
-              { icon: Building, t: "Hợp tác doanh nghiệp", v: "sales@nextstep.ai" },
+              { icon: Building, t: "Hợp tác doanh nghiệp", v: "sales@intervio.online" },
             ].map((c) => (
               <div key={c.t} className="bg-card rounded-2xl border border-border/60 p-5 shadow-soft">
                 <div className="flex items-center gap-3">

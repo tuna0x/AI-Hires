@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import AuthShell from "@/components/auth/AuthShell";
 
 const forgotSchema = z.object({
   email: z
@@ -48,23 +47,7 @@ export default function ForgotPassword() {
     }, 1500);
   }
 
-  return (
-    <AuthShell
-      title="Đặt lại mật khẩu"
-      subtitle="Nhập email của bạn, chúng tôi sẽ gửi liên kết an toàn để thiết lập mật khẩu mới."
-      seoTitle="Quên mật khẩu — NextStep AI"
-      seoDescription="Yêu cầu đặt lại mật khẩu NextStep AI của bạn một cách an toàn."
-      path="/forgot-password"
-      footer={
-        <>
-          Đã nhớ ra mật khẩu?{" "}
-          <Link to="/login" className="text-primary font-semibold hover:text-primary-glow hover:underline transition-all duration-300">
-            Đăng nhập
-          </Link>
-        </>
-      }
-    >
-      {sent ? (
+  return sent ? (
         <div className="space-y-5 text-center animate-fadeIn">
           <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-400">
             <CheckCircle className="h-6 w-6" />
@@ -129,7 +112,5 @@ export default function ForgotPassword() {
             )}
           </Button>
         </form>
-      )}
-    </AuthShell>
   );
 }

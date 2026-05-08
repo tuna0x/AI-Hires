@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import AuthShell from "@/components/auth/AuthShell";
 import { useAuth } from "@/lib/auth";
 
 // Schema xác thực dữ liệu đăng ký bằng Zod
@@ -69,48 +68,7 @@ export default function Signup() {
     },
   });
 
-  useEffect(() => {
-    const initGoogle = () => {
-      const btnContainer = document.getElementById("googleSignUpBtn");
-      if ((window as any).google?.accounts?.id && btnContainer) {
-        (window as any).google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || "683526189569-4rcm86be6336e1n93hmdgq38cl0gdrgp.apps.googleusercontent.com",
-          callback: async (response: any) => {
-            setBusy(true);
-            try {
-              await loginWithGoogle(response.credential);
-              toast.success("Đăng ký tài khoản bằng Google thành công!");
-              navigate("/dashboard", { replace: true });
-            } catch (err: any) {
-              console.error("Google auth fail:", err);
-              toast.error(err.message || "Đăng ký bằng Google thất bại.");
-            } finally {
-              setBusy(false);
-            }
-          },
-        });
-        (window as any).google.accounts.id.renderButton(
-          btnContainer,
-          {
-            theme: "filled_black",
-            size: "large",
-            width: "386",
-            text: "signup_with",
-            shape: "pill",
-          }
-        );
-      }
-    };
 
-    const timer = setInterval(() => {
-      if ((window as any).google?.accounts?.id) {
-        clearInterval(timer);
-        initGoogle();
-      }
-    }, 100);
-
-    return () => clearInterval(timer);
-  }, [loginWithGoogle, navigate]);
 
   const passwordValue = watch("password", "");
 
@@ -125,11 +83,21 @@ export default function Signup() {
     setBusy(true);
     try {
       await registerUser(data.email, data.password, data.fullName);
-      toast.success("Tạo tài khoản thành công! Chào mừng bạn đến với NextStep AI.");
+      toast.success("Tạo tài khoản thành công! Chào mừng bạn đến với Intervio.");
       navigate("/dashboard", { replace: true });
     } catch (error: any) {
       console.error("Signup fail:", error);
-      const errorMsg = error.response?.data?.message || error.message || "Đăng ký thất bại. Email có thể đã được sử dụng.";
+      let errorMsg = error.response?.data?.message || error.message || "";
+      const lowerMsg = errorMsg.toLowerCase();
+      
+      if (lowerMsg.includes("already in use") || lowerMsg.includes("already exists") || lowerMsg.includes("duplicate") || lowerMsg.includes("email")) {
+        errorMsg = "Địa chỉ email này đã được sử dụng bởi tài khoản khác. Vui lòng chọn email khác!";
+      } else if (lowerMsg.includes("password")) {
+        errorMsg = "Mật khẩu không đạt đủ yêu cầu bảo mật đề ra.";
+      } else {
+        errorMsg = "Đăng ký thất bại. Email có thể đã đăng ký hoặc kết nối máy chủ bị gián đoạn.";
+      }
+      
       toast.error(errorMsg);
     } finally {
       setBusy(false);
@@ -137,22 +105,7 @@ export default function Signup() {
   }
 
   return (
-    <AuthShell
-      title="Tạo tài khoản"
-      subtitle="Miễn phí trải nghiệm phân tích CV và chuẩn bị phỏng vấn thông minh."
-      seoTitle="Đăng ký — Intervio"
-      seoDescription="Tạo tài khoản Intervio để bắt đầu tối ưu hóa hồ sơ xin việc chuẩn ATS và luyện tập phỏng vấn AI."
-      path="/signup"
-      footer={
-        <>
-          Đã có tài khoản?{" "}
-          <Link to="/login" className="text-primary font-semibold hover:text-primary-glow hover:underline transition-all duration-300">
-            Đăng nhập ngay
-          </Link>
-        </>
-      }
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* Full Name Field */}
         <div className="space-y-1 relative">
           <Label htmlFor="fullName" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
@@ -331,19 +284,6 @@ export default function Signup() {
         <p className="text-[10px] text-muted-foreground/50 text-center leading-relaxed">
           Bằng việc đăng ký, bạn đồng ý với Điều khoản Sử dụng và Chính sách Bảo mật của Intervio.
         </p>
-
-        {/* Separator */}
-        <div className="relative flex py-1 items-center">
-          <div className="flex-grow border-t border-white/10"></div>
-          <span className="flex-shrink mx-3 text-[10px] text-muted-foreground/60 uppercase tracking-widest font-bold">Hoặc</span>
-          <div className="flex-grow border-t border-white/10"></div>
-        </div>
-
-        {/* Google Sign In Button Container */}
-        <div className="w-full flex justify-center py-0.5">
-          <div id="googleSignUpBtn" className="min-h-[40px] w-full" />
-        </div>
       </form>
-    </AuthShell>
   );
 }

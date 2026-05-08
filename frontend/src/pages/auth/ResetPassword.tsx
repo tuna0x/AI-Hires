@@ -8,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import AuthShell from "@/components/auth/AuthShell";
 
 const resetSchema = z.object({
   password: z
@@ -48,14 +47,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <AuthShell
-      title="Đặt mật khẩu mới"
-      subtitle="Nhập mật khẩu bảo mật mới cho tài khoản NextStep AI của bạn."
-      seoTitle="Đặt lại mật khẩu — NextStep AI"
-      seoDescription="Tạo mật khẩu mới và khôi phục tài khoản NextStep AI của bạn một cách an toàn."
-      path="/reset-password"
-    >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Password Field */}
         <div className="space-y-1.5 relative animate-fadeIn">
           <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
@@ -111,6 +103,5 @@ export default function ResetPassword() {
           )}
         </Button>
       </form>
-    </AuthShell>
   );
 }
