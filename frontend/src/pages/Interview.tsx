@@ -324,17 +324,23 @@ export default function Interview() {
               
               {/* Profile suggestion glass card */}
               {parsedCv && (
-                <div className="bg-primary/5 rounded-2xl border border-primary/15 p-4 flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center text-primary">
+                <div className="bg-primary/5 rounded-2xl border border-primary/15 p-4 flex items-center justify-between gap-4 min-w-0">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="h-10 w-10 rounded-xl bg-primary/15 flex items-center justify-center text-primary shrink-0">
                       <FileText className="h-5 w-5" />
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="text-xs text-muted-foreground">Phát hiện CV đã phân tích</div>
-                      <div className="text-sm font-bold text-foreground line-clamp-1">{parsedCv.fileName}</div>
+                      <div className="text-sm font-bold text-foreground truncate" title={parsedCv.fileName}>
+                        {parsedCv.fileName
+                          ? parsedCv.fileName
+                              .replace(/^resumes\/\w+\//, "")
+                              .replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/, "")
+                          : "CV của bạn"}
+                      </div>
                     </div>
                   </div>
-                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold">
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold shrink-0">
                     ID: {parsedCv.resumeId}
                   </Badge>
                 </div>
