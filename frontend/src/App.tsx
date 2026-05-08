@@ -25,6 +25,7 @@ import Signup from "./pages/auth/Signup.tsx";
 import ForgotPassword from "./pages/auth/ForgotPassword.tsx";
 import ResetPassword from "./pages/auth/ResetPassword.tsx";
 import Profile from "./pages/Profile.tsx";
+import AuthLayout from "./components/auth/AuthLayout.tsx";
 import { AuthProvider } from "./lib/auth";
 import { RequireAuth } from "./components/auth/RequireAuth";
 
@@ -40,10 +41,15 @@ const App = () => (
         <AuthProvider>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
+          
+          {/* Auth Layout Route for flawless tab transitions without unmounting context */}
+          <Route element={<AuthLayout />}>
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+          </Route>
+
           <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
           <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
           <Route path="/cv-analysis" element={<CvChecker />} />

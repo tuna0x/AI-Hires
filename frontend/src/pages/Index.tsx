@@ -10,7 +10,7 @@ export default function Index() {
   return (
     <SiteLayout>
       <Seo
-        title="NextStep AI — Đánh giá CV chuẩn ATS & Luyện phỏng vấn AI"
+        title="Intervio — Đánh giá CV chuẩn ATS & Luyện phỏng vấn AI"
         description="Công cụ phát triển sự nghiệp bằng AI: phân tích và chấm điểm CV chuẩn ATS, luyện phỏng vấn thử cá nhân hóa theo đúng hồ sơ và vị trí mục tiêu của bạn."
         path="/"
         jsonLd={[orgJsonLd, faqLd(faqs)]}

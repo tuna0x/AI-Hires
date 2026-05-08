@@ -11,7 +11,7 @@ const apiClient = axios.create({
 // Request Interceptor: Tự động đính kèm access token từ localStorage
 apiClient.interceptors.request.use(
   (config) => {
-    const accessToken = localStorage.getItem("nextstep_access_token");
+    const accessToken = localStorage.getItem("intervio_access_token");
     if (accessToken) {
       config.headers.Authorization = `Bearer ${accessToken}`;
     }
@@ -73,7 +73,7 @@ apiClient.interceptors.response.use(
 
         const newAccessToken = refreshResponse.data?.data?.access_token;
         if (newAccessToken) {
-          localStorage.setItem("nextstep_access_token", newAccessToken);
+          localStorage.setItem("intervio_access_token", newAccessToken);
           apiClient.defaults.headers.common.Authorization = `Bearer ${newAccessToken}`;
           originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
           processQueue(null, newAccessToken);
@@ -83,7 +83,7 @@ apiClient.interceptors.response.use(
         }
       } catch (refreshError) {
         // Nếu refresh thất bại (hết hạn cookie), xóa token cũ và đẩy ra trang đăng nhập
-        localStorage.removeItem("nextstep_access_token");
+        localStorage.removeItem("intervio_access_token");
         processQueue(refreshError, null);
         
         // Chỉ chuyển hướng nếu đang ở trang riêng tư, tránh quấy rầy trang chủ

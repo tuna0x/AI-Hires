@@ -18,7 +18,7 @@ export default function Dashboard() {
   return (
     <SiteLayout>
       <Seo
-        title="Tổng quan — Trung tâm hành động NextStep AI"
+        title="Tổng quan — Trung tâm hành động Intervio"
         description="Điểm CV, các nhận xét chính và hành động tiếp theo để cải thiện CV hoặc luyện phỏng vấn."
         path="/dashboard"
         jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Tổng quan", path: "/dashboard" }])}

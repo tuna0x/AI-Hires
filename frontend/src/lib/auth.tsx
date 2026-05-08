@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Đồng bộ session của người dùng khi ứng dụng khởi chạy
   async function syncSession() {
-    const accessToken = localStorage.getItem("nextstep_access_token");
+    const accessToken = localStorage.getItem("intervio_access_token");
     if (accessToken) {
       try {
         const response: any = await apiClient.get("/api/v1/auth/account");
@@ -60,16 +60,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const newAccessToken = response?.data?.access_token;
       const loggedUser = response?.data?.user;
       if (newAccessToken && loggedUser) {
-        localStorage.setItem("nextstep_access_token", newAccessToken);
+        localStorage.setItem("intervio_access_token", newAccessToken);
         setUser(loggedUser);
       } else {
         setUser(null);
-        localStorage.removeItem("nextstep_access_token");
+        localStorage.removeItem("intervio_access_token");
       }
     } catch (err) {
       console.log("No active session or refresh token found");
       setUser(null);
-      localStorage.removeItem("nextstep_access_token");
+      localStorage.removeItem("intervio_access_token");
     } finally {
       setLoading(false);
     }
@@ -84,7 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = response?.data?.access_token;
     const loggedUser = response?.data?.user;
     if (accessToken && loggedUser) {
-      localStorage.setItem("nextstep_access_token", accessToken);
+      localStorage.setItem("intervio_access_token", accessToken);
       setUser(loggedUser);
     } else {
       throw new Error("Thông tin phản hồi đăng nhập từ hệ thống không hợp lệ.");
@@ -102,7 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = response?.data?.access_token;
     const loggedUser = response?.data?.user;
     if (accessToken && loggedUser) {
-      localStorage.setItem("nextstep_access_token", accessToken);
+      localStorage.setItem("intervio_access_token", accessToken);
       setUser(loggedUser);
     } else {
       throw new Error("Thông tin phản hồi đăng ký từ hệ thống không hợp lệ.");
@@ -115,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.error("Lỗi khi gọi API logout:", err);
     } finally {
-      localStorage.removeItem("nextstep_access_token");
+      localStorage.removeItem("intervio_access_token");
       setUser(null);
     }
   }
@@ -125,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const accessToken = response?.data?.access_token;
     const loggedUser = response?.data?.user;
     if (accessToken && loggedUser) {
-      localStorage.setItem("nextstep_access_token", accessToken);
+      localStorage.setItem("intervio_access_token", accessToken);
       setUser(loggedUser);
     } else {
       throw new Error("Thông tin phản hồi đăng nhập bằng Google từ hệ thống không hợp lệ.");
