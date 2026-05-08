@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -75,6 +75,7 @@ const getAnswerStatus = (score: number) => {
 
 export default function Interview() {
   const parsedCv = useCvResult();
+  const navigate = useNavigate();
   
   // States
   const [setupMode, setSetupMode] = useState<"standard" | "mock">("mock");
@@ -233,14 +234,8 @@ export default function Interview() {
     setIsLoading(true);
     try {
       await interviewApi.finishInterview(session.id);
-      const finalReport = await interviewApi.getReport(session.id);
-      setReport(finalReport);
-      
-      // Update session status in state
-      const updatedSession = await interviewApi.getSession(session.id);
-      setSession(updatedSession);
-      
-      toast.success("📊 Tạo báo cáo đánh giá thành công! Đã cập nhật biểu đồ mạng nhện Radar Chart.");
+      toast.success("📊 Hoàn thành phiên phỏng vấn! Đang tạo báo cáo đánh giá...");
+      navigate(`/interview/results/${session.id}`);
     } catch (error: any) {
       console.error(error);
       toast.error("❌ Không thể kết xuất báo cáo AI. Vui lòng kiểm tra log backend!");

@@ -25,8 +25,9 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) throws IOException, ServletException {
-        this.delegate.commence(request, response, authException);
-        response.setContentType("application/json;charset=UTF-8");
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json; charset=UTF-8");
+        response.setHeader(org.springframework.http.HttpHeaders.WWW_AUTHENTICATE, "Bearer error=\"invalid_token\"");
 
         RestResponse<Object> res = new RestResponse<>();
         res.setStatusCode(HttpStatus.UNAUTHORIZED.value());

@@ -432,6 +432,78 @@ public class GeminiService {
                 return callTextOnlyGemini(prompt);
         }
 
+        public String generateInitialQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
+                String levelInstruction = getLevelInstruction(level);
+                String prompt = String.format(
+                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
+                                "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
+                                "Cấp độ yêu cầu của ứng viên: %s.\n" +
+                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
+                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
+                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
+                                "Nhiệm vụ: Hãy chuẩn bị 3 câu hỏi phỏng vấn cơ sở đầu tiên bằng Tiếng Việt (Câu 1, Câu 2, Câu 3). Các câu hỏi này phải chuyên sâu, tập trung khai thác kỹ năng cốt lõi của ứng viên bám sát JD và CV.\n" +
+                                "Yêu cầu phản hồi: Trả về một mảng JSON chứa đúng 3 object (TUYỆT ĐỐI KHÔNG CÓ TRÍCH DẪN MARKDOWN HOẶC TEXT THỪA) theo cấu trúc chính xác sau:\n" +
+                                "[\n" +
+                                "  {\n" +
+                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 1>\",\n" +
+                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu 1, nếu có>\",\n" +
+                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu 1, nếu có>\",\n" +
+                                "    \"can_reuse\": true\n" +
+                                "  },\n" +
+                                "  {\n" +
+                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 2>\",\n" +
+                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu 2, nếu có>\",\n" +
+                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu 2, nếu có>\",\n" +
+                                "    \"can_reuse\": true\n" +
+                                "  },\n" +
+                                "  {\n" +
+                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 3>\",\n" +
+                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu 3, nếu có>\",\n" +
+                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu 3, nếu có>\",\n" +
+                                "    \"can_reuse\": true\n" +
+                                "  }\n" +
+                                "]",
+                                targetRole, industry, level, levelInstruction, jobDescription, candidateCvText);
+                return callTextOnlyGemini(prompt);
+        }
+
+        public String generateNextQuestion(String jobDescription, String runningSummary, String previousQuestion, String previousAnswer, String targetRole, String industry, String level) {
+                String levelInstruction = getLevelInstruction(level);
+                String prompt = String.format(
+                                "Bạn là chuyên gia tuyển dụng đang phỏng vấn ứng viên cho vị trí: %s, ngành nghề: %s, cấp độ: %s.\n" +
+                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
+                                "JD:\n%s\n\n" +
+                                "Tóm tắt kết quả thể hiện của ứng viên qua các câu trả lời trước đó (Running Summary):\n%s\n\n" +
+                                "Câu hỏi trước đó: %s\n" +
+                                "Câu trả lời của ứng viên cho câu hỏi đó: %s\n\n" +
+                                "Nhiệm vụ: Dựa trên tóm tắt năng lực và câu trả lời mới nhất, hãy đặt câu hỏi phỏng vấn tiếp theo bằng Tiếng Việt. Câu hỏi phải mang tính bám đuổi chuyên môn, đào sâu bối cảnh, hỏi xoáy đáp xoay hoặc kiểm nghiệm tính xác thực của câu trả lời trước.\n" +
+                                "Yêu cầu trả về đúng 1 chuỗi JSON duy nhất (KHÔNG CÓ MARKDOWN) theo định dạng sau:\n" +
+                                "{\n" +
+                                "  \"question\": \"<Nội dung câu hỏi phỏng vấn tiếp theo>\",\n" +
+                                "  \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu hỏi này, nếu có>\",\n" +
+                                "  \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu hỏi này, nếu có>\",\n" +
+                                "  \"can_reuse\": false\n" +
+                                "}",
+                                targetRole, industry, level, levelInstruction, jobDescription, 
+                                (runningSummary != null && !runningSummary.isEmpty()) ? runningSummary : "Chưa có đánh giá tích lũy.", 
+                                previousQuestion, previousAnswer);
+                return callTextOnlyGemini(prompt);
+        }
+
+        public String updateRunningSummary(String currentSummary, String questionText, String answerText, int score) {
+                String prompt = String.format(
+                                "Bạn là trợ lý AI giám sát phỏng vấn chuyên nghiệp.\n" +
+                                "Nhiệm vụ của bạn là tổng hợp và cập nhật tóm tắt năng lực tích lũy (Running Summary) của ứng viên bằng Tiếng Việt dựa trên dữ liệu mới.\n\n" +
+                                "Tóm tắt năng lực trước đó: %s\n\n" +
+                                "Câu hỏi vừa trả lời: %s\n" +
+                                "Câu trả lời của ứng viên: %s\n" +
+                                "Điểm số đạt được: %d/10\n\n" +
+                                "Hãy cập nhật và viết lại một bản tóm tắt năng lực tích lũy mới bằng Tiếng Việt (không quá 150 từ, súc tích, mang tính chuyên môn). Tập trung làm nổi bật: Điểm mạnh cốt lõi đã được kiểm chứng, điểm yếu chuyên môn cần lưu ý, mức độ hiểu biết lý thuyết và khả năng thực hành thực tế.",
+                                (currentSummary != null && !currentSummary.isEmpty()) ? currentSummary : "Chưa có đánh giá tích lũy.",
+                                questionText, answerText, score);
+                return callTextOnlyGemini(prompt);
+        }
+
         public String generateFinalReport(String jobDescription, String chatHistory) {
                 String prompt = String.format(
                                 "Dựa trên lịch sử phỏng vấn sau đây:\n%s\n\n" +

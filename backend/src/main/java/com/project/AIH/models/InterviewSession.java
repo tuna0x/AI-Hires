@@ -45,6 +45,9 @@ public class InterviewSession {
     @OneToOne(mappedBy = "interviewSession", cascade = CascadeType.ALL, orphanRemoval = true)
     private InterviewReport interviewReport;
 
+    @Column(columnDefinition = "TEXT")
+    private String runningSummary;
+
     // Audit fields
     private Instant startTime;
     private Instant endTime;
