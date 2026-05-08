@@ -177,10 +177,16 @@ public class ResumeService {
             log.error("Failed to extract text: {}", e.getMessage());
         }
 
-        // 3. AI Analysis (General)
+        // 3. AI Analysis (General - Hybrid Strategy)
         String parsedData = "";
         try {
-            parsedData = geminiService.parseResume(fileBytes, file.getContentType());
+            if (isTextCorrupted(extractedText)) {
+                log.info("Extracted text is empty or corrupted. Falling back to Gemini Vision using file bytes.");
+                parsedData = geminiService.parseResume(fileBytes, file.getContentType());
+            } else {
+                log.info("Extracted text is of high quality. Calling Gemini with text thô for high speed and token optimization.");
+                parsedData = geminiService.parseResumeText(extractedText);
+            }
             parsedData = scanMapperService.enrichAndCalculateGaps(parsedData);
         } catch (Exception e) {
             log.error("AI Analysis failed: {}", e.getMessage());
@@ -209,6 +215,17 @@ public class ResumeService {
         }
 
         return resume;
+    }
+
+    private boolean isTextCorrupted(String extractedText) {
+        if (extractedText == null || extractedText.trim().length() < 300) {
+            return true; // PDF Scan hoặc ảnh rỗng
+        }
+        // Kiểm tra xem có chứa @ (email) hoặc số điện thoại hay không để xác minh không bị lỗi font/mã hóa
+        if (!extractedText.contains("@") && !extractedText.matches(".*\\d{9,11}.*")) {
+            return true; // Thiếu email và SĐT, nhiều khả năng text bị vỡ hoặc lỗi font nặng
+        }
+        return false;
     }
 
     @Transactional(readOnly = true)

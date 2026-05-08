@@ -96,10 +96,8 @@ function AdminSidebar() {
   return (
     <Sidebar collapsible="icon" className="border-r border-border/60">
       <SidebarHeader className="border-b border-border/60">
-        <Link to="/" className="flex items-center gap-2 px-2 py-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow shrink-0">
-            <Sparkles className="h-5 w-5" />
-          </span>
+        <Link to="/" className="flex items-center gap-2 px-2 py-2 group">
+          <img src="/logo2.png" alt="Intervio" className="h-9 w-9 object-contain group-hover:scale-105 transition-transform duration-300 shrink-0" />
           {!collapsed && (
             <div className="min-w-0">
               <div className="font-bold text-sm leading-tight">Intervio<span className="text-primary">.online</span></div>

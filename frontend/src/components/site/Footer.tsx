@@ -7,10 +7,8 @@ export default function Footer() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid gap-10 md:grid-cols-5">
           <div className="md:col-span-2 space-y-4">
-            <Link to="/" className="flex items-center gap-2 font-bold text-lg">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground">
-                <Sparkles className="h-5 w-5" />
-              </span>
+            <Link to="/" className="flex items-center gap-2 font-bold text-lg group">
+              <img src="/logo2.png" alt="Intervio" className="h-9 w-9 object-contain group-hover:scale-105 transition-transform duration-300" />
               <span>Intervio<span className="text-primary">.online</span></span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">

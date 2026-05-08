@@ -85,9 +85,7 @@ export default function AuthShell({
           {/* Logo Brand Header */}
           <div className="flex flex-col items-center text-center mb-4">
             <Link to="/" className="inline-flex items-center gap-2.5 font-extrabold text-xl tracking-tight group">
-              <span className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-primary text-primary-foreground shadow-glow group-hover:scale-105 transition-transform duration-300">
-                <Sparkles className="h-5 w-5" />
-              </span>
+              <img src="/logo2.png" alt="Intervio" className="h-9 w-9 object-contain group-hover:scale-105 transition-transform duration-300" />
               <span className="text-white">
                 Intervio<span className="text-primary">.online</span>
               </span>

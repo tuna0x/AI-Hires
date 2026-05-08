@@ -9,7 +9,7 @@ export type SeoProps = {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 };
 
-const SITE = "https://nextstep.ai";
+const SITE = "https://intervio.online";
 
 export function Seo({
   title,
@@ -48,7 +48,7 @@ export function Seo({
 export const orgJsonLd: Record<string, unknown> = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "NextStep AI — CV Analysis & Interview Practice",
+  name: "Intervio — CV Analysis & Interview Practice",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
@@ -88,7 +88,7 @@ export const articleLd = (a: {
   "@type": "Article",
   headline: a.title,
   description: a.description,
-  author: { "@type": "Organization", name: a.author ?? "CV Checker AI" },
+  author: { "@type": "Organization", name: a.author ?? "Intervio" },
   datePublished: a.date,
   image: a.image ?? `${SITE}/og-image.jpg`,
   mainEntityOfPage: `${SITE}${a.path}`,
