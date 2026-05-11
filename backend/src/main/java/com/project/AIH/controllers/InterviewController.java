@@ -66,9 +66,13 @@ public class InterviewController {
     @PostMapping("/{sessionId}/answer")
     public ResponseEntity<InterviewSubmitAnswerResponseDTO> submitAnswer(
             @PathVariable Long sessionId,
-            @RequestBody Map<String, String> request) {
+            @RequestBody Map<String, String> request,
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String headerIdempotencyKey) {
         String answer = request.get("answer");
-        return ResponseEntity.ok(interviewService.submitAnswer(sessionId, answer));
+        String bodyIdempotencyKey = request.get("idempotencyKey");
+        String idempotencyKey = (bodyIdempotencyKey != null && !bodyIdempotencyKey.trim().isEmpty()) 
+                ? bodyIdempotencyKey : headerIdempotencyKey;
+        return ResponseEntity.ok(interviewService.submitAnswer(sessionId, answer, idempotencyKey));
     }
 
     @PostMapping("/{sessionId}/finish")
@@ -78,7 +82,12 @@ public class InterviewController {
 
     @GetMapping("/{sessionId}/questions")
     public ResponseEntity<List<InterviewQuestion>> getQuestions(@PathVariable Long sessionId) {
-        return ResponseEntity.ok(interviewService.getSessionQuestions(sessionId));
+        return ResponseEntity.ok(interviewService.getVisibleQuestions(sessionId));
+    }
+
+    @GetMapping("/{sessionId}/scores")
+    public ResponseEntity<Map<String, Object>> getScoreStatus(@PathVariable Long sessionId) {
+        return ResponseEntity.ok(interviewService.getScoreStatuses(sessionId));
     }
 
     @GetMapping("/{sessionId}/report")

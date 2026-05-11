@@ -7,6 +7,7 @@ import {
   StartInterviewRequest,
   StartMockInterviewRequest,
   SubmitAnswerResponse,
+  ScoreStatusResponse,
 } from "@/types/interview";
 
 export const interviewApi = {
@@ -40,8 +41,11 @@ export const interviewApi = {
     return res.data;
   },
 
-  submitAnswer: async (sessionId: number, answerText: string): Promise<SubmitAnswerResponse> => {
-    const res = await apiClient.post<any, RestResponse<SubmitAnswerResponse>>(`/api/v1/interviews/${sessionId}/answer`, { answer: answerText });
+  submitAnswer: async (sessionId: number, answerText: string, idempotencyKey?: string): Promise<SubmitAnswerResponse> => {
+    const res = await apiClient.post<any, RestResponse<SubmitAnswerResponse>>(`/api/v1/interviews/${sessionId}/answer`, { 
+      answer: answerText,
+      idempotencyKey 
+    });
     return res.data;
   },
 
@@ -57,6 +61,11 @@ export const interviewApi = {
 
   getReport: async (sessionId: number): Promise<InterviewReport> => {
     const res = await apiClient.get<any, RestResponse<InterviewReport>>(`/api/v1/interviews/${sessionId}/report`);
+    return res.data;
+  },
+
+  getScores: async (sessionId: number): Promise<ScoreStatusResponse> => {
+    const res = await apiClient.get<any, RestResponse<ScoreStatusResponse>>(`/api/v1/interviews/${sessionId}/scores`);
     return res.data;
   },
 };

@@ -19,6 +19,14 @@ public class RabbitMQConfig {
     public static final String CV_SCORING_EXCHANGE = "cv.scoring.exchange";
     public static final String CV_SCORING_ROUTING_KEY = "cv.scoring.routing.key";
 
+    public static final String INTERVIEW_SCORING_QUEUE = "interview.scoring.queue";
+    public static final String INTERVIEW_SCORING_EXCHANGE = "interview.scoring.exchange";
+    public static final String INTERVIEW_SCORING_ROUTING_KEY = "interview.scoring.routing.key";
+
+    public static final String REPORT_GENERATION_QUEUE = "interview.report.generation.queue";
+    public static final String REPORT_GENERATION_EXCHANGE = "interview.report.generation.exchange";
+    public static final String REPORT_GENERATION_ROUTING_KEY = "interview.report.generation.routing.key";
+
     public static final String CV_DLQ = "cv.dlq";
     public static final String CV_DLX = "cv.dlx";
     public static final String CV_DLQ_ROUTING_KEY = "cv.dlq.routing.key";
@@ -57,6 +65,42 @@ public class RabbitMQConfig {
     @Bean
     public Binding cvScoringBinding(Queue cvScoringQueue, DirectExchange cvScoringExchange) {
         return BindingBuilder.bind(cvScoringQueue).to(cvScoringExchange).with(CV_SCORING_ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue interviewScoringQueue() {
+        return QueueBuilder.durable(INTERVIEW_SCORING_QUEUE)
+                .withArgument("x-dead-letter-exchange", CV_DLX)
+                .withArgument("x-dead-letter-routing-key", CV_DLQ_ROUTING_KEY)
+                .build();
+    }
+
+    @Bean
+    public DirectExchange interviewScoringExchange() {
+        return new DirectExchange(INTERVIEW_SCORING_EXCHANGE);
+    }
+
+    @Bean
+    public Binding interviewScoringBinding(Queue interviewScoringQueue, DirectExchange interviewScoringExchange) {
+        return BindingBuilder.bind(interviewScoringQueue).to(interviewScoringExchange).with(INTERVIEW_SCORING_ROUTING_KEY);
+    }
+
+    @Bean
+    public Queue reportGenerationQueue() {
+        return QueueBuilder.durable(REPORT_GENERATION_QUEUE)
+                .withArgument("x-dead-letter-exchange", CV_DLX)
+                .withArgument("x-dead-letter-routing-key", CV_DLQ_ROUTING_KEY)
+                .build();
+    }
+
+    @Bean
+    public DirectExchange reportGenerationExchange() {
+        return new DirectExchange(REPORT_GENERATION_EXCHANGE);
+    }
+
+    @Bean
+    public Binding reportGenerationBinding(Queue reportGenerationQueue, DirectExchange reportGenerationExchange) {
+        return BindingBuilder.bind(reportGenerationQueue).to(reportGenerationExchange).with(REPORT_GENERATION_ROUTING_KEY);
     }
 
     // Dead Letter Queue and Exchange
