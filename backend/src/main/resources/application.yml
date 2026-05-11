@@ -45,7 +45,7 @@ app:
     secretKey: "${MINIO_SECRET_KEY:minioadmin}"
     bucket: "${MINIO_BUCKET:ai-hire-resumes}"
   gemini:
-    api-key: "${GEMINI_API_KEY:AIzaSyAZ5CLrs2C9t8-3BDqh0bCmb7PcKjrRPGE}"
+    api-key: "${GEMINI_API_KEY:xxx}"
     api-url: "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-preview:generateContent"
 
 logging:
