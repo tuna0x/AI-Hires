@@ -63,10 +63,12 @@ apiClient.interceptors.response.use(
       isRefreshing = true;
 
       try {
-        // Thực hiện Silent Refresh qua Cookie HttpOnly refresh_token
-        // Sử dụng một axios instance mới để tránh đụng độ interceptor
+        // Loại bỏ dấu gạch chéo cuối của baseURL (nếu có) để tránh tạo ra double slash (//)
+        const base = apiClient.defaults.baseURL || "";
+        const cleanBaseURL = base.endsWith("/") ? base.slice(0, -1) : base;
+
         const refreshResponse = await axios.post(
-          `${apiClient.defaults.baseURL}/api/v1/auth/refresh`,
+          `${cleanBaseURL}/api/v1/auth/refresh`,
           {},
           { withCredentials: true }
         );
