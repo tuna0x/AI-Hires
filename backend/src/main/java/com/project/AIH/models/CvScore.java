@@ -54,6 +54,10 @@ public class CvScore {
     
     private Instant scoredAt;
 
+    private Integer userRating;
+    @Column(columnDefinition = "TEXT")
+    private String userFeedback;
+
     @Column(columnDefinition = "LONGTEXT")
     private String rawAiResponse;
 

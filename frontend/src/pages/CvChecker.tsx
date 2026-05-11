@@ -8,6 +8,8 @@ import SiteLayout from "@/components/site/SiteLayout";
 import { Seo, breadcrumbLd } from "@/lib/seo";
 import { cvStore, generateMockResult } from "@/lib/store";
 import { useUploadCvMutation } from "@/hooks/queries/useCvQueries";
+import { cvApi } from "@/api/cvApi";
+import { mapResumeToAnalysisResult } from "@/lib/cvMapper";
 
 const LOADER_STAGES = [
   {
@@ -85,6 +87,38 @@ export default function CvChecker() {
       }
     }, 100);
 
+    const pollResumeStatus = async (resumeId: number) => {
+      try {
+        const response = await cvApi.getResumeDetails(resumeId);
+        const freshResume = response.data;
+        if (freshResume) {
+          if (freshResume.parseStatus === "DONE") {
+            clearInterval(tick);
+            const mappedResult = mapResumeToAnalysisResult(freshResume);
+            cvStore.setResult(mappedResult);
+            setProgress(100);
+            setSuccessFinished(true);
+            setTimeout(() => {
+              navigate("/results");
+            }, 1400);
+          } else if (freshResume.parseStatus === "FAILED") {
+            clearInterval(tick);
+            setAnalyzing(false);
+            setError("Phân tích CV thất bại bằng AI. Vui lòng thử tải lại hoặc dùng tệp khác!");
+          } else {
+            // Vẫn đang PROCESSING, tiếp tục thăm dò sau 3.5 giây (tối ưu số lượng request)
+            setTimeout(() => pollResumeStatus(resumeId), 3500);
+          }
+        } else {
+          setTimeout(() => pollResumeStatus(resumeId), 3500);
+        }
+      } catch (err: any) {
+        clearInterval(tick);
+        setAnalyzing(false);
+        setError(err.response?.data?.message || err.message || "Có lỗi xảy ra khi kiểm tra tiến độ phân tích.");
+      }
+    };
+
     if (isDemo) {
       // CHẾ ĐỘ DEMO: Tự động chạy lên 100% sau 8.5s
       setTimeout(() => {
@@ -99,13 +133,25 @@ export default function CvChecker() {
     } else {
       // CHẾ ĐỘ API THẬT: Trigger upload lên backend Spring Boot
       uploadCvMutation.mutate(selectedFile, {
-        onSuccess: () => {
-          clearInterval(tick);
-          setProgress(100);
-          setSuccessFinished(true);
-          setTimeout(() => {
-            navigate("/results");
-          }, 1400);
+        onSuccess: (resume) => {
+          if (resume.parseStatus === "DONE" || resume.parseStatus === "FAILED") {
+            clearInterval(tick);
+            if (resume.parseStatus === "DONE") {
+              const mappedResult = mapResumeToAnalysisResult(resume);
+              cvStore.setResult(mappedResult);
+              setProgress(100);
+              setSuccessFinished(true);
+              setTimeout(() => {
+                navigate("/results");
+              }, 1400);
+            } else {
+              setAnalyzing(false);
+              setError("Phân tích CV thất bại bằng AI.");
+            }
+          } else {
+            // Bắt đầu thăm dò thực tế sau 5 giây (vì phân tích AI luôn mất tối thiểu 8-15 giây)
+            setTimeout(() => pollResumeStatus(resume.id), 5000);
+          }
         },
         onError: (err: any) => {
           clearInterval(tick);

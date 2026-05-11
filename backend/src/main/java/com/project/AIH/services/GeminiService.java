@@ -29,8 +29,42 @@ public class GeminiService {
         @Value("${app.gemini.api-url}")
         private String apiUrl;
 
-        public String analyzeResume(byte[] fileBytes, String contentType, String jobDescription) {
+        public String analyzeResume(byte[] fileBytes, String contentType, String jobDescription, com.project.AIH.utils.constant.JobLevelEnum targetLevel) {
                 String base64File = Base64.getEncoder().encodeToString(fileBytes);
+
+                String levelInstruction = "";
+                if (targetLevel != null) {
+                    levelInstruction = "\n--- CẤP ĐỘ CÔNG VIỆC YÊU CẦU: " + targetLevel.name() + " ---\n";
+                    switch (targetLevel) {
+                        case INTERN:
+                        case FRESHER:
+                            levelInstruction += "HƯỚNG DẪN ĐÁNH GIÁ CẤP ĐỘ INTERN/FRESHER:\n"
+                                    + "- Giảm nhẹ sự khắt khe về mặt bề dày kinh nghiệm làm việc thực tế.\n"
+                                    + "- Tập trung đánh giá mạnh mẽ vào TIỀN NĂNG phát triển, tốc độ học hỏi, các hoạt động ngoại khóa, đồ án môn học, side projects, kỹ năng học tập liên tục và tư duy giải quyết vấn đề.\n"
+                                    + "- Cho phép điểm cộng tốt ở Stage 4 nếu có các chứng chỉ tự học online, thành tích học tập xuất sắc hoặc hoạt động tích cực.\n";
+                            break;
+                        case JUNIOR:
+                            levelInstruction += "HƯỚNG DẪN ĐÁNH GIÁ CẤP ĐỘ JUNIOR:\n"
+                                    + "- Đánh giá kỹ năng làm việc độc lập cơ bản, nắm vững các công cụ/ngôn ngữ lập trình cốt lõi của ngành nghề.\n"
+                                    + "- Yêu cầu có ít nhất 1-2 dự án thực tế hoặc đồ án lớn có chiều sâu kỹ thuật.\n"
+                                    + "- Kỳ vọng có sự thấu hiểu quy trình làm việc chuẩn trong team.\n";
+                            break;
+                        case MIDDLE:
+                            levelInstruction += "HƯỚNG DẪN ĐÁNH GIÁ CẤP ĐỘ MIDDLE:\n"
+                                    + "- Đòi hỏi kinh nghiệm làm việc thực tế từ 2-4 năm, làm chủ hoàn toàn các mảng công việc được giao.\n"
+                                    + "- Đánh giá cao việc tự thiết kế giải pháp kỹ thuật, viết code sạch, tối ưu hóa hiệu năng, giải quyết các bài toán phức tạp bậc trung.\n"
+                                    + "- Đòi hỏi bằng chứng rõ ràng về tác động (impact) và số liệu định lượng (quantification) trong các dự án.\n";
+                            break;
+                        case SENIOR:
+                        case LEAD:
+                        case MANAGER:
+                            levelInstruction += "HƯỚNG DẪN ĐÁNH GIÁ CẤP ĐỘ " + targetLevel.name() + " (CỰC KỲ KHẮT KHE):\n"
+                                    + "- Đòi hỏi kinh nghiệm dày dặn (>= 5 năm), khả năng thiết kế kiến trúc hệ thống (architecture design), dẫn dắt kỹ thuật (technical leadership), hoặc quản lý dự án/con người.\n"
+                                    + "- Đánh giá cực kỳ khắt khe về tầm ảnh hưởng kinh doanh (business/scope impact) và số liệu định lượng khổng lồ.\n"
+                                    + "- Trừ điểm mạnh nếu CV viết chung chung kiểu Junior, thiếu bằng chứng về việc tối ưu quy trình, quản trị rủi ro hoặc mentor cho thế hệ sau.\n";
+                            break;
+                    }
+                }
 
                 String promptText = String.format(
                                 "Bạn là hệ thống phân tích CV tự động (ATS) cấp cao và là một chuyên gia tuyển dụng (Headhunter) quốc tế. "
@@ -46,6 +80,7 @@ public class GeminiService {
                                                 "- 55-69 : Trung bình — cần cải thiện đáng kể\n" +
                                                 "- Dưới 55: Yếu — cần làm lại CV từ đầu\n" +
                                                 "Hầu hết CV thực tế nằm ở mức 45-70. Không grade inflate.\n\n" +
+                                                "%s\n" +
                                                 "--- MÔ TẢ CÔNG VIỆC (JD) ---\n%s\n\n" +
                                                 "YÊU CẦU TRẢ VỀ ĐÚNG 1 OBJECT JSON DUY NHẤT (TUYỆT ĐỐI KHÔNG CÓ MARKDOWN HAY TEXT THỪA) THEO CẤU TRÚC SAU:\n"
                                                 +
@@ -58,27 +93,27 @@ public class GeminiService {
                                                 "    \"industry\": \"<Ngành nghề chính>\"\n" +
                                                 "  },\n" +
                                                 "  \"stage2_core\": {\n" +
-                                                "    \"score\": <Tổng điểm GĐ 2 (Tối đa 60)>,\n" +
+                                                "    \"score\": <Tổng điểm GĐ 2 (Tối đa 50)>,\n" +
                                                 "    \"ats_format\": {\n" +
-                                                "      \"score\": <Tối đa 20>,\n" +
+                                                "      \"score\": <Tối đa 12>,\n" +
                                                 "      \"details\": [\n" +
-                                                "        \"File Technical: +<điểm>/5 (Đánh giá định dạng file)\",\n" +
-                                                "        \"ATS Parsability: +<điểm>/8 (Cấu trúc có dễ đọc máy không, header chuẩn không)\",\n"
+                                                "        \"File Technical: +<điểm>/3 (Đánh giá định dạng file)\",\n" +
+                                                "        \"ATS Parsability: +<điểm>/5 (Cấu trúc có dễ đọc máy không, header chuẩn không)\",\n"
                                                 +
-                                                "        \"Typography: +<điểm>/4 (Trình bày font, canh lề)\",\n" +
-                                                "        \"Length: +<điểm>/3 (Độ dài CV phù hợp cấp độ không)\"\n" +
+                                                "        \"Typography: +<điểm>/2 (Trình bày font, canh lề)\",\n" +
+                                                "        \"Length: +<điểm>/2 (Độ dài CV phù hợp cấp độ không)\"\n" +
                                                 "      ]\n" +
                                                 "    },\n" +
                                                 "    \"professional_foundation\": {\n" +
-                                                "      \"score\": <Tối đa 20>,\n" +
+                                                "      \"score\": <Tối đa 18>,\n" +
                                                 "      \"details\": [\n" +
                                                 "        \"Contact: +<điểm>/4 (Đầy đủ Tên, SĐT, Email, LinkedIn...)\",\n"
                                                 +
                                                 "        \"Summary: +<điểm>/5 (Mục tiêu rõ ràng, thể hiện định hướng)\",\n"
                                                 +
-                                                "        \"Sections: +<điểm>/6 (Đầy đủ Kinh nghiệm, Học vấn, Kỹ năng)\",\n"
+                                                "        \"Sections: +<điểm>/5 (Đầy đủ Kinh nghiệm, Học vấn, Kỹ năng)\",\n"
                                                 +
-                                                "        \"Organization: +<điểm>/5 (Thứ tự các mục hợp lý)\"\n" +
+                                                "        \"Organization: +<điểm>/4 (Thứ tự các mục hợp lý)\"\n" +
                                                 "      ]\n" +
                                                 "    },\n" +
                                                 "    \"content_quality\": {\n" +
@@ -89,35 +124,34 @@ public class GeminiService {
                                                 "        \"Quantification: +<điểm>/8 (Sử dụng số liệu định lượng, kết quả cụ thể)\",\n"
                                                 +
                                                 "        \"Keywords: +<điểm>/4 (Mức độ khớp từ khóa với JD)\",\n" +
-                                                "        \"Consistency: +<điểm>/3 (Tính nhất quán về ngày tháng, format)\"\n"
-                                                +
+                                                "        \"Consistency: +<điểm>/3 (Tính nhất quán về ngày tháng, format)\"\n" +
                                                 "      ]\n" +
                                                 "    }\n" +
                                                 "  },\n" +
                                                 "  \"stage3_in_depth\": {\n" +
-                                                "    \"score\": <Tổng điểm GĐ 3 (Tối đa 30)>,\n" +
+                                                "    \"score\": <Tổng điểm GĐ 3 (Tối đa 40)>,\n" +
                                                 "    \"experience_eval\": {\n" +
-                                                "      \"score\": <Tối đa 15>,\n" +
+                                                "      \"score\": <Tối đa 20>,\n" +
                                                 "      \"details\": [\n" +
-                                                "        \"Progression: +<điểm>/3 (Sự thăng tiến, phát triển kỹ năng)\",\n"
+                                                "        \"Progression: +<điểm>/4 (Sự thăng tiến, phát triển kỹ năng)\",\n"
                                                 +
-                                                "        \"Bullet Quality: +<điểm>/6 (Mô tả công việc rõ ràng, nêu rõ trách nhiệm)\",\n"
+                                                "        \"Bullet Quality: +<điểm>/8 (Mô tả công việc rõ ràng, nêu rõ trách nhiệm)\",\n"
                                                 +
-                                                "        \"Scope & Impact: +<điểm>/6 (Phạm vi công việc và mức độ ảnh hưởng)\"\n"
+                                                "        \"Scope & Impact: +<điểm>/8 (Phạm vi công việc và mức độ ảnh hưởng)\"\n"
                                                 +
                                                 "      ]\n" +
                                                 "    },\n" +
                                                 "    \"technical_evidence\": {\n" +
-                                                "      \"score\": <Tối đa 8>,\n" +
-                                                "      \"details\": [\"Chi tiết bằng chứng kỹ năng: +<điểm>/8\"]\n" +
+                                                "      \"score\": <Tối đa 10>,\n" +
+                                                "      \"details\": [\"Chi tiết bằng chứng kỹ năng: +<điểm>/10\"]\n" +
                                                 "    },\n" +
                                                 "    \"projects\": {\n" +
-                                                "      \"score\": <Tối đa 5>,\n" +
-                                                "      \"details\": [\"Đánh giá chất lượng dự án: +<điểm>/5\"]\n" +
+                                                "      \"score\": <Tối đa 7>,\n" +
+                                                "      \"details\": [\"Đánh giá chất lượng dự án: +<điểm>/7\"]\n" +
                                                 "    },\n" +
                                                 "    \"certs\": {\n" +
-                                                "      \"score\": <Tối đa 2>,\n" +
-                                                "      \"details\": [\"Bằng cấp, chứng chỉ liên quan: +<điểm>/2\"]\n" +
+                                                "      \"score\": <Tối đa 3>,\n" +
+                                                "      \"details\": [\"Bằng cấp, chứng chỉ liên quan: +<điểm>/3\"]\n" +
                                                 "    }\n" +
                                                 "  },\n" +
                                                 "  \"stage4_bonus\": {\n" +
@@ -161,8 +195,12 @@ public class GeminiService {
                                                 "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n" +
                                                 "  ]\n" +
                                                 "}\n\n" +
-                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.",
-                                jobDescription);
+                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.",
+                                levelInstruction, jobDescription);
+
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
 
                 Map<String, Object> requestBody = Map.of(
                                 "contents", List.of(
@@ -170,7 +208,8 @@ public class GeminiService {
                                                                 Map.of("text", promptText),
                                                                 Map.of("inlineData", Map.of(
                                                                                 "mimeType", contentType,
-                                                                                "data", base64File))))));
+                                                                                "data", base64File))))),
+                                "generationConfig", generationConfig);
 
                 try {
                         log.info("Sending multimodal request to Gemini AI for resume analysis...");
@@ -205,8 +244,13 @@ public class GeminiService {
                                 "- 55-69 : Trung bình — cần cải thiện đáng kể\n" +
                                 "- Dưới 55: Yếu — cần làm lại CV từ đầu\n" +
                                 "Hầu hết CV thực tế nằm ở mức 45-70. Không grade inflate.\n\n" +
-                                "YÊU CẦU TRẢ VỀ ĐÚNG 1 OBJECT JSON DUY NHẤT (TUYỆT ĐỐI KHÔNG CÓ MARKDOWN HAY TEXT THỪA) THEO CẤU TRÚC SAU:\n"
-                                +
+                                "BẮT BUỘC tuân thủ Rubric chấm điểm Stage 4 sau đây:\n" +
+                                "- Leadership (max 2đ): 0đ nếu không có, 1đ nếu mentor/lead nhóm nhỏ (<5 người hoặc <6 tháng), 2đ nếu quản lý team lớn >=5 người hoặc quản lý >=6 tháng hoặc giữ chức vụ Trưởng nhóm+.\n" +
+                                "- International (max 2đ): 0đ nếu nội địa, 1đ nếu có ngoại ngữ tốt (IELTS 6.5+/TOEIC 750+) hoặc làm việc nhóm đa quốc gia, 2đ nếu làm việc trực tiếp tại công ty nước ngoài hoặc IELTS 7.0+.\n" +
+                                "- Awards (max 2đ): 0đ nếu không có, 1đ nếu đạt giải nội bộ, cuộc thi nhỏ, 2đ nếu đạt giải cấp quốc gia/quốc tế hoặc được công nhận bởi tổ chức uy tín.\n" +
+                                "- Learning (max 2đ): 0đ nếu không có bằng chứng tự học, 1đ nếu có chứng chỉ online lẻ hoặc học công nghệ mới, 2đ nếu có chuỗi chứng chỉ học tập liên tục hoặc contribute open source hoặc blog kỹ thuật.\n" +
+                                "- Category-Specific (max 2đ): 0đ nếu không có portfolio/bằng chứng chuyên ngành, 1đ nếu có portfolio/GitHub nhưng sơ sài, 2đ nếu portfolio cực mạnh bám sát vị trí (IT->GitHub active, Design->Behance, Marketing->Case study chi tiết, Finance->CFA/CPA/số liệu P&L, Sales->Revenue quota attainment).\n\n" +
+                                "YÊU CẦU TRẢ VỀ ĐÚNG 1 OBJECT JSON DUY NHẤT (TUYỆT ĐỐI KHÔNG CÓ MARKDOWN HAY TEXT THỪA) THEO CẤU TRÚC SAU:\n" +
                                 "{\n" +
                                 "  \"total_score\": <Tổng điểm = stage2_core.score + stage3_in_depth.score + stage4_bonus.score>,\n" +
                                 "  \"stage1_detection\": {\n" +
@@ -215,24 +259,23 @@ public class GeminiService {
                                 "    \"industry\": \"<Ngành nghề chính>\"\n" +
                                 "  },\n" +
                                 "  \"stage2_core\": {\n" +
-                                "    \"score\": <Tổng điểm GĐ 2 (Tối đa 60)>,\n" +
+                                "    \"score\": <Tổng điểm GĐ 2 (Tối đa 50)>,\n" +
                                 "    \"ats_format\": {\n" +
-                                "      \"score\": <Tối đa 20>,\n" +
+                                "      \"score\": <Tối đa 12>,\n" +
                                 "      \"details\": [\n" +
-                                "        \"File Technical: +<điểm>/5 (Đánh giá định dạng file)\",\n" +
-                                "        \"ATS Parsability: +<điểm>/8 (Cấu trúc có dễ đọc máy không, header chuẩn không)\",\n"
-                                +
-                                "        \"Typography: +<điểm>/4 (Trình bày font, canh lề)\",\n" +
-                                "        \"Length: +<điểm>/3 (Độ dài CV phù hợp cấp độ không)\"\n" +
+                                "        \"File Technical: +<điểm>/3 (Đánh giá định dạng file)\",\n" +
+                                "        \"ATS Parsability: +<điểm>/5 (Cấu trúc có dễ đọc máy không, header chuẩn không)\",\n" +
+                                "        \"Typography: +<điểm>/2 (Trình bày font, canh lề)\",\n" +
+                                "        \"Length: +<điểm>/2 (Độ dài CV phù hợp cấp độ không)\"\n" +
                                 "      ]\n" +
                                 "    },\n" +
                                 "    \"professional_foundation\": {\n" +
-                                "      \"score\": <Tối đa 20>,\n" +
+                                "      \"score\": <Tối đa 18>,\n" +
                                 "      \"details\": [\n" +
                                 "        \"Contact: +<điểm>/4 (Đầy đủ Tên, SĐT, Email, LinkedIn...)\",\n" +
                                 "        \"Summary: +<điểm>/5 (Mục tiêu rõ ràng, thể hiện định hướng)\",\n" +
-                                "        \"Sections: +<điểm>/6 (Đầy đủ Kinh nghiệm, Học vấn, Kỹ năng)\",\n" +
-                                "        \"Organization: +<điểm>/5 (Thứ tự các mục hợp lý)\"\n" +
+                                "        \"Sections: +<điểm>/5 (Đầy đủ Kinh nghiệm, Học vấn, Kỹ năng)\",\n" +
+                                "        \"Organization: +<điểm>/4 (Thứ tự các mục hợp lý)\"\n" +
                                 "      ]\n" +
                                 "    },\n" +
                                 "    \"content_quality\": {\n" +
@@ -246,27 +289,26 @@ public class GeminiService {
                                 "    }\n" +
                                 "  },\n" +
                                 "  \"stage3_in_depth\": {\n" +
-                                "    \"score\": <Tổng điểm GĐ 3 (Tối đa 30)>,\n" +
+                                "    \"score\": <Tổng điểm GĐ 3 (Tối đa 40)>,\n" +
                                 "    \"experience_eval\": {\n" +
-                                "      \"score\": <Tối đa 15>,\n" +
+                                "      \"score\": <Tối đa 20>,\n" +
                                 "      \"details\": [\n" +
-                                "        \"Progression: +<điểm>/3 (Sự thăng tiến, phát triển kỹ năng)\",\n" +
-                                "        \"Bullet Quality: +<điểm>/6 (Mô tả công việc rõ ràng, nêu rõ trách nhiệm)\",\n"
-                                +
-                                "        \"Scope & Impact: +<điểm>/6 (Phạm vi công việc và mức độ ảnh hưởng)\"\n" +
+                                "        \"Progression: +<điểm>/4 (Sự thăng tiến, phát triển kỹ năng)\",\n" +
+                                "        \"Bullet Quality: +<điểm>/8 (Mô tả công việc rõ ràng, nêu rõ trách nhiệm)\",\n" +
+                                "        \"Scope & Impact: +<điểm>/8 (Phạm vi công việc và mức độ ảnh hưởng)\"\n" +
                                 "      ]\n" +
                                 "    },\n" +
                                 "    \"technical_evidence\": {\n" +
-                                "      \"score\": <Tối đa 8>,\n" +
-                                "      \"details\": [\"Chi tiết bằng chứng kỹ năng: +<điểm>/8\"]\n" +
+                                "      \"score\": <Tối đa 10>,\n" +
+                                "      \"details\": [\"Chi tiết bằng chứng kỹ năng: +<điểm>/10\"]\n" +
                                 "    },\n" +
                                 "    \"projects\": {\n" +
-                                "      \"score\": <Tối đa 5>,\n" +
-                                "      \"details\": [\"Đánh giá chất lượng dự án: +<điểm>/5\"]\n" +
+                                "      \"score\": <Tối đa 7>,\n" +
+                                "      \"details\": [\"Đánh giá chất lượng dự án: +<điểm>/7\"]\n" +
                                 "    },\n" +
                                 "    \"certs\": {\n" +
-                                "      \"score\": <Tối đa 2>,\n" +
-                                "      \"details\": [\"Bằng cấp, chứng chỉ liên quan: +<điểm>/2\"]\n" +
+                                "      \"score\": <Tối đa 3>,\n" +
+                                "      \"details\": [\"Bằng cấp, chứng chỉ liên quan: +<điểm>/3\"]\n" +
                                 "    }\n" +
                                 "  },\n" +
                                 "  \"stage4_bonus\": {\n" +
@@ -276,7 +318,7 @@ public class GeminiService {
                                 "      \"International: +<điểm>/2\",\n" +
                                 "      \"Awards: +<điểm>/2\",\n" +
                                 "      \"Learning: +<điểm>/2\",\n" +
-                                "      \"Category-Specific: +<điểm>/2 (Theo ngành: IT→GitHub/Portfolio/side project; Marketing→Case study/campaign result; Finance→CFA/CPA/số liệu P&L; Design→Behance/Dribbble link; Sales→Revenue quota attainment)\"\n" +
+                                "      \"Category-Specific: +<điểm>/2\"\n" +
                                 "    ]\n" +
                                 "  },\n" +
                                 "  \"sub_tips\": {\n" +
@@ -319,7 +361,11 @@ public class GeminiService {
                                 "    }\n" +
                                 "  ]\n" +
                                 "}\n\n" +
-                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Quy tắc lọc sub_tips và score_gaps: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.";
+                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Quy tắc lọc sub_tips và score_gaps: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
+
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
 
                 Map<String, Object> requestBody = Map.of(
                                 "contents", List.of(
@@ -327,7 +373,8 @@ public class GeminiService {
                                                                 Map.of("text", promptText),
                                                                 Map.of("inlineData", Map.of(
                                                                                 "mimeType", contentType,
-                                                                                "data", base64File))))));
+                                                                                "data", base64File))))),
+                                "generationConfig", generationConfig);
 
                 try {
                         log.info("Sending multimodal request to Gemini AI for general resume analysis...");
@@ -389,7 +436,10 @@ public class GeminiService {
                                 "  }\n" +
                                 "}",
                                 targetRole, industry, level, questionText, answerText);
-                return callTextOnlyGemini(prompt, 10); // 10s timeout for scoring
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
+                return callTextOnlyGemini(prompt, 10, generationConfig); // 10s timeout for scoring
         }
 
 
@@ -417,7 +467,10 @@ public class GeminiService {
                                 "]\n" +
                                 "Đảm bảo trả về đúng 5 phần tử trong mảng JSON.",
                                 targetRole, industry, level, levelInstruction, jobDescription, candidateCvText);
-                return callTextOnlyGemini(prompt, 20); // 20s timeout for generating 5 questions
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
+                return callTextOnlyGemini(prompt, 20, generationConfig); // 20s timeout for generating 5 questions
         }
 
         public String generatePersonalizedQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level, int count) {
@@ -442,7 +495,10 @@ public class GeminiService {
                                 "]\n" +
                                 "Đảm bảo trả về đúng %d phần tử trong mảng JSON.",
                                 targetRole, industry, level, levelInstruction, jobDescription, candidateCvText, count, count, count);
-                return callTextOnlyGemini(prompt, 15); // 15s timeout for generating personalized questions
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
+                return callTextOnlyGemini(prompt, 15, generationConfig); // 15s timeout for generating personalized questions
         }
 
 
@@ -457,7 +513,9 @@ public class GeminiService {
                                 "Hãy cập nhật và viết lại một bản tóm tắt năng lực tích lũy mới bằng Tiếng Việt (không quá 150 từ, súc tích, mang tính chuyên môn). Tập trung làm nổi bật: Điểm mạnh cốt lõi đã được kiểm chứng, điểm yếu chuyên môn cần lưu ý, mức độ hiểu biết lý thuyết và khả năng thực hành thực tế.",
                                 (currentSummary != null && !currentSummary.isEmpty()) ? currentSummary : "Chưa có đánh giá tích lũy.",
                                 questionText, answerText, score);
-                return callTextOnlyGemini(prompt, 10); // 10s for running summary
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.3);
+                return callTextOnlyGemini(prompt, 10, generationConfig); // 10s for running summary
         }
 
         public String generateFinalReport(String jobDescription, String chatHistory) {
@@ -474,7 +532,10 @@ public class GeminiService {
                                                 "  \"summary\": \"<Đánh giá tổng quan>\"\n" +
                                                 "}",
                                 chatHistory, jobDescription);
-                return callTextOnlyGemini(prompt, 25); // 25s for final report
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
+                return callTextOnlyGemini(prompt, 25, generationConfig); // 25s for final report
         }
 
         public String parseDetailedResume(String extractedText) {
@@ -554,7 +615,10 @@ public class GeminiService {
                                 + "    }\n"
                                 + "  ]\n"
                                 + "}";
-                return callTextOnlyGemini(promptText, 25);
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
+                return callTextOnlyGemini(promptText, 25, generationConfig);
         }
 
     public String parseResumeText(String extractedText) {
@@ -577,23 +641,23 @@ public class GeminiService {
                 + "    \"industry\": \"<Ngành nghề chính>\"\n"
                 + "  },\n"
                 + "  \"stage2_core\": {\n"
-                + "    \"score\": <Tổng điểm GĐ 2 (Tối đa 60)>,\n"
+                + "    \"score\": <Tổng điểm GĐ 2 (Tối đa 50)>,\n"
                 + "    \"ats_format\": {\n"
-                + "      \"score\": <Tối đa 20>,\n"
+                + "      \"score\": <Tối đa 12>,\n"
                 + "      \"details\": [\n"
-                + "        \"File Technical: +<điểm>/5 (Đánh giá định dạng file)\",\n"
-                + "        \"ATS Parsability: +<điểm>/8 (Cấu trúc có dễ đọc máy không, header chuẩn không)\",\n"
-                + "        \"Typography: +<điểm>/4 (Trình bày font, canh lề)\",\n"
-                + "        \"Length: +<điểm>/3 (Độ dài CV phù hợp cấp độ không)\"\n"
+                + "        \"File Technical: +<điểm>/3 (Đánh giá định dạng file)\",\n"
+                + "        \"ATS Parsability: +<điểm>/5 (Cấu trúc có dễ đọc máy không, header chuẩn không)\",\n"
+                + "        \"Typography: +<điểm>/2 (Trình bày font, canh lề)\",\n"
+                + "        \"Length: +<điểm>/2 (Độ dài CV phù hợp cấp độ không)\"\n"
                 + "      ]\n"
                 + "    },\n"
                 + "    \"professional_foundation\": {\n"
-                + "      \"score\": <Tối đa 20>,\n"
+                + "      \"score\": <Tối đa 18>,\n"
                 + "      \"details\": [\n"
                 + "        \"Contact: +<điểm>/4 (Đầy đủ Tên, SĐT, Email, LinkedIn...)\",\n"
                 + "        \"Summary: +<điểm>/5 (Mục tiêu rõ ràng, thể hiện định hướng)\",\n"
-                + "        \"Sections: +<điểm>/6 (Đầy đủ Kinh nghiệm, Học vấn, Kỹ năng)\",\n"
-                + "        \"Organization: +<điểm>/5 (Thứ tự các mục hợp lý)\"\n"
+                + "        \"Sections: +<điểm>/5 (Đầy đủ Kinh nghiệm, Học vấn, Kỹ năng)\",\n"
+                + "        \"Organization: +<điểm>/4 (Thứ tự các mục hợp lý)\"\n"
                 + "      ]\n"
                 + "    },\n"
                 + "    \"content_quality\": {\n"
@@ -607,26 +671,26 @@ public class GeminiService {
                 + "    }\n"
                 + "  },\n"
                 + "  \"stage3_in_depth\": {\n"
-                + "    \"score\": <Tổng điểm GĐ 3 (Tối đa 30)>,\n"
+                + "    \"score\": <Tổng điểm GĐ 3 (Tối đa 40)>,\n"
                 + "    \"experience_eval\": {\n"
-                + "      \"score\": <Tối đa 15>,\n"
+                + "      \"score\": <Tối đa 20>,\n"
                 + "      \"details\": [\n"
-                + "        \"Progression: +<điểm>/3 (Sự thăng tiến, phát triển kỹ năng)\",\n"
-                + "        \"Bullet Quality: +<điểm>/6 (Mô tả công việc rõ ràng, nêu rõ trách nhiệm)\",\n"
-                + "        \"Scope & Impact: +<điểm>/6 (Phạm vi công việc và mức độ ảnh hưởng)\"\n"
+                + "        \"Progression: +<điểm>/4 (Sự thăng tiến, phát triển kỹ năng)\",\n"
+                + "        \"Bullet Quality: +<điểm>/8 (Mô tả công việc rõ ràng, nêu rõ trách nhiệm)\",\n"
+                + "        \"Scope & Impact: +<điểm>/8 (Phạm vi công việc và mức độ ảnh hưởng)\"\n"
                 + "      ]\n"
                 + "    },\n"
                 + "    \"technical_evidence\": {\n"
-                + "      \"score\": <Tối đa 8>,\n"
-                + "      \"details\": [\"Chi tiết bằng chứng kỹ năng: +<điểm>/8\"]\n"
+                + "      \"score\": <Tối đa 10>,\n"
+                + "      \"details\": [\"Chi tiết bằng chứng kỹ năng: +<điểm>/10\"]\n"
                 + "    },\n"
                 + "    \"projects\": {\n"
-                + "      \"score\": <Tối đa 5>,\n"
-                + "      \"details\": [\"Đánh giá chất lượng dự án: +<điểm>/5\"]\n"
+                + "      \"score\": <Tối đa 7>,\n"
+                + "      \"details\": [\"Đánh giá chất lượng dự án: +<điểm>/7\"]\n"
                 + "    },\n"
                 + "    \"certs\": {\n"
-                + "      \"score\": <Tối đa 2>,\n"
-                + "      \"details\": [\"Bằng cấp, chứng chỉ liên quan: +<điểm>/2\"]\n"
+                + "      \"score\": <Tối đa 3>,\n"
+                + "      \"details\": [\"Bằng cấp, chứng chỉ liên quan: +<điểm>/3\"]\n"
                 + "    }\n"
                 + "  },\n"
                 + "  \"stage4_bonus\": {\n"
@@ -636,7 +700,7 @@ public class GeminiService {
                 + "      \"International: +<điểm>/2\",\n"
                 + "      \"Awards: +<điểm>/2\",\n"
                 + "      \"Learning: +<điểm>/2\",\n"
-                + "      \"Category-Specific: +<điểm>/2 (Theo ngành: IT→GitHub/Portfolio/side project; Marketing→Case study/campaign result; Finance→CFA/CPA/số liệu P&L; Design→Behance/Dribbble link; Sales→Revenue quota attainment)\"\n"
+                + "      \"Category-Specific: +<điểm>/2\"\n"
                 + "    ]\n"
                 + "  },\n"
                 + "  \"sub_tips\": {\n"
@@ -670,15 +734,37 @@ public class GeminiService {
                 + "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n"
                 + "  ]\n"
                 + "}\n\n"
-                + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu.";
-        return callTextOnlyGemini(promptText, 25);
+                + "BẮT BUỘC tuân thủ Rubric chấm điểm Stage 4 sau đây:\n"
+                + "- Leadership (max 2đ): 0đ nếu không có, 1đ nếu mentor/lead nhóm nhỏ (<5 người hoặc <6 tháng), 2đ nếu quản lý team lớn >=5 người hoặc quản lý >=6 tháng hoặc giữ chức vụ Trưởng nhóm+.\n"
+                + "- International (max 2đ): 0đ nếu nội địa, 1đ nếu có ngoại ngữ tốt (IELTS 6.5+/TOEIC 750+) hoặc làm việc nhóm đa quốc gia, 2đ nếu làm việc trực tiếp tại công ty nước ngoài hoặc IELTS 7.0+.\n"
+                + "- Awards (max 2đ): 0đ nếu không có, 1đ nếu đạt giải nội bộ, cuộc thi nhỏ, 2đ nếu đạt giải cấp quốc gia/quốc tế hoặc được công nhận bởi tổ chức uy tín.\n"
+                + "- Learning (max 2đ): 0đ nếu không có bằng chứng tự học, 1đ nếu có chứng chỉ online lẻ hoặc học công nghệ mới, 2đ nếu có chuỗi chứng chỉ học tập liên tục hoặc contribute open source hoặc blog kỹ thuật.\n"
+                + "- Category-Specific (max 2đ): 0đ nếu không có portfolio/bằng chứng chuyên ngành, 1đ nếu có portfolio/GitHub nhưng sơ sài, 2đ nếu portfolio cực mạnh bám sát vị trí (IT->GitHub active, Design->Behance, Marketing->Case study chi tiết, Finance->CFA/CPA/số liệu P&L, Sales->Revenue quota attainment).\n\n"
+                + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.1,
+                                "responseMimeType", "application/json");
+                return callTextOnlyGemini(promptText, 25, generationConfig);
     }
 
     private String callTextOnlyGemini(String promptText, int timeoutSeconds) {
-                Map<String, Object> requestBody = Map.of(
-                                "contents", List.of(
-                                                Map.of("parts", List.of(
-                                                                Map.of("text", promptText)))));
+        return callTextOnlyGemini(promptText, timeoutSeconds, null);
+    }
+
+    private String callTextOnlyGemini(String promptText, int timeoutSeconds, Map<String, Object> generationConfig) {
+                Map<String, Object> requestBody;
+                if (generationConfig != null) {
+                    requestBody = Map.of(
+                                    "contents", List.of(
+                                                    Map.of("parts", List.of(
+                                                                    Map.of("text", promptText)))),
+                                    "generationConfig", generationConfig);
+                } else {
+                    requestBody = Map.of(
+                                    "contents", List.of(
+                                                    Map.of("parts", List.of(
+                                                                    Map.of("text", promptText)))));
+                }
 
                 try {
                         log.info("Sending text-only request to Gemini API with {}s timeout...", timeoutSeconds);

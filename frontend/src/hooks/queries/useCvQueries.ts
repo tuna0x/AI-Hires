@@ -16,14 +16,16 @@ export function useUploadCvMutation() {
       return response.data;
     },
     onSuccess: (resume) => {
-      // Chuyển đổi dữ liệu backend -> dữ liệu frontend hiển thị
-      const mappedResult = mapResumeToAnalysisResult(resume);
-      cvStore.setResult(mappedResult);
+      // Chỉ chuyển đổi và lưu kết quả hiển thị nếu đã hoàn thành phân tích ở backend
+      if (resume.parseStatus === "DONE" || resume.parseStatus === "FAILED") {
+        const mappedResult = mapResumeToAnalysisResult(resume);
+        cvStore.setResult(mappedResult);
+      }
       
       // Refresh dữ liệu cache nếu cần thiết
       queryClient.invalidateQueries({ queryKey: ["resumes"] });
       
-      toast.success("Tải lên và phân tích CV thành công!");
+      toast.success("Tải lên hồ sơ thành công! Đang tiến hành phân tích...");
     },
     onError: (error: any) => {
       console.error("Error uploading CV:", error);

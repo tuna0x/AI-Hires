@@ -9,10 +9,12 @@ import com.project.AIH.models.CvScoreInsight;
 import com.project.AIH.models.Application;
 import com.project.AIH.models.Job;
 import com.project.AIH.models.Resume;
+import com.project.AIH.models.ResumeRawAiOutput;
 import com.project.AIH.repositories.CvScoreRepository;
 import com.project.AIH.repositories.ApplicationRepository;
 import com.project.AIH.repositories.JobRepository;
 import com.project.AIH.repositories.ResumeRepository;
+import com.project.AIH.repositories.ResumeRawAiOutputRepository;
 import com.project.AIH.utils.constant.ApplicationStatusEnum;
 import com.project.AIH.utils.constant.ResumeStatusEnum;
 import com.project.AIH.utils.constant.InsightTypeEnum;
@@ -40,6 +42,8 @@ public class CvScoringWorker {
     private final CvScoreRepository cvScoreRepository;
     private final ObjectMapper objectMapper;
     private final ScanMapperService scanMapperService;
+    private final ResumeRawAiOutputRepository rawAiOutputRepository;
+    private final ScoringResultValidator scoringResultValidator;
 
     @RabbitListener(queues = RabbitMQConfig.CV_SCORING_QUEUE)
     @Transactional
@@ -60,7 +64,7 @@ public class CvScoringWorker {
             is.close();
 
             // 2. Call Gemini
-            String aiResponseRaw = geminiService.analyzeResume(fileBytes, message.getContentType(), job.getDescription());
+            String aiResponseRaw = geminiService.analyzeResume(fileBytes, message.getContentType(), job.getDescription(), job.getLevel());
 
             // 3. Parse JSON
             JsonNode root = objectMapper.readTree(aiResponseRaw);
@@ -79,6 +83,10 @@ public class CvScoringWorker {
             aiResultText = scanMapperService.enrichAndCalculateGaps(aiResultText);
             JsonNode resultNode = objectMapper.readTree(aiResultText);
 
+            // Validate and normalize Gemini JSON output before persisting
+            resultNode = scoringResultValidator.validateAndNormalize(resultNode);
+            aiResultText = objectMapper.writeValueAsString(resultNode);
+
             // 4. Save Score
             double stage2Score = resultNode.path("stage2_core").path("score").asDouble(0.0);
             double stage3Score = resultNode.path("stage3_in_depth").path("score").asDouble(0.0);
@@ -86,11 +94,12 @@ public class CvScoringWorker {
 
             CvScore cvScore = CvScore.builder()
                     .application(application)
-                    .totalScore(BigDecimal.valueOf(resultNode.path("total_score").asDouble()))
+                    .totalScore(BigDecimal.valueOf(resultNode.path("total_score").asDouble(0.0)))
                     .stage2Score(BigDecimal.valueOf(stage2Score))
                     .stage3Score(BigDecimal.valueOf(stage3Score))
                     .stage4Score(BigDecimal.valueOf(stage4Score))
                     .rawAiResponse(aiResultText)
+                    .scoringVersion("v1.1") // Set current scoring version
                     .build();
 
             List<CvScoreInsight> insightsList = new ArrayList<>();
@@ -128,7 +137,15 @@ public class CvScoringWorker {
             cvScore.setInsights(insightsList);
             cvScoreRepository.save(cvScore);
 
-            resume.setParsedData(aiResultText);
+            ResumeRawAiOutput rawOutput = ResumeRawAiOutput.builder()
+                    .resume(resume)
+                    .atsJson(aiResultText)
+                    .profileJson("")
+                    .aiModel("gemini-3.1-flash-lite-preview")
+                    .promptVersion("v1.0")
+                    .build();
+            rawAiOutputRepository.save(rawOutput);
+            resume.setRawAiOutput(rawOutput);
             resume.setParseStatus(ResumeStatusEnum.DONE);
             resumeRepository.save(resume);
 

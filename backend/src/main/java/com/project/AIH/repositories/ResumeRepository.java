@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface ResumeRepository extends JpaRepository<Resume, Long>, JpaSpecificationExecutor<Resume> {
     List<Resume> findByUserIdOrderByCreatedAtDesc(Long userId);
     Optional<Resume> findByFileUrl(String fileUrl);
+    Optional<Resume> findByUserIdAndContentHash(Long userId, String contentHash);
 }

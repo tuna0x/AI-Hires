@@ -45,4 +45,18 @@ public class ScanSubScore {
 
     @Column(columnDefinition = "TEXT")
     private String tip;
+
+    // Audit fields
+    private java.time.Instant createdAt;
+    private java.time.Instant updatedAt;
+
+    @PrePersist
+    public void handleBeforeCreate() {
+        this.createdAt = java.time.Instant.now();
+    }
+
+    @PreUpdate
+    public void handleBeforeUpdate() {
+        this.updatedAt = java.time.Instant.now();
+    }
 }
