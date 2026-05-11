@@ -17,5 +17,8 @@ export const cvApi = {
       }
     );
   },
+  getResumeDetails: async (id: number): Promise<RestResponse<Resume>> => {
+    return apiClient.get<any, RestResponse<Resume>>(`/api/v1/resumes/${id}`);
+  },
 };
 export default cvApi;

@@ -22,6 +22,12 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import org.apache.tika.Tika;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @Service
 @Slf4j
@@ -40,10 +46,32 @@ public class ResumeService {
     private final CvScoreRepository cvScoreRepository;
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
+    private final ResumeRawAiOutputRepository rawAiOutputRepository;
+
+    private void validateFile(MultipartFile file) {
+        if (file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File không có nội dung.");
+        }
+        if (file.getSize() > 10 * 1024 * 1024) { // 10MB limit
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File quá lớn. Tối đa 10MB.");
+        }
+        try {
+            Tika tika = new Tika();
+            String detectedMime = tika.detect(file.getInputStream());
+            if (!detectedMime.equals("application/pdf") && 
+                !detectedMime.equals("application/msword") && 
+                !detectedMime.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Chỉ chấp nhận file PDF hoặc Word.");
+            }
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể đọc định dạng file.");
+        }
+    }
 
     @Transactional
     public Application applyAndScore(MultipartFile file, Long jobId, User user) {
         log.info("Starting CV application and scoring for user: {} and job: {}", user.getEmail(), jobId);
+        validateFile(file);
 
         // 1. Upload CV to MinIO
         String fileName = fileService.uploadFile(file, "resumes/" + user.getId());
@@ -56,6 +84,8 @@ public class ResumeService {
             log.error("Failed to extract text: {}", e.getMessage());
         }
 
+        String contentHash = calculateFileHash(extractedText.getBytes());
+
         // 3. Save Resume record
         Resume resume = Resume.builder()
                 .user(user)
@@ -63,10 +93,26 @@ public class ResumeService {
                 .contentType(file.getContentType())
                 .fileSize(file.getSize())
                 .extractedText(extractedText)
+                .contentHash(contentHash)
                 .parseStatus(ResumeStatusEnum.PROCESSING)
                 .build();
-        parseAndPopulateDetailedResume(resume, extractedText);
         resume = resumeRepository.save(resume);
+
+        final Long resumeId = resume.getId();
+        final String finalExtractedText = extractedText;
+        CompletableFuture.runAsync(() -> {
+            try {
+                log.info("Starting background detailed parsing for resume ID: {}", resumeId);
+                Resume bgResume = resumeRepository.findById(resumeId).orElse(null);
+                if (bgResume != null) {
+                    parseAndPopulateDetailedResume(bgResume, finalExtractedText);
+                    resumeRepository.save(bgResume);
+                    log.info("Finished background detailed parsing for resume ID: {}", resumeId);
+                }
+            } catch (Exception e) {
+                log.error("Async detailed parsing failed for resume ID: {}", resumeId, e);
+            }
+        });
 
         // 4. Create Application
         Job job = jobRepository.findById(jobId)
@@ -104,76 +150,28 @@ public class ResumeService {
         return application;
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
+    public Resume getResumeById(Long id) {
+        return resumeRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ."));
+    }
+
     public Resume uploadAndParse(MultipartFile file, User user) {
         String userEmail = (user != null) ? user.getEmail() : "anonymous";
         String folderPath = (user != null) ? "resumes/" + user.getId() : "resumes/guest";
         log.info("Uploading and parsing resume for user: {}", userEmail);
 
-        // Calculate file hash FIRST to check for cached results
+        // Validate file FIRST
+        validateFile(file);
+
+        // 1. Read file bytes and extract text BEFORE anything else (to get the content hash)
         byte[] fileBytes;
         try {
             fileBytes = file.getBytes();
         } catch (Exception e) {
             fileBytes = new byte[0];
         }
-        String fileHash = calculateFileHash(fileBytes);
 
-        // Check if we have an existing scan for this hash
-        java.util.Optional<ResumeScan> existingScan = resumeScanRepository.findByFileHash(fileHash);
-        if (existingScan.isPresent()) {
-            ResumeScan scan = existingScan.get();
-            log.info("Found cached ResumeScan for file hash: {}. Reconstructing JSON...", fileHash);
-            
-            // Check if there's an existing Resume with this same file name/url
-            java.util.Optional<Resume> existingResume = resumeRepository.findByFileUrl(scan.getFileName());
-            if (existingResume.isPresent()) {
-                Resume cachedResume = existingResume.get();
-                
-                boolean isSameUser = false;
-                if (user == null && cachedResume.getUser() == null) {
-                    isSameUser = true;
-                } else if (user != null && cachedResume.getUser() != null && user.getId().equals(cachedResume.getUser().getId())) {
-                    isSameUser = true;
-                }
-                
-                if (isSameUser) {
-                    log.info("Returning existing cached Resume (ID: {}) for the same user.", cachedResume.getId());
-                    return cachedResume;
-                }
-                
-                // If it belongs to a different user, create a new Resume record for the current user,
-                // but populate all parsed details from the cached resume (takes ~0ms and avoids Gemini)
-                log.info("Copying parsed CV data from cache for different user.");
-                Resume newResume = Resume.builder()
-                        .user(user)
-                        .fileUrl(scan.getFileName()) // Reuse the existing file Url
-                        .contentType(file.getContentType())
-                        .fileSize(file.getSize())
-                        .extractedText(cachedResume.getExtractedText())
-                        .parsedData(cachedResume.getParsedData())
-                        .parseStatus(cachedResume.getParseStatus())
-                        .build();
-                
-                // Copy detailed fields to save database queries/calls
-                parseAndPopulateDetailedResume(newResume, cachedResume.getExtractedText());
-                newResume = resumeRepository.save(newResume);
-                
-                // Also create a ResumeScan link for this new user so they can find their scan result in their scan list
-                try {
-                    scanMapperService.saveScanResult(user, scan.getFileName(), fileHash, cachedResume.getParsedData());
-                } catch (Exception e) {
-                    log.error("Failed to copy scan result for new user: {}", e.getMessage());
-                }
-                
-                return newResume;
-            }
-        }
-
-        // 1. Upload CV to MinIO (Cache Miss path)
-        String fileName = fileService.uploadFile(file, folderPath);
-
-        // 2. Extract Text
         String extractedText = "";
         try {
             extractedText = parserService.extractText(file.getInputStream());
@@ -181,42 +179,161 @@ public class ResumeService {
             log.error("Failed to extract text: {}", e.getMessage());
         }
 
-        // 3. AI Analysis (General - Hybrid Strategy)
-        String parsedData = "";
-        try {
-            if (isTextCorrupted(extractedText)) {
-                log.info("Extracted text is empty or corrupted. Falling back to Gemini Vision using file bytes.");
-                parsedData = geminiService.parseResume(fileBytes, file.getContentType());
-            } else {
-                log.info("Extracted text is of high quality. Calling Gemini with text thô for high speed and token optimization.");
-                parsedData = geminiService.parseResumeText(extractedText);
+        // Calculate hash based on CONTENT (extracted text) to prevent cross-user leak
+        String contentHash = calculateFileHash(extractedText.getBytes());
+
+        // Check if we have an existing CV with this content hash for THIS user
+        if (user != null) {
+            java.util.Optional<Resume> existingResume = resumeRepository.findByUserIdAndContentHash(user.getId(), contentHash);
+            if (existingResume.isPresent()) {
+                log.info("Found cached Resume (ID: {}) for the same user and content hash: {}", existingResume.get().getId(), contentHash);
+                return existingResume.get();
             }
-            parsedData = scanMapperService.enrichAndCalculateGaps(parsedData);
-        } catch (Exception e) {
-            log.error("AI Analysis failed: {}", e.getMessage());
         }
 
-        // 4. Save Resume record
+        // 2. Upload CV to MinIO synchronously (takes <100ms, essential to ensure fileUrl exists)
+        String fileName;
+        try {
+            fileName = fileService.uploadFile(file, folderPath);
+        } catch (Exception e) {
+            log.error("Failed to upload file to MinIO: {}", e.getMessage());
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Không thể tải tệp lên hệ thống lưu trữ.");
+        }
+
+        // 3. Create and Save Resume with PROCESSING status
         Resume resume = Resume.builder()
                 .user(user)
                 .fileUrl(fileName)
                 .contentType(file.getContentType())
                 .fileSize(file.getSize())
                 .extractedText(extractedText)
-                .parsedData(parsedData)
-                .parseStatus(parsedData.isEmpty() ? ResumeStatusEnum.FAILED : ResumeStatusEnum.DONE)
+                .contentHash(contentHash)
+                .parseStatus(ResumeStatusEnum.PROCESSING)
                 .build();
-        parseAndPopulateDetailedResume(resume, extractedText);
         resume = resumeRepository.save(resume);
 
-        // 5. Structure and Save in the normalized database schema
-        if (!parsedData.isEmpty()) {
+        final Long resumeId = resume.getId();
+        final String finalExtractedText = extractedText;
+        final byte[] finalFileBytes = fileBytes;
+        final String contentType = file.getContentType();
+        final String finalFileName = fileName;
+        final String finalContentHash = contentHash;
+
+        // 4. Heavy AI analysis run asynchronously in the background
+        CompletableFuture.runAsync(() -> {
             try {
-                scanMapperService.saveScanResult(user, fileName, fileHash, parsedData);
+                log.info("Starting background processing for resume ID: {}", resumeId);
+
+                // Parallel AI Analysis
+                CompletableFuture<String> generalAnalysisFuture = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        if (isTextCorrupted(finalExtractedText)) {
+                            log.info("Extracted text is empty or corrupted. Falling back to Gemini Vision using file bytes.");
+                            return geminiService.parseResume(finalFileBytes, contentType);
+                        } else {
+                            log.info("Extracted text is of high quality. Calling Gemini with text thô for high speed.");
+                            return geminiService.parseResumeText(finalExtractedText);
+                        }
+                    } catch (Exception e) {
+                        log.error("Parallel AI General Analysis failed: {}", e.getMessage(), e);
+                        return "";
+                    }
+                });
+
+                CompletableFuture<String> detailedStructureFuture = CompletableFuture.supplyAsync(() -> {
+                    try {
+                        if (finalExtractedText == null || finalExtractedText.trim().isEmpty()) {
+                            return "";
+                        }
+                        log.info("Calling Gemini in parallel to parse detailed resume structure.");
+                        return geminiService.parseDetailedResume(finalExtractedText);
+                    } catch (Exception e) {
+                        log.error("Parallel AI Detailed Structure Parsing failed: {}", e.getMessage(), e);
+                        return "";
+                    }
+                });
+
+                // Wait for both tasks with strict TIMEOUT of 25 seconds
+                try {
+                    CompletableFuture.allOf(generalAnalysisFuture, detailedStructureFuture)
+                            .orTimeout(25, TimeUnit.SECONDS)
+                            .join();
+                } catch (Exception e) {
+                    log.error("Timeout or error during parallel Gemini execution: {}", e.getMessage(), e);
+                }
+
+                String parsedData = "";
+                String detailedJson = "";
+                try {
+                    parsedData = generalAnalysisFuture.getNow("");
+                    if (parsedData != null && !parsedData.isEmpty()) {
+                        parsedData = scanMapperService.enrichAndCalculateGaps(parsedData);
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to retrieve general analysis: {}", e.getMessage());
+                }
+
+                try {
+                    detailedJson = detailedStructureFuture.getNow("");
+                } catch (Exception e) {
+                    log.error("Failed to retrieve detailed structure: {}", e.getMessage());
+                }
+
+                // Retrieve fresh instance of resume in this background thread
+                Resume bgResume = resumeRepository.findById(resumeId).orElse(null);
+                if (bgResume == null) {
+                    log.error("Resume ID {} not found in database.", resumeId);
+                    return;
+                }
+
+                // Save Raw JSON to ResumeRawAiOutput instead of Resume.parsedData
+                if (!parsedData.isEmpty() || !detailedJson.isEmpty()) {
+                    try {
+                        ResumeRawAiOutput rawOutput = ResumeRawAiOutput.builder()
+                                .resume(bgResume)
+                                .atsJson(parsedData)
+                                .profileJson(detailedJson)
+                                .aiModel("gemini-3.1-flash-lite-preview")
+                                .promptVersion("v1.0")
+                                .build();
+                        rawAiOutputRepository.save(rawOutput);
+                        bgResume.setRawAiOutput(rawOutput);
+                    } catch (Exception e) {
+                        log.error("Failed to save raw AI output: {}", e.getMessage());
+                    }
+                }
+
+                // Populate detailed properties from parallel JSON response
+                if (detailedJson != null && !detailedJson.isEmpty()) {
+                    populateDetailedResumeFromJson(bgResume, detailedJson);
+                }
+
+                bgResume.setParseStatus(parsedData.isEmpty() ? ResumeStatusEnum.FAILED : ResumeStatusEnum.DONE);
+                bgResume = resumeRepository.save(bgResume);
+
+                // 5. Structure and Save in the normalized database schema
+                if (!parsedData.isEmpty()) {
+                    try {
+                        scanMapperService.saveScanResult(user, finalFileName, finalContentHash, parsedData);
+                    } catch (Exception e) {
+                        log.error("Failed to save scan results in structured tables: {}", e.getMessage());
+                    }
+                }
+                log.info("Finished background processing successfully for resume ID: {}", resumeId);
+
             } catch (Exception e) {
-                log.error("Failed to save scan results in structured tables: {}", e.getMessage());
+                log.error("Background processing failed for resume ID: {}", resumeId, e);
+                try {
+                    Resume bgResume = resumeRepository.findById(resumeId).orElse(null);
+                    if (bgResume != null) {
+                        bgResume.setParseStatus(ResumeStatusEnum.FAILED);
+                        resumeRepository.save(bgResume);
+                    }
+                } catch (Exception ex) {
+                    log.error("Failed to set FAILED status for resume ID: {}", resumeId, ex);
+                }
             }
-        }
+        });
 
         return resume;
     }
@@ -281,26 +398,34 @@ public class ResumeService {
         try {
             log.info("Calling Gemini to parse detailed resume structure for resume ID: {}", resume.getId());
             String responseJson = geminiService.parseDetailedResume(extractedText);
+            populateDetailedResumeFromJson(resume, responseJson);
+        } catch (Exception e) {
+            log.error("Failed to parse detailed resume structure for resume ID: {}. Error: {}", resume.getId(), e.getMessage());
+        }
+    }
+
+    private void populateDetailedResumeFromJson(Resume resume, String responseJson) {
+        if (responseJson == null || responseJson.trim().isEmpty()) {
+            return;
+        }
+
+        try {
             JsonNode root = objectMapper.readTree(responseJson);
 
             // 1. Basic Info
             JsonNode basicNode = root.path("basicInfo");
             if (!basicNode.isMissingNode() && !basicNode.isNull()) {
-                ResumeBasicInfo basicInfo = ResumeBasicInfo.builder()
-                        .resume(resume)
-                        .fullName(basicNode.path("fullName").asText(null))
-                        .email(basicNode.path("email").asText(null))
-                        .phone(basicNode.path("phone").asText(null))
-                        .address(basicNode.path("address").asText(null))
-                        .dateOfBirth(parseLocalDate(basicNode.path("dateOfBirth").asText(null)))
-                        .linkedinUrl(basicNode.path("linkedinUrl").asText(null))
-                        .githubUrl(basicNode.path("githubUrl").asText(null))
-                        .portfolioUrl(basicNode.path("portfolioUrl").asText(null))
-                        .objective(basicNode.path("objective").asText(null))
-                        .predictedLevel(parseEnum(CandidateLevelEnum.class, basicNode.path("predictedLevel").asText(null), null))
-                        .predictedIndustry(basicNode.path("predictedIndustry").asText(null))
-                        .build();
-                resume.setBasicInfo(basicInfo);
+                resume.setFullName(basicNode.path("fullName").asText(null));
+                resume.setEmail(basicNode.path("email").asText(null));
+                resume.setPhone(basicNode.path("phone").asText(null));
+                resume.setAddress(basicNode.path("address").asText(null));
+                resume.setDateOfBirth(parseLocalDate(basicNode.path("dateOfBirth").asText(null)));
+                resume.setLinkedinUrl(basicNode.path("linkedinUrl").asText(null));
+                resume.setGithubUrl(basicNode.path("githubUrl").asText(null));
+                resume.setPortfolioUrl(basicNode.path("portfolioUrl").asText(null));
+                resume.setObjective(basicNode.path("objective").asText(null));
+                resume.setPredictedLevel(parseEnum(CandidateLevelEnum.class, basicNode.path("predictedLevel").asText(null), null));
+                resume.setPredictedIndustry(basicNode.path("predictedIndustry").asText(null));
             }
 
             // 2. Skills
@@ -384,11 +509,22 @@ public class ResumeService {
             if (projNode.isArray()) {
                 List<ResumeProject> projects = new ArrayList<>();
                 for (JsonNode n : projNode) {
+                    String techStr = n.path("technologies").asText("");
+                    List<String> techList = new ArrayList<>();
+                    if (techStr != null && !techStr.trim().isEmpty()) {
+                        for (String t : techStr.split(",")) {
+                            String trimmed = t.trim();
+                            if (!trimmed.isEmpty()) {
+                                techList.add(trimmed);
+                            }
+                        }
+                    }
+
                     projects.add(ResumeProject.builder()
                             .resume(resume)
                             .name(n.path("name").asText(""))
                             .role(n.path("role").asText(""))
-                            .technologies(n.path("technologies").asText(""))
+                            .technologies(techList)
                             .description(n.path("description").asText(""))
                             .url(n.path("url").asText(null))
                             .startDate(parseLocalDate(n.path("startDate").asText(null)))
@@ -452,5 +588,36 @@ public class ResumeService {
             log.warn("Failed to map enum value '{}' for class '{}', returning default.", val, enumClass.getSimpleName());
             return defaultValue;
         }
+    }
+
+    @Transactional
+    public void submitScanFeedback(Long scanId, Integer rating, String feedback, User user) {
+        ResumeScan scan = resumeScanRepository.findById(scanId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy kết quả quét CV"));
+        
+        if (scan.getUser() != null && user != null && !scan.getUser().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện chức năng này");
+        }
+
+        scan.setUserRating(rating);
+        scan.setUserFeedback(feedback);
+        resumeScanRepository.save(scan);
+        log.info("Saved scan feedback for scan ID: {}, rating: {}", scanId, rating);
+    }
+
+    @Transactional
+    public void submitApplicationFeedback(Long applicationId, Integer rating, String feedback, User user) {
+        CvScore score = cvScoreRepository.findByApplicationId(applicationId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy điểm của hồ sơ ứng tuyển này"));
+
+        if (score.getApplication().getResume().getUser() != null && user != null &&
+            !score.getApplication().getResume().getUser().getId().equals(user.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Bạn không có quyền thực hiện chức năng này");
+        }
+
+        score.setUserRating(rating);
+        score.setUserFeedback(feedback);
+        cvScoreRepository.save(score);
+        log.info("Saved application feedback for application ID: {}, rating: {}", applicationId, rating);
     }
 }

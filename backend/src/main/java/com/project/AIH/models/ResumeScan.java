@@ -2,6 +2,7 @@ package com.project.AIH.models;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.project.AIH.utils.JsonStringListConverter;
 import java.time.Instant;
 import java.util.List;
 
@@ -43,8 +44,39 @@ public class ResumeScan {
     @Column(name = "scanned_at")
     private Instant scannedAt;
 
-    @OneToOne(mappedBy = "scan", cascade = CascadeType.ALL, orphanRemoval = true)
-    private ScanScore scoreSummary;
+    private Integer userRating;
+    @Column(columnDefinition = "TEXT")
+    private String userFeedback;
+
+    // --- Merged ScanScore fields ---
+    @Column(name = "total_score")
+    private Integer totalScore;
+
+    @Column(name = "stage2_score")
+    private Integer stage2Score;
+
+    @Column(name = "stage3_score")
+    private Integer stage3Score;
+
+    @Column(name = "stage4_score")
+    private Integer stage4Score;
+
+    @Convert(converter = JsonStringListConverter.class)
+    @Column(columnDefinition = "JSON")
+    private List<String> strengths;
+
+    // --- Virtual Backwards Compatible Getter ---
+    @Transient
+    public ScanScore getScoreSummary() {
+        return ScanScore.builder()
+                .scan(this)
+                .totalScore(this.totalScore)
+                .stage2Score(this.stage2Score)
+                .stage3Score(this.stage3Score)
+                .stage4Score(this.stage4Score)
+                .strengths(this.strengths)
+                .build();
+    }
 
     @OneToMany(mappedBy = "scan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScanSubScore> subScores;
@@ -52,10 +84,20 @@ public class ResumeScan {
     @OneToMany(mappedBy = "scan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ScanAction> actions;
 
+    // Audit timestamps
+    private Instant createdAt;
+    private Instant updatedAt;
+
     @PrePersist
     public void handleBeforeCreate() {
         if (this.scannedAt == null) {
             this.scannedAt = Instant.now();
         }
+        this.createdAt = Instant.now();
+    }
+
+    @PreUpdate
+    public void handleBeforeUpdate() {
+        this.updatedAt = Instant.now();
     }
 }

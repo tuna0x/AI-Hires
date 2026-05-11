@@ -28,9 +28,24 @@ public class ScanAction {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String action;
 
+    @Enumerated(EnumType.STRING)
     @Column(length = 20)
-    private String priority; // Cao / Trung bình / Thấp
+    private ActionPriorityEnum priority;
 
     @Column(name = "sort_order")
     private Integer sortOrder;
+
+    // Audit fields
+    private java.time.Instant createdAt;
+    private java.time.Instant updatedAt;
+
+    @PrePersist
+    public void handleBeforeCreate() {
+        this.createdAt = java.time.Instant.now();
+    }
+
+    @PreUpdate
+    public void handleBeforeUpdate() {
+        this.updatedAt = java.time.Instant.now();
+    }
 }

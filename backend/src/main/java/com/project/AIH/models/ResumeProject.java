@@ -6,6 +6,7 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "resume_projects", indexes = {
@@ -30,8 +31,10 @@ public class ResumeProject {
     private String name;
     private String role;
     
-    @Column(columnDefinition = "TEXT")
-    private String technologies;
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "resume_project_technologies", joinColumns = @JoinColumn(name = "project_id"))
+    @Column(name = "technology")
+    private List<String> technologies;
 
     @Column(columnDefinition = "TEXT")
     private String description;

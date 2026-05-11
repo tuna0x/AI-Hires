@@ -7,6 +7,7 @@ import com.project.AIH.services.ResumeService;
 import com.project.AIH.services.UserService;
 import com.project.AIH.utils.SecurityUtil;
 import com.project.AIH.utils.annotation.ApiMessage;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -54,8 +55,19 @@ public class ResumeController {
         }
 
         com.project.AIH.models.Resume resume = resumeService.uploadAndParse(file, user);
-        log.info("Resume parsed successfully: {}", resume);
+        log.info("Resume upload response status: {} for resume ID: {}", resume.getParseStatus(), resume.getId());
+        
+        if (resume.getParseStatus() == com.project.AIH.utils.constant.ResumeStatusEnum.PROCESSING) {
+            return ResponseEntity.status(HttpStatus.ACCEPTED).body(resume);
+        }
         return ResponseEntity.status(HttpStatus.CREATED).body(resume);
+    }
+
+    @GetMapping("/{id}")
+    @ApiMessage("Fetch resume details successfully")
+    public ResponseEntity<com.project.AIH.models.Resume> getResumeDetails(@PathVariable("id") Long id) {
+        com.project.AIH.models.Resume resume = resumeService.getResumeById(id);
+        return ResponseEntity.ok(resume);
     }
 
     @GetMapping("/my-resumes")
@@ -74,5 +86,45 @@ public class ResumeController {
 
         ResultPaginationDTO resumes = resumeService.getResumesByUser(spec, pageable, user);
         return ResponseEntity.ok(resumes);
+    }
+
+    @Data
+    public static class FeedbackRequestDTO {
+        private Integer userRating;
+        private String userFeedback;
+    }
+
+    @PostMapping("/scan/{scanId}/feedback")
+    @ApiMessage("Submit feedback for resume scan successfully")
+    public ResponseEntity<Void> submitScanFeedback(
+            @PathVariable("scanId") Long scanId,
+            @RequestBody FeedbackRequestDTO feedbackRequest
+    ) {
+        String email = SecurityUtil.getCurrentUserLogin().orElse(null);
+        User user = null;
+        if (email != null) {
+            user = userService.fetchUserByEmail(email);
+        }
+
+        resumeService.submitScanFeedback(scanId, feedbackRequest.getUserRating(), feedbackRequest.getUserFeedback(), user);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/application/{applicationId}/feedback")
+    @ApiMessage("Submit feedback for application CV scoring successfully")
+    public ResponseEntity<Void> submitApplicationFeedback(
+            @PathVariable("applicationId") Long applicationId,
+            @RequestBody FeedbackRequestDTO feedbackRequest
+    ) {
+        String email = SecurityUtil.getCurrentUserLogin()
+                .orElseThrow(() -> new RuntimeException("Bạn cần đăng nhập để thực hiện chức năng này"));
+
+        User user = userService.fetchUserByEmail(email);
+        if (user == null) {
+            throw new RuntimeException("Người dùng không tồn tại");
+        }
+
+        resumeService.submitApplicationFeedback(applicationId, feedbackRequest.getUserRating(), feedbackRequest.getUserFeedback(), user);
+        return ResponseEntity.ok().build();
     }
 }

@@ -25,7 +25,6 @@ public class ScanMapperService {
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     private final ResumeScanRepository resumeScanRepository;
-    private final ScanScoreRepository scanScoreRepository;
     private final ScanSubScoreRepository scanSubScoreRepository;
     private final ScanActionRepository scanActionRepository;
 
@@ -35,26 +34,18 @@ public class ScanMapperService {
             // Parse JSON String
             JsonNode root = objectMapper.readTree(rawJson);
 
-            // 1. Create ResumeScan (Parent)
-            ResumeScan scan = ResumeScan.builder()
-                    .user(user)
-                    .fileName(fileName)
-                    .fileHash(fileHash)
-                    .scannedAt(Instant.now())
-                    .build();
-
             // Extract stage1_detection info
+            String candidateName = "";
+            String level = "";
+            String industry = "";
             JsonNode detection = root.path("stage1_detection");
             if (detection != null && !detection.isMissingNode()) {
-                scan.setCandidateName(detection.path("name").asText(""));
-                scan.setLevel(detection.path("level").asText(""));
-                scan.setIndustry(detection.path("industry").asText(""));
+                candidateName = detection.path("name").asText("");
+                level = detection.path("level").asText("");
+                industry = detection.path("industry").asText("");
             }
 
-            // Save parent first to obtain ID
-            scan = resumeScanRepository.save(scan);
-
-            // 2. Extract and Save ScanScore (Summary & Strengths)
+            // 2. Extract ScanScore (Summary & Strengths)
             int totalScore = root.path("total_score").asInt(0);
             int stage2Score = root.path("stage2_core").path("score").asInt(0);
             int stage3Score = root.path("stage3_in_depth").path("score").asInt(0);
@@ -68,17 +59,23 @@ public class ScanMapperService {
                 }
             }
 
-            ScanScore scanScore = ScanScore.builder()
-                    .scan(scan)
+            // Create and Save ResumeScan (Parent) once
+            ResumeScan scan = ResumeScan.builder()
+                    .user(user)
+                    .fileName(fileName)
+                    .fileHash(fileHash)
+                    .candidateName(candidateName)
+                    .level(level)
+                    .industry(industry)
                     .totalScore(totalScore)
                     .stage2Score(stage2Score)
                     .stage3Score(stage3Score)
                     .stage4Score(stage4Score)
                     .strengths(strengths)
+                    .scannedAt(Instant.now())
                     .build();
 
-            scanScoreRepository.save(scanScore);
-            scan.setScoreSummary(scanScore);
+            scan = resumeScanRepository.save(scan);
 
             // 3. Extract sub_tips Map
             Map<String, String> tipsMap = new HashMap<>();
@@ -132,10 +129,18 @@ public class ScanMapperService {
             if (actionsNode != null && actionsNode.isArray()) {
                 int index = 0;
                 for (JsonNode actionNode : actionsNode) {
+                    String prioStr = actionNode.path("priority").asText("Trung bình").toLowerCase();
+                    ActionPriorityEnum prioEnum = ActionPriorityEnum.MEDIUM;
+                    if (prioStr.contains("cao") || prioStr.contains("high")) {
+                        prioEnum = ActionPriorityEnum.HIGH;
+                    } else if (prioStr.contains("thấp") || prioStr.contains("low")) {
+                        prioEnum = ActionPriorityEnum.LOW;
+                    }
+                    
                     ScanAction scanAction = ScanAction.builder()
                             .scan(scan)
                             .action(actionNode.path("action").asText(""))
-                            .priority(actionNode.path("priority").asText("Trung bình"))
+                            .priority(prioEnum)
                             .sortOrder(index++)
                             .build();
                     actions.add(scanAction);
@@ -163,8 +168,8 @@ public class ScanMapperService {
                 String sectionKey = (i < keys.length) ? keys[i] : (categoryName + "_item_" + i);
 
                 int[] parsed = parseScores(detailText);
-                int score = parsed[0];
                 int maxScore = parsed[1];
+                int score = Math.max(0, Math.min(parsed[0], maxScore));
                 int lostPoints = maxScore - score;
 
                 // Build sub score entity
@@ -184,12 +189,7 @@ public class ScanMapperService {
     }
 
     private int[] parseScores(String text) {
-        Pattern p = Pattern.compile("\\+(\\d+)/(\\d+)");
-        Matcher m = p.matcher(text);
-        if (m.find()) {
-            return new int[]{Integer.parseInt(m.group(1)), Integer.parseInt(m.group(2))};
-        }
-        return new int[]{0, 0};
+        return ScoringResultValidator.parseScores(text, 10);
     }
 
     @Transactional(readOnly = true)
@@ -263,7 +263,7 @@ public class ScanMapperService {
                         .forEach(action -> {
                             ObjectNode actionObj = actionsNode.addObject();
                             actionObj.put("action", action.getAction());
-                            actionObj.put("priority", action.getPriority());
+                            actionObj.put("priority", action.getPriority() != null ? action.getPriority().name() : "MEDIUM");
                         });
             }
 
@@ -390,13 +390,13 @@ public class ScanMapperService {
 
             addCategoryGap(gapsList, "Định dạng & Bố cục", 
                     root.path("stage2_core").path("ats_format").path("score").asInt(0), 
-                    20, 
+                    12, 
                     subTips, 
                     new String[]{"ats_parsability", "typography", "length", "file_technical"});
 
             addCategoryGap(gapsList, "Khả năng đọc & Cấu trúc", 
                     root.path("stage2_core").path("professional_foundation").path("score").asInt(0), 
-                    20, 
+                    18, 
                     subTips, 
                     new String[]{"sections", "organization", "summary", "contact"});
 
@@ -408,13 +408,13 @@ public class ScanMapperService {
 
             addCategoryGap(gapsList, "Kinh nghiệm làm việc", 
                     root.path("stage3_in_depth").path("experience_eval").path("score").asInt(0), 
-                    15, 
+                    20, 
                     subTips, 
                     new String[]{"bullet_quality", "scope_impact", "progression"});
 
             addCategoryGap(gapsList, "Kỹ năng chuyên môn", 
                     root.path("stage3_in_depth").path("technical_evidence").path("score").asInt(0), 
-                    8, 
+                    10, 
                     subTips, 
                     new String[]{"technical_evidence"});
 
@@ -422,7 +422,7 @@ public class ScanMapperService {
                     + root.path("stage3_in_depth").path("certs").path("score").asInt(0);
             addCategoryGap(gapsList, "Học vấn & Dự án", 
                     educationScore, 
-                    7, 
+                    10, 
                     subTips, 
                     new String[]{"projects", "certs"});
 

@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface CvScoreRepository extends JpaRepository<CvScore, Long> {
+    java.util.Optional<CvScore> findByApplicationId(Long applicationId);
 }
