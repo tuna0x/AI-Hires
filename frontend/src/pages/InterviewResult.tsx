@@ -61,6 +61,7 @@ export default function InterviewResult() {
   
   const [isLoading, setIsLoading] = useState(true);
   const [expandedQuestionId, setExpandedQuestionId] = useState<number | null>(null);
+  const [pollingAttempt, setPollingAttempt] = useState(0);
 
   useEffect(() => {
     async function loadData() {
@@ -70,23 +71,55 @@ export default function InterviewResult() {
         return;
       }
       try {
-        const [sessionData, reportData, questionData] = await Promise.all([
+        const [sessionData, questionData] = await Promise.all([
           interviewApi.getSession(id),
-          interviewApi.getReport(id),
           interviewApi.getQuestions(id)
         ]);
         setSession(sessionData);
-        setReport(reportData);
         setQuestions(questionData);
+
+        try {
+          const reportData = await interviewApi.getReport(id);
+          setReport(reportData);
+        } catch (reportErr) {
+          console.log("Report is not ready yet, will start polling.");
+        }
       } catch (err: any) {
         console.error("Error loading interview result data:", err);
-        toast.error(err.response?.data?.message || "Không thể tải báo cáo kết quả phỏng vấn. Phiên này có thể chưa hoàn thành.");
+        toast.error(err.response?.data?.message || "Không thể tải báo cáo kết quả phỏng vấn.");
       } finally {
         setIsLoading(false);
       }
     }
     loadData();
   }, [id]);
+
+  // Polling for final report if session is loaded but report is missing
+  useEffect(() => {
+    if (!session || report) return;
+
+    let intervalId: NodeJS.Timeout;
+
+    const pollReport = async () => {
+      try {
+        const reportData = await interviewApi.getReport(id);
+        if (reportData) {
+          setReport(reportData);
+          toast.success("🎉 Báo cáo đánh giá của bạn đã sẵn sàng!");
+          // Fetch updated session
+          const updatedSession = await interviewApi.getSession(id);
+          setSession(updatedSession);
+        } else {
+          setPollingAttempt(prev => prev + 1);
+        }
+      } catch (err) {
+        setPollingAttempt(prev => prev + 1);
+      }
+    };
+
+    intervalId = setInterval(pollReport, 3000);
+    return () => clearInterval(intervalId);
+  }, [session?.id, !!report, id]);
 
   const handleRestart = () => {
     navigate("/interview");
@@ -135,7 +168,7 @@ export default function InterviewResult() {
     );
   }
 
-  if (!session || !report) {
+  if (!session) {
     return (
       <SiteLayout>
         <div className="mx-auto max-w-md px-4 py-20 text-center space-y-6">
@@ -143,9 +176,9 @@ export default function InterviewResult() {
             <ShieldAlert className="h-8 w-8" />
           </div>
           <div className="space-y-2">
-            <h1 className="text-2xl font-extrabold text-foreground">Không tìm thấy báo cáo</h1>
+            <h1 className="text-2xl font-extrabold text-foreground">Không tìm thấy phiên</h1>
             <p className="text-sm text-muted-foreground leading-relaxed font-medium">
-              Báo cáo kết quả của phiên phỏng vấn #{id} không tồn tại, chưa được tạo hoặc bạn không có quyền truy cập.
+              Phiên phỏng vấn #{id} không tồn tại hoặc bạn không có quyền truy cập.
             </p>
           </div>
           <div className="flex justify-center gap-3">
@@ -156,6 +189,89 @@ export default function InterviewResult() {
               <Link to="/interview">Bắt đầu phỏng vấn mới</Link>
             </Button>
           </div>
+        </div>
+      </SiteLayout>
+    );
+  }
+
+  if (session && !report) {
+    // Dynamic text rotation for premium loading feeling
+    const loadingSteps = [
+      "Đang đọc cấu trúc cuộc phỏng vấn...",
+      "Đang phân tích các câu trả lời của bạn...",
+      "Đang đối chiếu với mô tả công việc (JD) & CV...",
+      "Đang tính toán điểm số tổng hợp và phân rã các tiêu chí...",
+      "Đang tổng hợp điểm mạnh nổi bật...",
+      "Đang biên soạn đề xuất nâng cao kỹ năng ứng viên...",
+      "Hoàn thiện báo cáo phân tích năng lực..."
+    ];
+    const currentStepIdx = Math.min(Math.floor(pollingAttempt / 2), loadingSteps.length - 1);
+
+    return (
+      <SiteLayout>
+        <div className="min-h-[75vh] flex flex-col items-center justify-center p-6 bg-gradient-to-b from-background to-secondary/10">
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full bg-card rounded-3xl border border-border/60 p-8 shadow-card text-center space-y-6 relative overflow-hidden"
+          >
+            {/* Glowing blur background inside card */}
+            <div className="absolute -top-12 -left-12 w-24 h-24 bg-primary/20 rounded-full blur-2xl" />
+            <div className="absolute -bottom-12 -right-12 w-24 h-24 bg-violet-500/20 rounded-full blur-2xl" />
+
+            {/* Premium CPU/Sparkles animation */}
+            <div className="relative flex h-24 w-24 mx-auto items-center justify-center">
+              <div className="absolute inset-0 rounded-full border-4 border-dashed border-primary/30 animate-[spin_10s_linear_infinite]" />
+              <div className="absolute inset-2 rounded-full border-2 border-t-violet-500 border-r-transparent animate-[spin_3s_linear_infinite]" />
+              <div className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center text-primary-foreground shadow-glow">
+                <Cpu className="h-8 w-8 animate-pulse" />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-1 text-[10px] font-extrabold text-primary uppercase tracking-wider">
+                <Loader2 className="h-3 w-3 animate-spin" /> Trợ lý AI đang chấm điểm
+              </span>
+              <h2 className="text-xl font-extrabold text-foreground">Đang biên soạn báo cáo...</h2>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-sm mx-auto font-medium">
+                Vui lòng đợi giây lát. AI đang phân tích sâu chuỗi câu hỏi để xây dựng biểu đồ mạng nhện & đề xuất tối ưu.
+              </p>
+            </div>
+
+            {/* Steps tracker card */}
+            <div className="bg-secondary/40 border border-border/40 rounded-2xl p-4.5 text-left space-y-3.5 relative">
+              <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
+                <span>Tiến trình xử lý</span>
+                <span>{Math.round((currentStepIdx + 1) / loadingSteps.length * 100)}%</span>
+              </div>
+              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                <motion.div 
+                  className="h-full bg-gradient-primary rounded-full"
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${((currentStepIdx + 1) / loadingSteps.length) * 100}%` }}
+                  transition={{ duration: 0.5 }}
+                />
+              </div>
+              
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentStepIdx}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -5 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2 text-xs font-semibold text-foreground/90"
+                >
+                  <Sparkles className="h-4 w-4 text-primary shrink-0 animate-pulse" />
+                  <span>{loadingSteps[currentStepIdx]}</span>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className="text-[10px] text-muted-foreground font-semibold">
+              Phiên ID: #{id} • Trình độ: {session.difficultyLevel}
+            </div>
+          </motion.div>
         </div>
       </SiteLayout>
     );

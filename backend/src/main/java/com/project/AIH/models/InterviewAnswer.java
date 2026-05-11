@@ -35,6 +35,9 @@ public class InterviewAnswer {
 
     private Integer responseTimeSeconds;
 
+    @Column(name = "idempotency_key", length = 50, unique = true)
+    private String idempotencyKey;
+
     @OneToOne(mappedBy = "interviewAnswer", cascade = CascadeType.ALL)
     private InterviewEvaluation interviewEvaluation;
 

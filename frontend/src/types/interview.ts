@@ -73,8 +73,21 @@ export interface StartMockInterviewRequest {
   targetLevel?: string;
 }
 
+export interface ScoreStatus {
+  questionId: number;
+  questionOrder: number;
+  status: "unanswered" | "pending" | "completed";
+  score?: number;
+  feedback?: string;
+}
+
+export interface ScoreStatusResponse {
+  scores: ScoreStatus[];
+}
+
 export interface SubmitAnswerResponse {
-  evaluation: InterviewEvaluation;
+  evaluation: InterviewEvaluation | null;
   nextQuestion: InterviewQuestion | null;
   isFinished: boolean;
+  scoreStatus?: "pending" | "completed";
 }

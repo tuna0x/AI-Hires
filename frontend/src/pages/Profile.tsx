@@ -88,7 +88,7 @@ export default function Profile() {
         setProfileLoading(false);
       }
     }
-    
+
     loadProfile();
   }, [user]);
 
@@ -239,11 +239,11 @@ export default function Profile() {
   return (
     <SiteLayout>
       <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-10 lg:py-14 space-y-10">
-        
+
         {/* Profile Premium Banner Header */}
         <div className="relative overflow-hidden rounded-3xl border border-border/60 bg-card p-6 lg:p-8 shadow-card flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-br from-primary/10 to-transparent rounded-bl-full pointer-events-none" />
-          
+
           <div className="flex items-center gap-5">
             <div className="relative group shrink-0">
               <div className="h-16 w-16 lg:h-20 lg:w-20 rounded-2xl overflow-hidden bg-gradient-primary text-primary-foreground flex items-center justify-center text-2xl lg:text-3xl font-extrabold shadow-glow border border-primary/20 relative">
@@ -258,19 +258,19 @@ export default function Profile() {
                 )}
 
                 {/* Hover Edit Overlay */}
-                <label 
-                  htmlFor="avatar-upload" 
+                <label
+                  htmlFor="avatar-upload"
                   className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-[10px] lg:text-xs font-bold text-white cursor-pointer transition-all duration-300 gap-1"
                 >
                   <User className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                   <span>Thay đổi</span>
                 </label>
               </div>
-              <input 
-                id="avatar-upload" 
-                type="file" 
-                accept="image/png, image/jpeg, image/jpg, image/webp" 
-                className="hidden" 
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/png, image/jpeg, image/jpg, image/webp"
+                className="hidden"
                 onChange={handleAvatarChange}
                 disabled={avatarUploading}
               />
@@ -297,7 +297,7 @@ export default function Profile() {
 
         {/* Tabbed content space */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
-          
+
           {/* h-auto giúp thanh tab tự động ôm vừa vặn và cách viền p-1 hoàn hảo không bị tràn */}
           <TabsList className="h-auto bg-muted/40 p-1 border border-border/60 rounded-2xl grid grid-cols-3 max-w-lg">
             <TabsTrigger value="info" className="rounded-xl font-bold text-xs py-2.5 transition-all">
@@ -412,78 +412,78 @@ export default function Profile() {
               ) : (
                 <>
                   <div className="overflow-hidden rounded-2xl border border-border/60 shadow-soft">
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse text-left text-xs">
-                      <thead>
-                        <tr className="border-b border-border/80 bg-secondary/60 font-bold text-muted-foreground uppercase tracking-wider">
-                          <th className="p-4">Tên tệp tin</th>
-                          <th className="p-4 text-center">Điểm số ATS</th>
-                          <th className="p-4">Đánh giá chung</th>
-                          <th className="p-4">Ngày tải lên</th>
-                          <th className="p-4 text-center">Hành động</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {resumes.map((res) => {
-                          let geminiData: any = {};
-                          try {
-                            geminiData = JSON.parse(res.parsedData);
-                          } catch (ex) {}
-                          
-                          const score = geminiData.total_score || 0;
-                          
-                          return (
-                            <tr key={res.id} className="hover:bg-muted/30 transition-colors">
-                              <td className="p-4 font-bold text-foreground truncate max-w-[200px]">
-                                <div className="flex items-center gap-2">
-                                  <FileText className="h-4 w-4 text-primary shrink-0" />
-                                  <span className="line-clamp-1">{res.fileUrl.split("/").pop()}</span>
-                                </div>
-                              </td>
-                              <td className="p-4 text-center font-extrabold text-sm text-foreground">
-                                <Badge className={
-                                  score >= 85 
-                                    ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" 
-                                    : score >= 70 
-                                    ? "bg-amber-500/10 text-amber-500 border border-amber-500/20" 
-                                    : "bg-destructive/10 text-destructive border border-destructive/20"
-                                }>
-                                  {score}/100
-                                </Badge>
-                              </td>
-                              <td className="p-4 font-medium text-muted-foreground">
-                                {score >= 85 ? "CV Xuất Sắc" : score >= 70 ? "CV Khá Tốt — Cần Tối Ưu" : "CV Cần Cải Thiện Nhiều"}
-                              </td>
-                              <td className="p-4 text-muted-foreground">
-                                {new Date(res.createdAt).toLocaleDateString("vi-VN", {
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit"
-                                })}
-                              </td>
-                              <td className="p-4 text-center">
-                                <Button size="sm" onClick={() => handleViewCvDetails(res)} className="rounded-xl h-8 px-4 text-[10px] font-bold bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-all">
-                                  Xem báo cáo <ExternalLink className="ml-1 h-3.5 w-3.5" />
-                                </Button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-border/80 bg-secondary/60 font-bold text-muted-foreground uppercase tracking-wider">
+                            <th className="p-4">Tên tệp tin</th>
+                            <th className="p-4 text-center">Điểm số ATS</th>
+                            <th className="p-4">Đánh giá chung</th>
+                            <th className="p-4">Ngày tải lên</th>
+                            <th className="p-4 text-center">Hành động</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/40">
+                          {resumes.map((res) => {
+                            let geminiData: any = {};
+                            try {
+                              geminiData = JSON.parse(res.parsedData);
+                            } catch (ex) { }
+
+                            const score = geminiData.total_score || 0;
+
+                            return (
+                              <tr key={res.id} className="hover:bg-muted/30 transition-colors">
+                                <td className="p-4 font-bold text-foreground truncate max-w-[200px]">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-primary shrink-0" />
+                                    <span className="line-clamp-1">{res.fileUrl.split("/").pop()}</span>
+                                  </div>
+                                </td>
+                                <td className="p-4 text-center font-extrabold text-sm text-foreground">
+                                  <Badge className={
+                                    score >= 85
+                                      ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
+                                      : score >= 70
+                                        ? "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                                        : "bg-destructive/10 text-destructive border border-destructive/20"
+                                  }>
+                                    {score}/100
+                                  </Badge>
+                                </td>
+                                <td className="p-4 font-medium text-muted-foreground">
+                                  {score >= 85 ? "CV Xuất Sắc" : score >= 70 ? "CV Khá Tốt — Cần Tối Ưu" : "CV Cần Cải Thiện Nhiều"}
+                                </td>
+                                <td className="p-4 text-muted-foreground">
+                                  {new Date(res.createdAt).toLocaleDateString("vi-VN", {
+                                    year: "numeric",
+                                    month: "long",
+                                    day: "numeric",
+                                    hour: "2-digit",
+                                    minute: "2-digit"
+                                  })}
+                                </td>
+                                <td className="p-4 text-center">
+                                  <Button size="sm" onClick={() => handleViewCvDetails(res)} className="rounded-xl h-8 px-4 text-[10px] font-bold bg-primary/10 text-primary hover:bg-primary/20 hover:text-primary transition-all">
+                                    Xem báo cáo <ExternalLink className="ml-1 h-3.5 w-3.5" />
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-                
-                <InteractivePagination
-                  currentPage={resumePage}
-                  totalPages={resumeTotalPages}
-                  totalElements={resumeTotal}
-                  pageSize={resumePageSize}
-                  onPageChange={setResumePage}
-                  typeLabel="CV"
-                />
+
+                  <InteractivePagination
+                    currentPage={resumePage}
+                    totalPages={resumeTotalPages}
+                    totalElements={resumeTotal}
+                    pageSize={resumePageSize}
+                    onPageChange={setResumePage}
+                    typeLabel="CV"
+                  />
                 </>
               )}
             </div>
@@ -515,60 +515,60 @@ export default function Profile() {
               ) : (
                 <>
                   <div className="grid md:grid-cols-2 gap-4">
-                  {sessions.map((ses) => {
-                    const isFinished = ses.status === "COMPLETED";
-                    return (
-                      <div key={ses.id} className="rounded-2xl border border-border/60 p-5 bg-secondary/20 hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-start gap-2">
-                            <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5 text-[9px] font-bold">
-                              ID: #{ses.id}
-                            </Badge>
-                            <Badge className={isFinished ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/20" : "bg-blue-500/15 text-blue-500 border border-blue-500/20"}>
-                              {isFinished ? "Đã hoàn tất" : "Đang tiến hành"}
-                            </Badge>
-                          </div>
-                          
-                          <h3 className="font-bold text-sm text-foreground line-clamp-1">{ses.jobTitle || "Luyện tập phỏng vấn tự do"}</h3>
-                          <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground font-semibold">
-                            <div>Trình độ: <span className="text-foreground">{ses.difficultyLevel === "EASY" ? "Intern/Fresher" : ses.difficultyLevel === "MEDIUM" ? "Junior/Middle" : "Senior/Lead"}</span></div>
-                            <div>Tổng câu: <span className="text-foreground">{ses.totalQuestions}/{ses.maxQuestions}</span></div>
-                          </div>
-                        </div>
+                    {sessions.map((ses) => {
+                      const isFinished = ses.status === "COMPLETED";
+                      return (
+                        <div key={ses.id} className="rounded-2xl border border-border/60 p-5 bg-secondary/20 hover:border-primary/30 transition-all flex flex-col justify-between space-y-4">
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-start gap-2">
+                              <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5 text-[9px] font-bold">
+                                ID: #{ses.id}
+                              </Badge>
+                              <Badge className={isFinished ? "bg-emerald-500/15 text-emerald-500 border border-emerald-500/20" : "bg-blue-500/15 text-blue-500 border border-blue-500/20"}>
+                                {isFinished ? "Đã hoàn tất" : "Đang tiến hành"}
+                              </Badge>
+                            </div>
 
-                        <div className="border-t border-border/40 pt-4 flex justify-between items-center text-[10px]">
-                          <span className="text-muted-foreground">
-                            {new Date(ses.startTime).toLocaleDateString("vi-VN", {
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })}
-                          </span>
-                          
-                          {isFinished ? (
-                            <Button size="sm" onClick={() => handleViewSessionDetails(ses)} className="h-8 rounded-lg bg-primary text-primary-foreground font-bold hover:shadow-glow text-[10px]">
-                              Xem đánh giá chi tiết
-                            </Button>
-                          ) : (
-                            <Button size="sm" asChild variant="outline" className="h-8 rounded-lg text-[10px] border-primary/30 text-primary hover:bg-primary/5">
-                              <Link to="/interview">Tiếp tục phỏng vấn</Link>
-                            </Button>
-                          )}
+                            <h3 className="font-bold text-sm text-foreground line-clamp-1">{ses.jobTitle || "Luyện tập phỏng vấn tự do"}</h3>
+                            <div className="grid grid-cols-2 gap-2 text-[10px] text-muted-foreground font-semibold">
+                              <div>Trình độ: <span className="text-foreground">{ses.difficultyLevel === "EASY" ? "Intern/Fresher" : ses.difficultyLevel === "MEDIUM" ? "Junior/Middle" : "Senior/Lead"}</span></div>
+                              <div>Tổng câu: <span className="text-foreground">{ses.totalQuestions}/{ses.maxQuestions}</span></div>
+                            </div>
+                          </div>
+
+                          <div className="border-t border-border/40 pt-4 flex justify-between items-center text-[10px]">
+                            <span className="text-muted-foreground">
+                              {new Date(ses.startTime).toLocaleDateString("vi-VN", {
+                                month: "short",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
+                            </span>
+
+                            {isFinished ? (
+                              <Button size="sm" onClick={() => handleViewSessionDetails(ses)} className="h-8 rounded-lg bg-primary text-primary-foreground font-bold hover:shadow-glow text-[10px]">
+                                Xem đánh giá chi tiết
+                              </Button>
+                            ) : (
+                              <Button size="sm" asChild variant="outline" className="h-8 rounded-lg text-[10px] border-primary/30 text-primary hover:bg-primary/5">
+                                <Link to="/interview">Tiếp tục phỏng vấn</Link>
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                
-                <InteractivePagination
-                  currentPage={sessionPage}
-                  totalPages={sessionTotalPages}
-                  totalElements={sessionTotal}
-                  pageSize={sessionPageSize}
-                  onPageChange={setSessionPage}
-                  typeLabel="phiên phỏng vấn"
-                />
+                      );
+                    })}
+                  </div>
+
+                  <InteractivePagination
+                    currentPage={sessionPage}
+                    totalPages={sessionTotalPages}
+                    totalElements={sessionTotal}
+                    pageSize={sessionPageSize}
+                    onPageChange={setSessionPage}
+                    typeLabel="phiên phỏng vấn"
+                  />
                 </>
               )}
             </div>

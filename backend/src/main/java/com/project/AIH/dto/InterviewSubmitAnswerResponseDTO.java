@@ -15,4 +15,6 @@ public class InterviewSubmitAnswerResponseDTO {
     
     @JsonProperty("isFinished")
     private boolean isFinished;
+
+    private String scoreStatus;
 }

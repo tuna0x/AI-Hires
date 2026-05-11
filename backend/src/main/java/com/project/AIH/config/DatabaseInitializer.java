@@ -100,6 +100,7 @@ public class DatabaseInitializer implements CommandLineRunner {
         perms.add(new PermDef("Finish Interview Session", "/api/v1/interviews/{sessionId}/finish", "POST", "INTERVIEWS", true, true));
         perms.add(new PermDef("Get Interview Questions", "/api/v1/interviews/{sessionId}/questions", "GET", "INTERVIEWS", true, true));
         perms.add(new PermDef("Get Interview Report", "/api/v1/interviews/{sessionId}/report", "GET", "INTERVIEWS", true, true));
+        perms.add(new PermDef("Get Interview Score Status", "/api/v1/interviews/{sessionId}/scores", "GET", "INTERVIEWS", true, true));
         perms.add(new PermDef("Get My Interview Sessions", "/api/v1/interviews/my-sessions", "GET", "INTERVIEWS", true, true));
 
         for (PermDef def : perms) {

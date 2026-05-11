@@ -3,6 +3,8 @@ package com.project.AIH.services;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.project.AIH.dto.InterviewSubmitAnswerResponseDTO;
+import com.project.AIH.dto.InterviewScoringMessage;
+import com.project.AIH.dto.ReportGenerationMessage;
 import com.project.AIH.models.*;
 import com.project.AIH.repositories.*;
 import com.project.AIH.utils.constant.InterviewDecisionEnum;
@@ -23,6 +25,9 @@ import com.project.AIH.dto.ResultPaginationDTO;
 import java.time.Instant;
 import java.util.List;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.stream.Collectors;
 import java.math.BigDecimal;
 import com.project.AIH.utils.constant.InsightTypeEnum;
 
@@ -46,6 +51,8 @@ public class InterviewService {
     private final InterviewTemplateRepository templateRepository;
     private final ResumeRepository resumeRepository;
     private final JobRepository jobRepository;
+    private final InterviewScoringPublisher scoringPublisher;
+    private final ReportGenerationPublisher reportGenerationPublisher;
 
     private DifficultyLevelEnum mapLevelToDifficulty(String level) {
         if (level == null) {
@@ -160,113 +167,148 @@ public class InterviewService {
             industry = "IT";
         }
 
-        // --- HYBRID FLOW: Questions 1, 2, 3 lookup and cache ---
-        String initialQuestionText = null;
-        String cvContext = null;
-        String jdContext = null;
-        Boolean canReuse = false;
+        // --- HYBRID FLOW: Random Questions from Pool ---
+        List<InterviewQuestionBank> cachedPool = questionBankRepository.findByJobIdAndDifficulty(job.getId(), difficulty);
+        
+        List<InterviewQuestion> sessionQuestions = new ArrayList<>();
 
-        // Check if all Questions 1, 2, 3 exist in bank for this job and difficulty
-        java.util.Optional<InterviewQuestionBank> cachedQ1 = questionBankRepository
-                .findByJobIdAndDifficultyAndQuestionOrder(job.getId(), difficulty, 1);
-        java.util.Optional<InterviewQuestionBank> cachedQ2 = questionBankRepository
-                .findByJobIdAndDifficultyAndQuestionOrder(job.getId(), difficulty, 2);
-        java.util.Optional<InterviewQuestionBank> cachedQ3 = questionBankRepository
-                .findByJobIdAndDifficultyAndQuestionOrder(job.getId(), difficulty, 3);
-
-        if (cachedQ1.isPresent() && cachedQ2.isPresent() && cachedQ3.isPresent()) {
-            log.info("All questions Q1, Q2, Q3 found in cache for Job ID: {}, Level: {}", job.getId(), difficulty);
-            InterviewQuestionBank bankQ1 = cachedQ1.get();
-            initialQuestionText = bankQ1.getQuestionText();
-            bankQ1.setUseCount(bankQ1.getUseCount() + 1);
-            questionBankRepository.save(bankQ1);
+        if (cachedPool.size() >= 3) {
+            log.info("Found {} questions in cache pool for Job ID: {}, Level: {}. Selecting 3 random questions...", 
+                    cachedPool.size(), job.getId(), difficulty);
             
-            // Increment use counts for cached Q2 and Q3
-            InterviewQuestionBank bankQ2 = cachedQ2.get();
-            bankQ2.setUseCount(bankQ2.getUseCount() + 1);
-            questionBankRepository.save(bankQ2);
-
-            InterviewQuestionBank bankQ3 = cachedQ3.get();
-            bankQ3.setUseCount(bankQ3.getUseCount() + 1);
-            questionBankRepository.save(bankQ3);
-        } else {
-            log.info("Some cached questions missing. Generating standard Questions 1, 2, 3 using Gemini...");
-            String aiResponse = geminiService.generateInitialQuestions(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name());
+            // Randomly select 3 questions from pool
+            List<InterviewQuestionBank> selectedPool = new ArrayList<>(cachedPool);
+            java.util.Collections.shuffle(selectedPool);
+            List<InterviewQuestionBank> selectedQuestions = selectedPool.subList(0, 3);
+            
+            for (int i = 0; i < 3; i++) {
+                InterviewQuestionBank bankQ = selectedQuestions.get(i);
+                bankQ.setUseCount(bankQ.getUseCount() + 1);
+                questionBankRepository.save(bankQ);
+                
+                sessionQuestions.add(InterviewQuestion.builder()
+                        .interviewSession(session)
+                        .questionText(bankQ.getQuestionText())
+                        .questionType(bankQ.getQuestionType())
+                        .difficulty(difficulty)
+                        .questionOrder(i + 1)
+                        .canReuse(true)
+                        .build());
+            }
+            
+            // Generate Q4, Q5
             try {
+                String aiResponse = geminiService.generatePersonalizedQuestions(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name(), 2);
                 JsonNode questionsArray = objectMapper.readTree(aiResponse);
-                if (questionsArray.isArray() && questionsArray.size() >= 3) {
-                    for (int i = 0; i < 3; i++) {
+                if (questionsArray.isArray()) {
+                    for (int i = 0; i < questionsArray.size(); i++) {
                         JsonNode qNode = questionsArray.get(i);
-                        String qText = qNode.path("question").asText();
-                        String qCvCtx = qNode.path("cv_context").asText();
-                        String qJdCtx = qNode.path("jd_context").asText();
-                        boolean qCanReuse = qNode.path("can_reuse").asBoolean(true);
-                        int order = i + 1;
-
-                        // Save to Bank
-                        InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
-                                .job(job)
-                                .questionText(qText)
+                        InterviewQuestion q = InterviewQuestion.builder()
+                                .interviewSession(session)
+                                .questionText(qNode.path("question").asText())
                                 .questionType(QuestionTypeEnum.TECHNICAL)
                                 .difficulty(difficulty)
-                                .topic(targetRole)
-                                .questionOrder(order)
-                                .useCount(1)
+                                .questionOrder(4 + i)
+                                .cvContext(qNode.path("cv_context").asText())
+                                .jdContext(qNode.path("jd_context").asText())
+                                .canReuse(qNode.path("can_reuse").asBoolean(false))
                                 .build();
-                        questionBankRepository.save(bankQ);
+                        sessionQuestions.add(q);
 
-                        if (order == 1) {
-                            initialQuestionText = qText;
-                            cvContext = qCvCtx;
-                            jdContext = qJdCtx;
-                            canReuse = qCanReuse;
+                        // Save reusable personalized questions to grow the pool!
+                        if (q.getCanReuse() != null && q.getCanReuse()) {
+                            InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
+                                    .job(job)
+                                    .questionText(q.getQuestionText())
+                                    .questionType(QuestionTypeEnum.TECHNICAL)
+                                    .difficulty(difficulty)
+                                    .topic(targetRole)
+                                    .questionOrder(4 + i)
+                                    .useCount(1)
+                                    .build();
+                            questionBankRepository.save(bankQ);
                         }
                     }
-                } else {
-                    // Fallback if array parse fails
-                    log.warn("Gemini didn't return an array of 3 questions, falling back to legacy single generator");
-                    String legacyResponse = geminiService.generateInitialQuestion(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name());
-                    JsonNode legacyNode = objectMapper.readTree(legacyResponse);
-                    initialQuestionText = legacyNode.path("question").asText();
-                    cvContext = legacyNode.path("cv_context").asText();
-                    jdContext = legacyNode.path("jd_context").asText();
-                    canReuse = legacyNode.path("can_reuse").asBoolean(false);
-                    
-                    // Save Question 1 to Bank
-                    InterviewQuestionBank bankQ1 = InterviewQuestionBank.builder()
-                            .job(job)
-                            .questionText(initialQuestionText)
-                            .questionType(QuestionTypeEnum.TECHNICAL)
-                            .difficulty(difficulty)
-                            .topic(targetRole)
-                            .questionOrder(1)
-                            .useCount(1)
-                            .build();
-                    questionBankRepository.save(bankQ1);
                 }
             } catch (Exception e) {
-                log.error("Failed to parse initial questions JSON array, fallback to safe default question", e);
-                initialQuestionText = "Hãy giới thiệu bản thân và tóm tắt những dự án nổi bật nhất mà bạn từng thực hiện.";
+                log.error("Failed to generate personalized questions", e);
+            }
+        } else {
+            log.info("Generating all 5 questions using Gemini to populate the pool...");
+            try {
+                String aiResponse = geminiService.generateAllQuestions(job.getDescription(), resume.getExtractedText(), targetRole, industry, difficulty.name());
+                JsonNode questionsArray = objectMapper.readTree(aiResponse);
+                if (questionsArray.isArray()) {
+                    for (int i = 0; i < questionsArray.size(); i++) {
+                        JsonNode qNode = questionsArray.get(i);
+                        int order = i + 1;
+                        boolean isReusable = qNode.path("can_reuse").asBoolean(true);
+                        
+                        // Cache/save generated questions to populate the pool
+                        if (isReusable) {
+                            InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
+                                    .job(job)
+                                    .questionText(qNode.path("question").asText())
+                                    .questionType(QuestionTypeEnum.TECHNICAL)
+                                    .difficulty(difficulty)
+                                    .topic(targetRole)
+                                    .questionOrder(order)
+                                    .useCount(1)
+                                    .build();
+                            questionBankRepository.save(bankQ);
+                        }
+                        
+                        sessionQuestions.add(InterviewQuestion.builder()
+                                .interviewSession(session)
+                                .questionText(qNode.path("question").asText())
+                                .questionType(QuestionTypeEnum.TECHNICAL)
+                                .difficulty(difficulty)
+                                .questionOrder(order)
+                                .cvContext(qNode.path("cv_context").asText())
+                                .jdContext(qNode.path("jd_context").asText())
+                                .canReuse(isReusable)
+                                .build());
+                    }
+                }
+            } catch (Exception e) {
+                log.error("Failed to generate all questions", e);
             }
         }
 
-        InterviewQuestion question = InterviewQuestion.builder()
-                .interviewSession(session)
-                .questionText(initialQuestionText)
-                .questionType(QuestionTypeEnum.TECHNICAL)
-                .difficulty(difficulty)
-                .questionOrder(1)
-                .cvContext(cvContext)
-                .jdContext(jdContext)
-                .canReuse(canReuse)
-                .build();
-        questionRepository.save(question);
+        // Fallback for missing questions
+        String[] fallbacks = {
+            "Hãy giới thiệu bản thân và tóm tắt những dự án nổi bật nhất mà bạn từng thực hiện.",
+            "Bạn xử lý thế nào khi gặp một vấn đề kỹ thuật khó khăn mà không tìm được giải pháp trên mạng?",
+            "Hãy chia sẻ về một lần bạn làm việc nhóm và có bất đồng quan điểm. Bạn đã giải quyết như thế nào?",
+            "Điều gì là thành tựu tự hào nhất của bạn trong công việc/học tập từ trước đến nay?",
+            "Bạn mong muốn đạt được điều gì trong 2-3 năm tới trên con đường sự nghiệp của mình?"
+        };
+        
+        for (int i = sessionQuestions.size(); i < 5; i++) {
+            sessionQuestions.add(InterviewQuestion.builder()
+                    .interviewSession(session)
+                    .questionText(fallbacks[i])
+                    .questionType(QuestionTypeEnum.TECHNICAL)
+                    .difficulty(difficulty)
+                    .questionOrder(i + 1)
+                    .canReuse(false)
+                    .build());
+        }
+
+        // Save all questions
+        for (InterviewQuestion q : sessionQuestions) {
+            questionRepository.save(q);
+        }
+        
+        session.setTotalQuestions(5);
+        session.setMaxQuestions(5);
+        session = sessionRepository.save(session);
 
         return session;
     }
 
     @Transactional
-    public InterviewSubmitAnswerResponseDTO submitAnswer(Long sessionId, String answerText) {
+    public InterviewSubmitAnswerResponseDTO submitAnswer(Long sessionId, String answerText, String idempotencyKey) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
@@ -274,39 +316,98 @@ public class InterviewService {
             throw new RuntimeException("Interview session is already finished");
         }
 
+        // Check if idempotency key is already used
+        if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+            java.util.Optional<InterviewAnswer> existingAnswer = answerRepository.findByIdempotencyKey(idempotencyKey);
+            if (existingAnswer.isPresent()) {
+                InterviewAnswer ans = existingAnswer.get();
+                log.info("Duplicate submit detected via idempotency key: {}. Returning cached response.", idempotencyKey);
+                
+                InterviewQuestion nextQ = null;
+                int currentOrder = ans.getInterviewQuestion().getQuestionOrder();
+                boolean isFinished = currentOrder >= session.getMaxQuestions();
+                
+                if (!isFinished) {
+                    List<InterviewQuestion> allQuestions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
+                    for (InterviewQuestion q : allQuestions) {
+                        if (q.getQuestionOrder() == currentOrder + 1) {
+                            nextQ = q;
+                            break;
+                        }
+                    }
+                }
+                
+                return InterviewSubmitAnswerResponseDTO.builder()
+                        .evaluation(null)
+                        .nextQuestion(nextQ)
+                        .isFinished(isFinished)
+                        .scoreStatus("pending")
+                        .build();
+            }
+        }
+
         // Find current active question
         List<InterviewQuestion> questions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
         if (questions.isEmpty()) {
             throw new RuntimeException("No question found for this session");
         }
-        InterviewQuestion currentQuestion = questions.get(questions.size() - 1);
-
-        log.info("--- submitAnswer Diagnostic ---");
-        log.info("Session ID: {}, maxQuestions: {}", session.getId(), session.getMaxQuestions());
-        log.info("Questions in DB (size: {}):", questions.size());
-        for (int i = 0; i < questions.size(); i++) {
-            InterviewQuestion q = questions.get(i);
-            log.info("  [{}] ID: {}, Order: {}, Text: '{}', HasAnswer: {}", 
-                i, q.getId(), q.getQuestionOrder(), q.getQuestionText(), q.getInterviewAnswer() != null);
+        
+        // The current question is the first unanswered one
+        InterviewQuestion currentQuestion = null;
+        for (InterviewQuestion q : questions) {
+            if (q.getInterviewAnswer() == null) {
+                currentQuestion = q;
+                break;
+            }
         }
-        log.info("Selected currentQuestion ID: {}, Order: {}, Text: '{}'", 
-            currentQuestion.getId(), currentQuestion.getQuestionOrder(), currentQuestion.getQuestionText());
-
-        if (currentQuestion.getInterviewAnswer() != null) {
-            throw new RuntimeException("The current question has already been answered");
+        
+        if (currentQuestion == null) {
+            throw new RuntimeException("All questions have been answered");
         }
 
         // Save candidate answer
         InterviewAnswer answer = InterviewAnswer.builder()
                 .interviewQuestion(currentQuestion)
                 .answerText(answerText)
+                .idempotencyKey(idempotencyKey)
                 .build();
-        answer = answerRepository.save(answer);
+        
+        try {
+            answer = answerRepository.saveAndFlush(answer);
+        } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+            log.warn("Database unique constraint violation on idempotency key: {}. Trying to recover.", idempotencyKey);
+            if (idempotencyKey != null && !idempotencyKey.trim().isEmpty()) {
+                java.util.Optional<InterviewAnswer> dup = answerRepository.findByIdempotencyKey(idempotencyKey);
+                if (dup.isPresent()) {
+                    InterviewAnswer ans = dup.get();
+                    InterviewQuestion nextQ = null;
+                    int currentOrder = ans.getInterviewQuestion().getQuestionOrder();
+                    boolean isFinished = currentOrder >= session.getMaxQuestions();
+                    
+                    if (!isFinished) {
+                        List<InterviewQuestion> allQuestions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
+                        for (InterviewQuestion q : allQuestions) {
+                            if (q.getQuestionOrder() == currentOrder + 1) {
+                                nextQ = q;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    return InterviewSubmitAnswerResponseDTO.builder()
+                            .evaluation(null)
+                            .nextQuestion(nextQ)
+                            .isFinished(isFinished)
+                            .scoreStatus("pending")
+                            .build();
+                }
+            }
+            throw ex;
+        }
 
         int currentOrder = currentQuestion.getQuestionOrder();
         boolean isFinished = currentOrder >= session.getMaxQuestions();
 
-        String jobDesc = session.getApplication().getJob().getDescription();
         String targetRole = session.getApplication().getJob().getTitle();
         String industry = (session.getApplication().getResume().getBasicInfo() != null) 
                 ? session.getApplication().getResume().getBasicInfo().getPredictedIndustry() : "IT";
@@ -315,162 +416,65 @@ public class InterviewService {
         }
         String level = session.getDifficultyLevel().name();
 
-        int nextOrder = currentOrder + 1;
+        // Send to RabbitMQ for async scoring
+        InterviewScoringMessage scoringMessage = InterviewScoringMessage.builder()
+                .answerId(answer.getId())
+                .sessionId(sessionId)
+                .questionText(currentQuestion.getQuestionText())
+                .answerText(answerText)
+                .targetRole(targetRole)
+                .industry(industry)
+                .level(level)
+                .build();
+        scoringPublisher.publishScoringJob(scoringMessage);
+
         InterviewQuestion nextQuestion = null;
-        InterviewEvaluation evaluation = null;
-
-        // Try lookup cached question in bank (applicable only for Standard Questions 2 and 3)
-        java.util.Optional<InterviewQuestionBank> cachedNextQ = java.util.Optional.empty();
-        if (!isFinished && nextOrder <= 3) {
-            cachedNextQ = questionBankRepository.findByJobIdAndDifficultyAndQuestionOrder(
-                    session.getApplication().getJob().getId(), session.getDifficultyLevel(), nextOrder);
-        }
-
-        // CASE A: Optimization - Evaluation Only path
-        if (isFinished || cachedNextQ.isPresent()) {
-            log.info("Executing Evaluation-Only path for session order: {}", currentOrder);
-            String aiResponse = geminiService.evaluateAnswerOnly(currentQuestion.getQuestionText(), answerText, targetRole, industry, level);
-            try {
-                JsonNode resultNode = objectMapper.readTree(aiResponse);
-                int score = resultNode.path("score").asInt(1);
-                String feedback = resultNode.path("feedback").asText("");
-
-                evaluation = InterviewEvaluation.builder()
-                        .interviewAnswer(answer)
-                        .score(score)
-                        .feedback(feedback)
-                        .build();
-                evaluation = evaluationRepository.save(evaluation);
-
-                // Save detailed scores per criteria
-                saveCriteriaScores(answer, resultNode.path("scores"));
-
-                // If next cached question is available, fetch and save to active session
-                if (!isFinished && cachedNextQ.isPresent()) {
-                    InterviewQuestionBank bankQ = cachedNextQ.get();
-                    bankQ.setUseCount(bankQ.getUseCount() + 1);
-                    questionBankRepository.save(bankQ);
-
-                    nextQuestion = InterviewQuestion.builder()
-                            .interviewSession(session)
-                            .questionText(bankQ.getQuestionText())
-                            .questionType(bankQ.getQuestionType())
-                            .difficulty(bankQ.getDifficulty())
-                            .questionOrder(nextOrder)
-                            .build();
-                    nextQuestion = questionRepository.save(nextQuestion);
-                    
-                    session.setTotalQuestions(nextOrder);
-                    sessionRepository.save(session);
+        if (!isFinished) {
+            int nextOrder = currentOrder + 1;
+            for (InterviewQuestion q : questions) {
+                if (q.getQuestionOrder() == nextOrder) {
+                    nextQuestion = q;
+                    break;
                 }
-            } catch (Exception e) {
-                log.error("Failed to evaluate and load next cached question: {}", e.getMessage());
-                throw new RuntimeException("Error evaluating answer: " + e.getMessage());
-            }
-        }
-        // CASE B: Full Evaluation and Next Question generation path (PARALLEL COMPLETABLEFUTURE)
-        else {
-            log.info("Executing Parallel Evaluation & Question Generation path for session order: {}", currentOrder);
-            
-            // 1. Prepare running summary context
-            final String runningSummary = session.getRunningSummary();
-            final String finalQText = currentQuestion.getQuestionText();
-            final String finalAnswerText = answerText;
-            final String finalTargetRole = targetRole;
-            final String finalIndustry = industry;
-            final String finalLevel = level;
-            final String finalJobDesc = jobDesc;
-            
-            // 2. Call Gemini concurrently
-            java.util.concurrent.CompletableFuture<String> evalFuture = java.util.concurrent.CompletableFuture.supplyAsync(() -> 
-                geminiService.evaluateAnswerOnly(finalQText, finalAnswerText, finalTargetRole, finalIndustry, finalLevel)
-            );
-            
-            java.util.concurrent.CompletableFuture<String> questionFuture = java.util.concurrent.CompletableFuture.supplyAsync(() -> 
-                geminiService.generateNextQuestion(finalJobDesc, runningSummary, finalQText, finalAnswerText, finalTargetRole, finalIndustry, finalLevel)
-            );
-
-            try {
-                // Wait for both futures to complete
-                java.util.concurrent.CompletableFuture.allOf(evalFuture, questionFuture).join();
-                
-                String evalResponse = evalFuture.get();
-                String questionResponse = questionFuture.get();
-
-                // 3. Process Evaluation Response
-                JsonNode evalNode = objectMapper.readTree(evalResponse);
-                int score = evalNode.path("score").asInt(1);
-                String feedback = evalNode.path("feedback").asText("");
-
-                evaluation = InterviewEvaluation.builder()
-                        .interviewAnswer(answer)
-                        .score(score)
-                        .feedback(feedback)
-                        .build();
-                evaluation = evaluationRepository.save(evaluation);
-
-                // Save detailed scores per criteria
-                saveCriteriaScores(answer, evalNode.path("scores"));
-
-                // 4. Process Question Generation Response
-                JsonNode qNode = objectMapper.readTree(questionResponse);
-                String nextQuestionText = qNode.path("question").asText();
-                String cvCtx = qNode.path("cv_context").asText();
-                String jdCtx = qNode.path("jd_context").asText();
-                boolean canReuse = qNode.path("can_reuse").asBoolean(false);
-
-                nextQuestion = InterviewQuestion.builder()
-                        .interviewSession(session)
-                        .questionText(nextQuestionText)
-                        .questionType(QuestionTypeEnum.TECHNICAL)
-                        .difficulty(session.getDifficultyLevel())
-                        .questionOrder(nextOrder)
-                        .cvContext(cvCtx)
-                        .jdContext(jdCtx)
-                        .canReuse(canReuse)
-                        .build();
-                nextQuestion = questionRepository.save(nextQuestion);
-
-                session.setTotalQuestions(nextOrder);
-                sessionRepository.save(session);
-
-            } catch (Exception e) {
-                log.error("Failed to execute parallel answer evaluation and question generation: {}", e.getMessage());
-                throw new RuntimeException("Error evaluating answer: " + e.getMessage());
             }
         }
 
-        // Trigger background running summary update (Non-blocking)
-        if (evaluation != null) {
-            final String currentSummary = session.getRunningSummary();
-            final String qText = currentQuestion.getQuestionText();
-            final String aText = answerText;
-            final int currentScore = evaluation.getScore();
-            final Long sessId = session.getId();
-            
-            java.util.concurrent.CompletableFuture.runAsync(() -> {
-                try {
-                    log.info("Running background update for session ID: {} runningSummary...", sessId);
-                    String updatedSummary = geminiService.updateRunningSummary(currentSummary, qText, aText, currentScore);
-                    
-                    // Retrieve session and save
-                    InterviewSession sess = sessionRepository.findById(sessId).orElse(null);
-                    if (sess != null) {
-                        sess.setRunningSummary(updatedSummary);
-                        sessionRepository.save(sess);
-                        log.info("Successfully updated runningSummary for session ID: {}", sessId);
-                    }
-                } catch (Exception ex) {
-                    log.error("Failed to update runningSummary asynchronously for session ID: {}", sessId, ex);
-                }
-            });
+        if (isFinished) {
+            ReportGenerationMessage reportMessage = ReportGenerationMessage.builder()
+                    .sessionId(sessionId)
+                    .build();
+            reportGenerationPublisher.publishReportJob(reportMessage);
         }
 
         return InterviewSubmitAnswerResponseDTO.builder()
-                .evaluation(evaluation)
+                .evaluation(null) // Evaluation is async now
                 .nextQuestion(nextQuestion)
                 .isFinished(isFinished)
+                .scoreStatus("pending")
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getScoreStatuses(Long sessionId) {
+        List<InterviewQuestion> questions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
+        List<Map<String, Object>> scores = questions.stream().map(q -> {
+            Map<String, Object> scoreInfo = new HashMap<>();
+            scoreInfo.put("questionId", q.getId());
+            scoreInfo.put("questionOrder", q.getQuestionOrder());
+            
+            if (q.getInterviewAnswer() != null && q.getInterviewAnswer().getInterviewEvaluation() != null) {
+                scoreInfo.put("status", "completed");
+                scoreInfo.put("score", q.getInterviewAnswer().getInterviewEvaluation().getScore());
+                scoreInfo.put("feedback", q.getInterviewAnswer().getInterviewEvaluation().getFeedback());
+            } else if (q.getInterviewAnswer() != null) {
+                scoreInfo.put("status", "pending");
+            } else {
+                scoreInfo.put("status", "unanswered");
+            }
+            return scoreInfo;
+        }).collect(Collectors.toList());
+        
+        return Map.of("scores", scores);
     }
 
     private void saveCriteriaScores(InterviewAnswer answer, JsonNode scoresNode) {
@@ -500,6 +504,15 @@ public class InterviewService {
 
     @Transactional
     public InterviewSession finishSession(Long sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+        // Simply return session. Background worker is handling report generation.
+        log.info("finishSession called for session {}. Returning immediately for async processing.", sessionId);
+        return session;
+    }
+
+    @Transactional
+    public InterviewSession generateReportSynchronously(Long sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
@@ -583,6 +596,28 @@ public class InterviewService {
         return questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
     }
 
+    @Transactional(readOnly = true)
+    public List<InterviewQuestion> getVisibleQuestions(Long sessionId) {
+        log.debug("Fetching visible questions for interview session ID: {}", sessionId);
+        InterviewSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new RuntimeException("Session not found"));
+        
+        List<InterviewQuestion> allQuestions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);
+        
+        if (session.getStatus() == InterviewSessionStatusEnum.COMPLETED) {
+            return allQuestions;
+        }
+        
+        List<InterviewQuestion> visibleQuestions = new ArrayList<>();
+        for (InterviewQuestion q : allQuestions) {
+            visibleQuestions.add(q);
+            if (q.getInterviewAnswer() == null) {
+                break;
+            }
+        }
+        return visibleQuestions;
+    }
+
     private String getChatHistory(List<InterviewQuestion> questions, String latestAnswer) {
         StringBuilder sb = new StringBuilder();
         for (InterviewQuestion q : questions) {
@@ -606,5 +641,15 @@ public class InterviewService {
             }
         }
         return sb.toString();
+    }
+
+    @Transactional(readOnly = true)
+    public long getPendingEvaluationsCount(Long sessionId) {
+        return answerRepository.countPendingEvaluationsNative(sessionId);
+    }
+
+    @Transactional(readOnly = true)
+    public long getAnsweredCount(Long sessionId) {
+        return answerRepository.countTotalAnswersNative(sessionId);
     }
 }

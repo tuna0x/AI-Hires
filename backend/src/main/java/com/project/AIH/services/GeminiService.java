@@ -11,6 +11,10 @@ import org.springframework.web.reactive.function.client.WebClient;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.time.Duration;
+import reactor.util.retry.Retry;
+import java.util.concurrent.TimeoutException;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 @Service
 @Slf4j
@@ -175,6 +179,9 @@ public class GeminiService {
                                         .bodyValue(requestBody)
                                         .retrieve()
                                         .bodyToMono(String.class)
+                                        .timeout(Duration.ofSeconds(30))
+                                        .retryWhen(Retry.backoff(2, Duration.ofSeconds(3))
+                                            .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientResponseException.TooManyRequests || ex instanceof WebClientResponseException.InternalServerError))
                                         .block();
                 } catch (Exception e) {
                         log.error("Error calling Gemini API: {}", e.getMessage());
@@ -329,6 +336,9 @@ public class GeminiService {
                                         .bodyValue(requestBody)
                                         .retrieve()
                                         .bodyToMono(String.class)
+                                        .timeout(Duration.ofSeconds(30))
+                                        .retryWhen(Retry.backoff(2, Duration.ofSeconds(3))
+                                            .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientResponseException.TooManyRequests || ex instanceof WebClientResponseException.InternalServerError))
                                         .block();
 
                         JsonNode root = new ObjectMapper().readTree(response);
@@ -360,56 +370,6 @@ public class GeminiService {
                 }
         }
 
-        public String generateInitialQuestion(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
-                String levelInstruction = getLevelInstruction(level);
-                String prompt = String.format(
-                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
-                                "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
-                                "Cấp độ yêu cầu của ứng viên: %s.\n" +
-                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
-                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
-                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
-                                "Nhiệm vụ: Hãy đặt 1 câu hỏi phỏng vấn đầu tiên bằng Tiếng Việt. Câu hỏi phải chuyên sâu, tập trung khai thác kỹ năng của ứng viên bám sát JD và CV.\n" +
-                                "Yêu cầu phản hồi: Trả về chuỗi JSON (KHÔNG CÓ MARKDOWN) theo cấu trúc:\n" +
-                                "{\n" +
-                                "  \"question\": \"<Nội dung câu hỏi phỏng vấn>\",\n" +
-                                "  \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV là cơ sở của câu hỏi, nếu có>\",\n" +
-                                "  \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD là cơ sở của câu hỏi, nếu có>\",\n" +
-                                "  \"can_reuse\": <true/false - Đánh giá xem câu hỏi này có mang tính chung chuyên môn và có thể lưu vào ngân hàng câu hỏi dùng chung để tái sử dụng hay không>\n" +
-                                "}",
-                                targetRole, industry, level, levelInstruction, jobDescription, candidateCvText);
-                return callTextOnlyGemini(prompt);
-        }
-
-        public String evaluateAndGenerateNextQuestion(String jobDescription, String chatHistory, String latestAnswer, String targetRole, String industry, String level) {
-                String levelInstruction = getLevelInstruction(level);
-                String prompt = String.format(
-                                "Bạn là chuyên gia tuyển dụng đang phỏng vấn ứng viên cho vị trí: %s, ngành nghề: %s, cấp độ: %s.\n" +
-                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
-                                "JD:\n%s\n\n" +
-                                "Lịch sử trò chuyện:\n%s\n\n" +
-                                "Câu trả lời mới nhất của ứng viên:\n%s\n\n" +
-                                "Nhiệm vụ: Chấm điểm câu trả lời và sinh câu hỏi tiếp theo.\n" +
-                                "Yêu cầu trả về đúng 1 chuỗi JSON duy nhất (KHÔNG CÓ MARKDOWN) theo định dạng sau:\n" +
-                                "{\n" +
-                                "  \"score\": <Tổng điểm 1-10 cho câu trả lời mới nhất>,\n" +
-                                "  \"feedback\": \"<Nhận xét ngắn gọn, khách quan về câu trả lời>\",\n" +
-                                "  \"scores\": {\n" +
-                                "    \"RELEVANCE\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Độ liên quan>\" },\n" +
-                                "    \"DEPTH\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Độ sâu kiến thức>\" },\n" +
-                                "    \"STRUCTURE\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Cấu trúc trình bày>\" },\n" +
-                                "    \"COMMUNICATION\": { \"score\": <Điểm 0-10>, \"comment\": \"<Nhận xét tiêu chí Khả năng diễn đạt/giao tiếp>\" }\n" +
-                                "  },\n" +
-                                "  \"next_question\": {\n" +
-                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn tiếp theo>\",\n" +
-                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu hỏi này, nếu có>\",\n" +
-                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu hỏi này, nếu có>\",\n" +
-                                "    \"can_reuse\": <true/false - Đánh giá xem câu hỏi mới này có mang tính chung chuyên môn và có thể lưu vào ngân hàng câu hỏi để tái sử dụng hay không>\n" +
-                                "  }\n" +
-                                "}",
-                                targetRole, industry, level, levelInstruction, jobDescription, chatHistory, latestAnswer);
-                return callTextOnlyGemini(prompt);
-        }
 
         public String evaluateAnswerOnly(String questionText, String answerText, String targetRole, String industry, String level) {
                 String prompt = String.format(
@@ -429,10 +389,11 @@ public class GeminiService {
                                 "  }\n" +
                                 "}",
                                 targetRole, industry, level, questionText, answerText);
-                return callTextOnlyGemini(prompt);
+                return callTextOnlyGemini(prompt, 10); // 10s timeout for scoring
         }
 
-        public String generateInitialQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
+
+        public String generateAllQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
                 String levelInstruction = getLevelInstruction(level);
                 String prompt = String.format(
                                 "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
@@ -441,54 +402,49 @@ public class GeminiService {
                                 "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
                                 "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
                                 "Dưới đây là CV của ứng viên:\n%s\n\n" +
-                                "Nhiệm vụ: Hãy chuẩn bị 3 câu hỏi phỏng vấn cơ sở đầu tiên bằng Tiếng Việt (Câu 1, Câu 2, Câu 3). Các câu hỏi này phải chuyên sâu, tập trung khai thác kỹ năng cốt lõi của ứng viên bám sát JD và CV.\n" +
-                                "Yêu cầu phản hồi: Trả về một mảng JSON chứa đúng 3 object (TUYỆT ĐỐI KHÔNG CÓ TRÍCH DẪN MARKDOWN HOẶC TEXT THỪA) theo cấu trúc chính xác sau:\n" +
+                                "Nhiệm vụ: Hãy chuẩn bị toàn bộ 5 câu hỏi phỏng vấn bằng Tiếng Việt. \n" +
+                                "- Câu 1, 2, 3: Các câu hỏi nền tảng, tập trung khai thác kỹ năng cốt lõi bám sát JD (có thể tái sử dụng cho ứng viên khác).\n" +
+                                "- Câu 4, 5: Các câu hỏi cá nhân hóa sâu sắc, đào sâu vào các dự án, kinh nghiệm cụ thể mà ứng viên đã ghi trong CV (không tái sử dụng cho ứng viên khác).\n" +
+                                "Yêu cầu phản hồi: Trả về một mảng JSON chứa đúng 5 object (TUYỆT ĐỐI KHÔNG CÓ TRÍCH DẪN MARKDOWN HOẶC TEXT THỪA) theo cấu trúc chính xác sau:\n" +
                                 "[\n" +
                                 "  {\n" +
                                 "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 1>\",\n" +
-                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu 1, nếu có>\",\n" +
-                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu 1, nếu có>\",\n" +
+                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan, nếu có>\",\n" +
+                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan, nếu có>\",\n" +
                                 "    \"can_reuse\": true\n" +
                                 "  },\n" +
-                                "  {\n" +
-                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 2>\",\n" +
-                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu 2, nếu có>\",\n" +
-                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu 2, nếu có>\",\n" +
-                                "    \"can_reuse\": true\n" +
-                                "  },\n" +
-                                "  {\n" +
-                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 3>\",\n" +
-                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu 3, nếu có>\",\n" +
-                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu 3, nếu có>\",\n" +
-                                "    \"can_reuse\": true\n" +
-                                "  }\n" +
-                                "]",
+                                "  // ... tiếp tục cho đến câu 5, lưu ý câu 4, 5 can_reuse thường là false\n" +
+                                "]\n" +
+                                "Đảm bảo trả về đúng 5 phần tử trong mảng JSON.",
                                 targetRole, industry, level, levelInstruction, jobDescription, candidateCvText);
-                return callTextOnlyGemini(prompt);
+                return callTextOnlyGemini(prompt, 20); // 20s timeout for generating 5 questions
         }
 
-        public String generateNextQuestion(String jobDescription, String runningSummary, String previousQuestion, String previousAnswer, String targetRole, String industry, String level) {
+        public String generatePersonalizedQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level, int count) {
                 String levelInstruction = getLevelInstruction(level);
                 String prompt = String.format(
-                                "Bạn là chuyên gia tuyển dụng đang phỏng vấn ứng viên cho vị trí: %s, ngành nghề: %s, cấp độ: %s.\n" +
+                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
+                                "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
+                                "Cấp độ yêu cầu của ứng viên: %s.\n" +
                                 "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
-                                "JD:\n%s\n\n" +
-                                "Tóm tắt kết quả thể hiện của ứng viên qua các câu trả lời trước đó (Running Summary):\n%s\n\n" +
-                                "Câu hỏi trước đó: %s\n" +
-                                "Câu trả lời của ứng viên cho câu hỏi đó: %s\n\n" +
-                                "Nhiệm vụ: Dựa trên tóm tắt năng lực và câu trả lời mới nhất, hãy đặt câu hỏi phỏng vấn tiếp theo bằng Tiếng Việt. Câu hỏi phải mang tính bám đuổi chuyên môn, đào sâu bối cảnh, hỏi xoáy đáp xoay hoặc kiểm nghiệm tính xác thực của câu trả lời trước.\n" +
-                                "Yêu cầu trả về đúng 1 chuỗi JSON duy nhất (KHÔNG CÓ MARKDOWN) theo định dạng sau:\n" +
-                                "{\n" +
-                                "  \"question\": \"<Nội dung câu hỏi phỏng vấn tiếp theo>\",\n" +
-                                "  \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan đến câu hỏi này, nếu có>\",\n" +
-                                "  \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan đến câu hỏi này, nếu có>\",\n" +
-                                "  \"can_reuse\": false\n" +
-                                "}",
-                                targetRole, industry, level, levelInstruction, jobDescription, 
-                                (runningSummary != null && !runningSummary.isEmpty()) ? runningSummary : "Chưa có đánh giá tích lũy.", 
-                                previousQuestion, previousAnswer);
-                return callTextOnlyGemini(prompt);
+                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
+                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
+                                "Nhiệm vụ: Hãy chuẩn bị %d câu hỏi phỏng vấn cá nhân hóa bằng Tiếng Việt. \n" +
+                                "Các câu hỏi này phải cực kỳ cá nhân hóa, đào sâu vào các dự án, kinh nghiệm cụ thể mà ứng viên đã ghi trong CV (không mang tính lý thuyết chung chung, không tái sử dụng cho ứng viên khác).\n" +
+                                "Yêu cầu phản hồi: Trả về một mảng JSON chứa đúng %d object (TUYỆT ĐỐI KHÔNG CÓ TRÍCH DẪN MARKDOWN HOẶC TEXT THỪA) theo cấu trúc chính xác sau:\n" +
+                                "[\n" +
+                                "  {\n" +
+                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn>\",\n" +
+                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan, nếu có>\",\n" +
+                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan, nếu có>\",\n" +
+                                "    \"can_reuse\": false\n" +
+                                "  }\n" +
+                                "]\n" +
+                                "Đảm bảo trả về đúng %d phần tử trong mảng JSON.",
+                                targetRole, industry, level, levelInstruction, jobDescription, candidateCvText, count, count, count);
+                return callTextOnlyGemini(prompt, 15); // 15s timeout for generating personalized questions
         }
+
 
         public String updateRunningSummary(String currentSummary, String questionText, String answerText, int score) {
                 String prompt = String.format(
@@ -501,7 +457,7 @@ public class GeminiService {
                                 "Hãy cập nhật và viết lại một bản tóm tắt năng lực tích lũy mới bằng Tiếng Việt (không quá 150 từ, súc tích, mang tính chuyên môn). Tập trung làm nổi bật: Điểm mạnh cốt lõi đã được kiểm chứng, điểm yếu chuyên môn cần lưu ý, mức độ hiểu biết lý thuyết và khả năng thực hành thực tế.",
                                 (currentSummary != null && !currentSummary.isEmpty()) ? currentSummary : "Chưa có đánh giá tích lũy.",
                                 questionText, answerText, score);
-                return callTextOnlyGemini(prompt);
+                return callTextOnlyGemini(prompt, 10); // 10s for running summary
         }
 
         public String generateFinalReport(String jobDescription, String chatHistory) {
@@ -518,7 +474,7 @@ public class GeminiService {
                                                 "  \"summary\": \"<Đánh giá tổng quan>\"\n" +
                                                 "}",
                                 chatHistory, jobDescription);
-                return callTextOnlyGemini(prompt);
+                return callTextOnlyGemini(prompt, 25); // 25s for final report
         }
 
         public String parseDetailedResume(String extractedText) {
@@ -598,7 +554,7 @@ public class GeminiService {
                                 + "    }\n"
                                 + "  ]\n"
                                 + "}";
-                return callTextOnlyGemini(promptText);
+                return callTextOnlyGemini(promptText, 25);
         }
 
     public String parseResumeText(String extractedText) {
@@ -715,22 +671,25 @@ public class GeminiService {
                 + "  ]\n"
                 + "}\n\n"
                 + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu.";
-        return callTextOnlyGemini(promptText);
+        return callTextOnlyGemini(promptText, 25);
     }
 
-    private String callTextOnlyGemini(String promptText) {
+    private String callTextOnlyGemini(String promptText, int timeoutSeconds) {
                 Map<String, Object> requestBody = Map.of(
                                 "contents", List.of(
                                                 Map.of("parts", List.of(
                                                                 Map.of("text", promptText)))));
 
                 try {
-                        log.info("Sending text-only request to Gemini API...");
+                        log.info("Sending text-only request to Gemini API with {}s timeout...", timeoutSeconds);
                         String responseStr = webClient.post()
                                         .uri(apiUrl + "?key=" + apiKey)
                                         .bodyValue(requestBody)
                                         .retrieve()
                                         .bodyToMono(String.class)
+                                        .timeout(Duration.ofSeconds(timeoutSeconds))
+                                        .retryWhen(Retry.backoff(3, Duration.ofSeconds(2))
+                                            .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientResponseException.TooManyRequests || ex instanceof WebClientResponseException.InternalServerError))
                                         .block();
 
                         JsonNode root = new ObjectMapper().readTree(responseStr);
