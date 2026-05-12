@@ -192,7 +192,7 @@ export default function Interview() {
       let activeSession: InterviewSession;
 
       if (setupMode === "mock") {
-        if (!parsedCv?.resumeId) {
+        if (!parsedCv?.resumeId && !parsedCv?.scanId) {
           toast.error("⚠️ Không tìm thấy CV của bạn. Vui lòng tải lên và phân tích CV trước!");
           setIsLoading(false);
           return;
@@ -205,6 +205,7 @@ export default function Interview() {
 
         activeSession = await interviewApi.startMockInterview({
           resumeId: parsedCv.resumeId,
+          scanId: parsedCv.scanId,
           targetRole: targetRole,
           jobDescription: jobDescription,
           targetLevel: selectedLevel,
@@ -346,7 +347,7 @@ export default function Interview() {
             </div>
 
             {/* Quick warning if CV is not uploaded */}
-            {!parsedCv?.resumeId && (
+            {!parsedCv?.resumeId && !parsedCv?.scanId && (
               <div className="mb-6 rounded-2xl bg-warning/10 border border-warning/30 p-4 text-sm flex items-start gap-3">
                 <AlertCircle className="h-5 w-5 text-warning shrink-0 mt-0.5" />
                 <div>
@@ -382,7 +383,7 @@ export default function Interview() {
                     </div>
                   </div>
                   <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-semibold shrink-0">
-                    ID: {parsedCv.resumeId}
+                    ID: {parsedCv.resumeId ?? parsedCv.scanId}
                   </Badge>
                 </div>
               )}

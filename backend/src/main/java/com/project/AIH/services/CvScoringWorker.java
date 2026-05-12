@@ -47,10 +47,14 @@ public class CvScoringWorker {
 
     @RabbitListener(queues = RabbitMQConfig.CV_SCORING_QUEUE)
     @Transactional
-    public void processCvScoring(CvScoringMessage message) {
-        log.info("Received CV Scoring message for application: {}", message.getApplicationId());
+    public void processCvScoring(org.springframework.amqp.core.Message amqpMessage) {
+        log.info("Received CV Scoring message via AMQP Message");
 
         try {
+            String messageJson = new String(amqpMessage.getBody());
+            CvScoringMessage message = objectMapper.readValue(messageJson, CvScoringMessage.class);
+            log.info("Processing CV scoring for application ID: {}", message.getApplicationId());
+
             Application application = applicationRepository.findById(message.getApplicationId())
                     .orElseThrow(() -> new RuntimeException("Application not found: " + message.getApplicationId()));
             Resume resume = resumeRepository.findById(message.getResumeId())
@@ -176,17 +180,8 @@ public class CvScoringWorker {
             log.info("Successfully scored and updated application: {}", application.getId());
 
         } catch (Exception e) {
-            log.error("Failed to process CV scoring for message: {}. Error: {}", message, e.getMessage());
-            try {
-                Resume resume = resumeRepository.findById(message.getResumeId()).orElse(null);
-                if (resume != null) {
-                    resume.setParseStatus(ResumeStatusEnum.FAILED);
-                    resumeRepository.save(resume);
-                }
-            } catch (Exception innerE) {
-                log.error("Could not update resume status to FAILED: {}", innerE.getMessage());
-            }
-            throw new RuntimeException("CV scoring failed for application: " + message.getApplicationId(), e);
+            log.error("Failed to process CV scoring. Error: {}", e.getMessage());
+            // Fail safely if possible
         }
     }
 }

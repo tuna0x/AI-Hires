@@ -9,7 +9,7 @@ import { Seo, breadcrumbLd } from "@/lib/seo";
 import { cvStore, generateMockResult } from "@/lib/store";
 import { useUploadCvMutation } from "@/hooks/queries/useCvQueries";
 import { cvApi } from "@/api/cvApi";
-import { mapResumeToAnalysisResult } from "@/lib/cvMapper";
+import { mapResumeScanToAnalysisResult } from "@/lib/cvMapper";
 
 const LOADER_STAGES = [
   {
@@ -87,30 +87,29 @@ export default function CvChecker() {
       }
     }, 100);
 
-    const pollResumeStatus = async (resumeId: number) => {
+    const pollResumeStatus = async (scanId: number) => {
       try {
-        const response = await cvApi.getResumeDetails(resumeId);
-        const freshResume = response.data;
-        if (freshResume) {
-          if (freshResume.parseStatus === "DONE") {
+        const response = await cvApi.getScanDetails(scanId);
+        const freshScan = response.data;
+        if (freshScan) {
+          if (freshScan.status === "COMPLETED") {
             clearInterval(tick);
-            const mappedResult = mapResumeToAnalysisResult(freshResume);
+            const mappedResult = mapResumeScanToAnalysisResult(freshScan);
             cvStore.setResult(mappedResult);
             setProgress(100);
             setSuccessFinished(true);
             setTimeout(() => {
               navigate("/results");
             }, 1400);
-          } else if (freshResume.parseStatus === "FAILED") {
+          } else if (freshScan.status === "FAILED") {
             clearInterval(tick);
             setAnalyzing(false);
-            setError("Phân tích CV thất bại bằng AI. Vui lòng thử tải lại hoặc dùng tệp khác!");
+            setError(freshScan.failureMessage || "Phân tích CV thất bại bằng AI. Vui lòng thử tải lại hoặc dùng tệp khác!");
           } else {
-            // Vẫn đang PROCESSING, tiếp tục thăm dò sau 3.5 giây (tối ưu số lượng request)
-            setTimeout(() => pollResumeStatus(resumeId), 3500);
+            setTimeout(() => pollResumeStatus(scanId), 3500);
           }
         } else {
-          setTimeout(() => pollResumeStatus(resumeId), 3500);
+          setTimeout(() => pollResumeStatus(scanId), 3500);
         }
       } catch (err: any) {
         clearInterval(tick);
@@ -133,11 +132,11 @@ export default function CvChecker() {
     } else {
       // CHẾ ĐỘ API THẬT: Trigger upload lên backend Spring Boot
       uploadCvMutation.mutate(selectedFile, {
-        onSuccess: (resume) => {
-          if (resume.parseStatus === "DONE" || resume.parseStatus === "FAILED") {
+        onSuccess: (scan) => {
+          if (scan.status === "COMPLETED" || scan.status === "FAILED") {
             clearInterval(tick);
-            if (resume.parseStatus === "DONE") {
-              const mappedResult = mapResumeToAnalysisResult(resume);
+            if (scan.status === "COMPLETED") {
+              const mappedResult = mapResumeScanToAnalysisResult(scan);
               cvStore.setResult(mappedResult);
               setProgress(100);
               setSuccessFinished(true);
@@ -146,11 +145,10 @@ export default function CvChecker() {
               }, 1400);
             } else {
               setAnalyzing(false);
-              setError("Phân tích CV thất bại bằng AI.");
+              setError(scan.failureMessage || "Phân tích CV thất bại bằng AI.");
             }
           } else {
-            // Bắt đầu thăm dò thực tế sau 5 giây (vì phân tích AI luôn mất tối thiểu 8-15 giây)
-            setTimeout(() => pollResumeStatus(resume.id), 5000);
+            setTimeout(() => pollResumeStatus(scan.id), 5000);
           }
         },
         onError: (err: any) => {

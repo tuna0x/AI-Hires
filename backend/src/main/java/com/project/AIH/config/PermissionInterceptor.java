@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.servlet.HandlerInterceptor;
 import org.springframework.web.servlet.HandlerMapping;
 
@@ -17,6 +18,7 @@ import java.util.List;
 
 @Component
 public class PermissionInterceptor implements HandlerInterceptor {
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     @Autowired
     private UserService userService;
@@ -29,6 +31,7 @@ public class PermissionInterceptor implements HandlerInterceptor {
         // 1. Whitelist endpoints
         if (path != null && (
                 path.startsWith("/api/v1/auth/") ||
+                path.startsWith("/actuator") ||
                 path.startsWith("/v3/api-docs") ||
                 path.startsWith("/swagger-ui")
         )) {
@@ -53,7 +56,8 @@ public class PermissionInterceptor implements HandlerInterceptor {
                 List<Permission> permissions = role.getPermissions();
                 if (permissions != null) {
                     boolean isAllowed = permissions.stream().anyMatch(p -> 
-                            p.getApiPath().equals(path) && p.getMethod().equalsIgnoreCase(httpMethod)
+                            p.getMethod().equalsIgnoreCase(httpMethod)
+                                    && matchesPermissionPath(p.getApiPath(), path)
                     );
 
                     if (!isAllowed) {
@@ -66,5 +70,15 @@ public class PermissionInterceptor implements HandlerInterceptor {
         }
 
         return true;
+    }
+
+    private boolean matchesPermissionPath(String permissionPath, String requestMappingPath) {
+        if (permissionPath == null || requestMappingPath == null) {
+            return false;
+        }
+        if (permissionPath.equals(requestMappingPath)) {
+            return true;
+        }
+        return PATH_MATCHER.match(permissionPath, requestMappingPath);
     }
 }

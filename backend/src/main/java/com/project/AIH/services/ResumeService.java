@@ -38,6 +38,7 @@ public class ResumeService {
     private final ResumeParserService parserService;
     private final GeminiService geminiService;
     private final ScanMapperService scanMapperService;
+    private final ReliableMessagePublisher reliableMessagePublisher;
     
     private final ResumeRepository resumeRepository;
     private final ResumeScanRepository resumeScanRepository;
@@ -68,6 +69,17 @@ public class ResumeService {
         }
     }
 
+    /**
+     * Quy trình Ứng tuyển & Chấm điểm CV (Flow 1):
+     * Dùng cho ứng viên nộp hồ sơ vào một vị trí cụ thể (Job).
+     * CV sẽ được lưu vào hệ thống, tạo bản ghi Application và đẩy vào Queue để chấm điểm chuyên sâu (CvScore).
+     * Kết quả sẽ gắn liền với chiến dịch tuyển dụng.
+     * 
+     * @param file Tệp CV của ứng viên
+     * @param jobId ID của vị trí ứng tuyển
+     * @param user Thông tin người dùng ứng tuyển
+     * @return Đối tượng Application đã tạo
+     */
     @Transactional
     public Application applyAndScore(MultipartFile file, Long jobId, User user) {
         log.info("Starting CV application and scoring for user: {} and job: {}", user.getEmail(), jobId);
@@ -147,7 +159,7 @@ public class ResumeService {
                     .contentType(file.getContentType())
                     .build();
 
-            rabbitTemplate.convertAndSend(
+            reliableMessagePublisher.publish(
                     RabbitMQConfig.CV_SCORING_EXCHANGE,
                     RabbitMQConfig.CV_SCORING_ROUTING_KEY,
                     message
@@ -168,6 +180,16 @@ public class ResumeService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy hồ sơ."));
     }
 
+    /**
+     * Quy trình Quét & Phân tích CV nhanh (Flow 2 - CV Checker):
+     * Dùng cho tính năng "CV Checker" vãng lai, không yêu cầu nộp hồ sơ.
+     * CV được phân tích bằng AI (Gemini) và kết quả được lưu vào bảng ResumeScan.
+     * Quy trình này xử lý bất đồng bộ (Async) để phản hồi nhanh cho người dùng.
+     * 
+     * @param file Tệp CV
+     * @param user Thông tin người dùng (nullable)
+     * @return Đối tượng Resume ở trạng thái PROCESSING
+     */
     public Resume uploadAndParse(MultipartFile file, User user) {
         String userEmail = (user != null) ? user.getEmail() : "anonymous";
         String folderPath = (user != null) ? "resumes/" + user.getId() : "resumes/guest";

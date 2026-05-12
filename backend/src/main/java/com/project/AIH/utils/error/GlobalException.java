@@ -7,9 +7,12 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.ErrorResponseException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -24,6 +27,33 @@ public class GlobalException {
         res.setMessage(ex.getMessage());
         res.setError("Internal Exception");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(res);
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<RestResponse<Object>> handleResponseStatusException(ResponseStatusException ex) {
+        RestResponse<Object> res = new RestResponse<>();
+        res.setStatusCode(ex.getStatusCode().value());
+        res.setError(ex.getStatusCode().toString());
+        res.setMessage(ex.getReason() != null ? ex.getReason() : ex.getMessage());
+        return ResponseEntity.status(ex.getStatusCode()).body(res);
+    }
+
+    @ExceptionHandler(ErrorResponseException.class)
+    public ResponseEntity<RestResponse<Object>> handleErrorResponseException(ErrorResponseException ex) {
+        RestResponse<Object> res = new RestResponse<>();
+        res.setStatusCode(ex.getStatusCode().value());
+        res.setError(ex.getStatusCode().toString());
+        res.setMessage(ex.getBody() != null ? ex.getBody().getDetail() : ex.getMessage());
+        return ResponseEntity.status(ex.getStatusCode()).body(res);
+    }
+
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<RestResponse<Object>> handleNoResourceFoundException(NoResourceFoundException ex) {
+        RestResponse<Object> res = new RestResponse<>();
+        res.setStatusCode(HttpStatus.NOT_FOUND.value());
+        res.setError("Not Found");
+        res.setMessage(ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(res);
     }
 
     @ExceptionHandler(value = {

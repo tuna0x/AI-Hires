@@ -84,6 +84,9 @@ public class DatabaseInitializer implements CommandLineRunner {
         perms.add(new PermDef("Upload Resume", "/api/v1/resumes/upload", "POST", "RESUMES", true, true));
         perms.add(new PermDef("Get Resumes", "/api/v1/resumes", "GET", "RESUMES", true, false));
         perms.add(new PermDef("Get My Resumes", "/api/v1/resumes/my-resumes", "GET", "RESUMES", true, true));
+        perms.add(new PermDef("Create Resume Scan", "/api/v1/resume-scans", "POST", "RESUME_SCANS", true, true));
+        perms.add(new PermDef("Get Resume Scan", "/api/v1/resume-scans/**", "GET", "RESUME_SCANS", true, true));
+        perms.add(new PermDef("Submit Resume Scan Feedback", "/api/v1/resume-scans/**", "POST", "RESUME_SCANS", true, true));
 
         // APPLICATIONS
         perms.add(new PermDef("Apply for Job", "/api/v1/resumes/apply", "POST", "APPLICATIONS", false, true));

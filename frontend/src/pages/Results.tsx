@@ -122,15 +122,15 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
         {
           section: "ATS Parsability",
           current: atsParse.score,
-          max: 8,
-          lost: 8 - atsParse.score,
+          max: 5,
+          lost: 5 - atsParse.score,
           tip: "Thêm header chuẩn: 'Work Experience', 'Education', 'Skills' để máy đọc nhận diện tốt hơn."
         },
         {
           section: "Bullet Quality",
           current: bullet.score,
-          max: 6,
-          lost: 6 - bullet.score,
+          max: 8,
+          lost: 8 - bullet.score,
           tip: "Viết lại gạch đầu dòng theo mô hình STAR (Tình huống, Nhiệm vụ, Hành động, Kết quả)."
         },
         {
@@ -143,8 +143,8 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
         {
           section: "Projects",
           current: proj.score,
-          max: 5,
-          lost: 5 - proj.score,
+          max: 7,
+          lost: 7 - proj.score,
           tip: "Mô tả dự án nổi bật: vai trò của bạn, các công nghệ sử dụng và kết quả thực tiễn."
         }
       ].filter(gap => gap.lost > 0).sort((a, b) => b.lost - a.lost).slice(0, 5);
@@ -154,19 +154,19 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
   }
   
   const score = result.score;
-  const formattingScore = Math.round(result.breakdown.formatting / 5);
-  const keywordsScore = Math.round(result.breakdown.keywords / 5);
-  const experienceScore = Math.round((result.breakdown.experience / 100) * 15);
-  const skillsScore = Math.round((result.breakdown.skills / 100) * 8);
-  const educationScore = Math.round((result.breakdown.education / 100) * 7); // Certs (2) + Projects (5) = 7
-  const readabilityScore = Math.round(result.breakdown.readability / 5);
+  const formattingScore = Math.round((result.breakdown.formatting / 100) * 12);
+  const keywordsScore = Math.round((result.breakdown.keywords / 100) * 20);
+  const experienceScore = Math.round((result.breakdown.experience / 100) * 20);
+  const skillsScore = Math.round((result.breakdown.skills / 100) * 10);
+  const educationScore = Math.round((result.breakdown.education / 100) * 10); // Certs (3) + Projects (7) = 10
+  const readabilityScore = Math.round((result.breakdown.readability / 100) * 18);
 
   // Distribute scores mathematically to match category scores exactly
-  const formattingDist = distributeScore(formattingScore, [5, 8, 4, 3]);
-  const readabilityDist = distributeScore(readabilityScore, [4, 5, 6, 5]);
+  const formattingDist = distributeScore(formattingScore, [3, 5, 2, 2]);
+  const readabilityDist = distributeScore(readabilityScore, [4, 5, 5, 4]);
   const keywordsDist = distributeScore(keywordsScore, [5, 8, 4, 3]);
-  const experienceDist = distributeScore(experienceScore, [3, 6, 6]);
-  const educationDist = distributeScore(educationScore, [2, 5]);
+  const experienceDist = distributeScore(experienceScore, [4, 8, 8]);
+  const educationDist = distributeScore(educationScore, [3, 7]);
   const bonusDist = distributeScore(6, [2, 2, 2, 2, 2]);
 
   return {
@@ -181,10 +181,10 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
       ats_format: {
         score: formattingScore,
         details: [
-          `File Technical: +${formattingDist[0]}/5 (Định dạng file PDF chuẩn hóa, cấu trúc dễ parse)`,
-          `ATS Parsability: +${formattingDist[1]}/8 (Sử dụng các đề mục chuẩn như Education, Work Experience)`,
-          `Typography: +${formattingDist[2]}/4 (Phông chữ rõ ràng, đồng nhất, kích thước chữ phù hợp)`,
-          `Length: +${formattingDist[3]}/3 (Độ dài CV tối ưu cho cấp độ và số năm kinh nghiệm)`
+          `File Technical: +${formattingDist[0]}/3 (Định dạng file PDF chuẩn hóa, cấu trúc dễ parse)`,
+          `ATS Parsability: +${formattingDist[1]}/5 (Sử dụng các đề mục chuẩn như Education, Work Experience)`,
+          `Typography: +${formattingDist[2]}/2 (Phông chữ rõ ràng, đồng nhất, kích thước chữ phù hợp)`,
+          `Length: +${formattingDist[3]}/2 (Độ dài CV tối ưu cho cấp độ và số năm kinh nghiệm)`
         ],
       },
       professional_foundation: {
@@ -192,8 +192,8 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
         details: [
           `Contact: +${readabilityDist[0]}/4 (Có đầy đủ liên kết LinkedIn, GitHub và thông tin cơ bản)`,
           `Summary: +${readabilityDist[1]}/5 (Tóm tắt chuyên môn trình bày tốt, nêu bật định hướng nghề nghiệp)`,
-          `Sections: +${readabilityDist[2]}/6 (Đầy đủ cấu trúc các phần chính chuẩn quốc tế)`,
-          `Organization: +${readabilityDist[3]}/5 (Trình bày khoa học, dễ theo dõi cho nhà tuyển dụng)`
+          `Sections: +${readabilityDist[2]}/5 (Đầy đủ cấu trúc các phần chính chuẩn quốc tế)`,
+          `Organization: +${readabilityDist[3]}/4 (Trình bày khoa học, dễ theo dõi cho nhà tuyển dụng)`
         ],
       },
       content_quality: {
@@ -211,27 +211,27 @@ function getRawGeminiDataWithFallback(result: AnalysisResult) {
       experience_eval: {
         score: experienceScore,
         details: [
-          `Progression: +${experienceDist[0]}/3 (Mô tả công việc thể hiện rõ sự thăng tiến qua từng năm)`,
-          `Bullet Quality: +${experienceDist[1]}/6 (Gạch đầu dòng rõ ràng, hành động đi liền kết quả)`,
-          `Scope & Impact: +${experienceDist[2]}/6 (Phạm vi công việc và giá trị đóng góp cho tổ chức)`
+          `Progression: +${experienceDist[0]}/4 (Mô tả công việc thể hiện rõ sự thăng tiến qua từng năm)`,
+          `Bullet Quality: +${experienceDist[1]}/8 (Gạch đầu dòng rõ ràng, hành động đi liền kết quả)`,
+          `Scope & Impact: +${experienceDist[2]}/8 (Phạm vi công việc và giá trị đóng góp cho tổ chức)`
         ],
       },
       technical_evidence: {
         score: skillsScore,
         details: [
-          `Chi tiết bằng chứng kỹ năng: +${skillsScore}/8 (Mức độ cung cấp minh chứng cụ thể cho các kỹ năng cốt lõi)`
+          `Chi tiết bằng chứng kỹ năng: +${skillsScore}/10 (Mức độ cung cấp minh chứng cụ thể cho các kỹ năng cốt lõi)`
         ],
       },
       projects: {
         score: educationDist[1],
         details: [
-          `Đánh giá chất lượng dự án: +${educationDist[1]}/5 (Dự án thực tế, có ứng dụng thực tiễn cao)`
+          `Đánh giá chất lượng dự án: +${educationDist[1]}/7 (Dự án thực tế, có ứng dụng thực tiễn cao)`
         ],
       },
       certs: {
         score: educationDist[0],
         details: [
-          `Bằng cấp, chứng chỉ liên quan: +${educationDist[0]}/2 (Sở hữu các chứng chỉ chuyên môn hỗ trợ tốt cho vị trí ứng tuyển)`
+          `Bằng cấp, chứng chỉ liên quan: +${educationDist[0]}/3 (Sở hữu các chứng chỉ chuyên môn hỗ trợ tốt cho vị trí ứng tuyển)`
         ],
       },
     },
@@ -616,7 +616,7 @@ function PriorityActions({ result }: { result: AnalysisResult }) {
 
 function ScoreGapsSection({ result }: { result: AnalysisResult }) {
   const geminiData = getRawGeminiDataWithFallback(result);
-  const gaps = geminiData.score_gaps || [];
+  const gaps = result.scoreGaps || geminiData.score_gaps || [];
   if (gaps.length === 0) return null;
 
   const totalLost = gaps.reduce((acc, g) => acc + g.lost, 0);
@@ -695,85 +695,95 @@ function AtsBreakdown({ result }: { result: AnalysisResult }) {
   const [expanded, setExpanded] = useState<string | null>("formatting");
   const geminiData = getRawGeminiDataWithFallback(result);
 
-  const getPointsFromDetails = (details: string[]) => {
-    let sum = 0;
-    let max = 0;
-    details.forEach(d => {
-      const parsed = parseSubDetail(d);
-      if (parsed.score !== null) sum += parsed.score;
-      if (parsed.max !== null) max += parsed.max;
-    });
-    return { sum, max };
+  const getPointsFromSubScores = (keys: string[]) => {
+    // Nếu có subScores từ Backend (Dạng cấu trúc), ưu tiên dùng luôn
+    if (result.subScores && result.subScores.length > 0) {
+      const relevant = result.subScores.filter(s => keys.includes(s.sectionKey));
+      const score = relevant.reduce((acc, s) => acc + (s.score || 0), 0);
+      const max = relevant.reduce((acc, s) => acc + (s.maxScore || 0), 0);
+      const details = relevant.flatMap(s => s.details || []);
+      return { score, max, details };
+    }
+
+    // Nếu không có subScores (vd: dữ liệu cũ hoặc mock), fallback về phân tích geminiData
+    const geminiData = getRawGeminiDataWithFallback(result);
+    
+    // Mapping keys to geminiData structure
+    if (keys.includes("file_technical")) {
+      return { 
+        score: geminiData.stage2_core?.ats_format?.score || 0, 
+        max: 12, 
+        details: geminiData.stage2_core?.ats_format?.details || [] 
+      };
+    }
+    if (keys.includes("contact")) {
+      return { 
+        score: geminiData.stage2_core?.professional_foundation?.score || 0, 
+        max: 18, 
+        details: geminiData.stage2_core?.professional_foundation?.details || [] 
+      };
+    }
+    if (keys.includes("language")) {
+      return { 
+        score: geminiData.stage2_core?.content_quality?.score || 0, 
+        max: 20, 
+        details: geminiData.stage2_core?.content_quality?.details || [] 
+      };
+    }
+    if (keys.includes("progression")) {
+      return { 
+        score: geminiData.stage3_in_depth?.experience_eval?.score || 0, 
+        max: 20, 
+        details: geminiData.stage3_in_depth?.experience_eval?.details || [] 
+      };
+    }
+    if (keys.includes("technical_evidence")) {
+      return { 
+        score: geminiData.stage3_in_depth?.technical_evidence?.score || 0, 
+        max: 10, 
+        details: geminiData.stage3_in_depth?.technical_evidence?.details || [] 
+      };
+    }
+    if (keys.includes("projects")) {
+      return { 
+        score: (geminiData.stage3_in_depth?.projects?.score || 0) + (geminiData.stage3_in_depth?.certs?.score || 0), 
+        max: 10, 
+        details: [...(geminiData.stage3_in_depth?.projects?.details || []), ...(geminiData.stage3_in_depth?.certs?.details || [])] 
+      };
+    }
+    if (keys.includes("leadership")) {
+      return { 
+        score: geminiData.stage4_bonus?.score || 0, 
+        max: 10, 
+        details: geminiData.stage4_bonus?.details || [] 
+      };
+    }
+
+    return { score: 0, max: 10, details: [] };
   };
 
-  const rawItems = [
-    {
-      id: "formatting",
-      key: "Định dạng & Bố cục",
-      desc: "Cách trình bày cấu trúc file, tiêu đề và căn chỉnh đạt chuẩn máy đọc ATS.",
-      details: geminiData.stage2_core?.ats_format?.details || [],
-      score: geminiData.stage2_core?.ats_format?.score,
-      max: 20
-    },
-    {
-      id: "readability",
-      key: "Khả năng đọc & Cấu trúc",
-      desc: "Sắp xếp bố cục logic, đầy đủ thông tin liên hệ và định hướng tóm tắt rõ ràng.",
-      details: geminiData.stage2_core?.professional_foundation?.details || [],
-      score: geminiData.stage2_core?.professional_foundation?.score,
-      max: 20
-    },
-    {
-      id: "keywords",
-      key: "Từ khóa & Chất lượng",
-      desc: "Sự khớp nối từ khóa kỹ năng với JD, hành văn chuyên nghiệp và nhất quán ngày tháng.",
-      details: geminiData.stage2_core?.content_quality?.details || [],
-      score: geminiData.stage2_core?.content_quality?.score,
-      max: 20
-    },
-    {
-      id: "experience",
-      key: "Kinh nghiệm làm việc",
-      desc: "Mức độ chi tiết gạch đầu dòng, chất lượng giải pháp và độ thăng tiến chuyên môn.",
-      details: geminiData.stage3_in_depth?.experience_eval?.details || [],
-      score: geminiData.stage3_in_depth?.experience_eval?.score,
-      max: 15
-    },
-    {
-      id: "skills",
-      key: "Kỹ năng chuyên môn",
-      desc: "Mức độ trình bày đầy đủ các công nghệ cốt lõi và framework bổ trợ.",
-      details: geminiData.stage3_in_depth?.technical_evidence?.details || [],
-      score: geminiData.stage3_in_depth?.technical_evidence?.score,
-      max: 8
-    },
-    {
-      id: "education",
-      key: "Học vấn & Dự án",
-      desc: "Chứng chỉ quốc tế, chất lượng dự án thực chiến và trình độ học vấn đạt chuẩn.",
-      details: [
-        ...(geminiData.stage3_in_depth?.certs?.details || []),
-        ...(geminiData.stage3_in_depth?.projects?.details || [])
-      ],
-      score: (geminiData.stage3_in_depth?.certs?.score || 0) + (geminiData.stage3_in_depth?.projects?.score || 0),
-      max: 7
-    },
-    {
-      id: "bonus",
-      key: "Điểm cộng & Hoạt động khác",
-      desc: "Khả năng lãnh đạo, ngoại ngữ toàn cầu và tinh thần tự học hỏi công nghệ mới.",
-      details: geminiData.stage4_bonus?.details || [],
-      score: geminiData.stage4_bonus?.score,
-      max: 10
-    }
-  ];
+  const formatting = getPointsFromSubScores(["file_technical", "ats_parsability", "typography", "length"]);
+  const readability = getPointsFromSubScores(["contact", "summary", "sections", "organization"]);
+  const keywords = getPointsFromSubScores(["language", "quantification", "keywords", "consistency"]);
+  const experience = getPointsFromSubScores(["progression", "bullet_quality", "scope_impact"]);
+  const skills = getPointsFromSubScores(["technical_evidence"]);
+  const education = getPointsFromSubScores(["projects", "certs"]);
+  const bonus = getPointsFromSubScores(["leadership", "international", "awards", "learning", "category_specific"]);
 
-  const items = rawItems.map(item => {
-    const actualPoints = item.score !== undefined && item.score !== null ? item.score : 0;
-    const maxPoints = item.max;
-    const v = Math.round((actualPoints / maxPoints) * 100);
-    return { ...item, actualPoints, maxPoints, v };
-  });
+  const items = [
+    { id: "formatting", key: "Định dạng & Bố cục", desc: "Cách trình bày cấu trúc file, tiêu đề và căn chỉnh đạt chuẩn máy đọc ATS.", ...formatting },
+    { id: "readability", key: "Khả năng đọc & Cấu trúc", desc: "Sắp xếp bố cục logic, đầy đủ thông tin liên hệ và định hướng tóm tắt rõ ràng.", ...readability },
+    { id: "keywords", key: "Từ khóa & Chất lượng", desc: "Sự khớp nối từ khóa kỹ năng với JD, hành văn chuyên nghiệp và nhất quán ngày tháng.", ...keywords },
+    { id: "experience", key: "Kinh nghiệm làm việc", desc: "Mức độ chi tiết gạch đầu dòng, chất lượng giải pháp và độ thăng tiến chuyên môn.", ...experience },
+    { id: "skills", key: "Kỹ năng chuyên môn", desc: "Mức độ trình bày đầy đủ các công nghệ cốt lõi và framework bổ trợ.", ...skills },
+    { id: "education", key: "Học vấn & Dự án", desc: "Chứng chỉ quốc tế, chất lượng dự án thực chiến và trình độ học vấn đạt chuẩn.", ...education },
+    { id: "bonus", key: "Điểm cộng & Hoạt động khác", desc: "Khả năng lãnh đạo, ngoại ngữ toàn cầu và tinh thần tự học hỏi công nghệ mới.", ...bonus },
+  ].map(it => ({
+    ...it,
+    actualPoints: it.score,
+    maxPoints: it.max || 1,
+    v: Math.round(((it.score || 0) / (it.max || 1)) * 100)
+  }));
 
   const toggleExpand = (id: string) => {
     setExpanded(expanded === id ? null : id);

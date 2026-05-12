@@ -36,6 +36,7 @@ public class UserProfile {
 
     @Min(value = 18, message = "Age must be at least 18")
     @Max(value = 100, message = "Age must be less than 100")
+    @Builder.Default
     private Integer age = 18;
 
     @Enumerated(EnumType.STRING)
