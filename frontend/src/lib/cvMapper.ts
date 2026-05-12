@@ -78,6 +78,11 @@ const getCategoryPercentage = (subScores: any[] | undefined, keys: string[]) => 
   return max > 0 ? Math.round((total / max) * 100) : 0;
 };
 
+const getPercentage = (score: number | null | undefined, max: number): number => {
+  if (score == null || max <= 0) return 0;
+  return Math.max(0, Math.min(100, Math.round((score / max) * 100)));
+};
+
 export function mapResumeToAnalysisResult(resume: Resume): AnalysisResult {
   let geminiData: GeminiParsedData;
 

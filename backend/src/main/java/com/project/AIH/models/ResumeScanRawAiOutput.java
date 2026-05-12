@@ -28,6 +28,9 @@ public class ResumeScanRawAiOutput {
     private String atsJson;
 
     @Column(columnDefinition = "LONGTEXT")
+    private String rawAiJson;
+
+    @Column(columnDefinition = "LONGTEXT")
     private String profileJson;
 
     @Column(length = 100)
@@ -35,6 +38,9 @@ public class ResumeScanRawAiOutput {
 
     @Column(length = 20)
     private String promptVersion;
+
+    @Column(length = 128)
+    private String promptHash;
 
     @Column(updatable = false)
     private Instant createdAt;

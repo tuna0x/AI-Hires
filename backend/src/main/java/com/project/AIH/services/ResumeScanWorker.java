@@ -20,6 +20,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 
@@ -37,6 +38,10 @@ public class ResumeScanWorker {
     private final ScoringResultValidator scoringResultValidator;
     private final ResumeScanStateService resumeScanStateService;
     private final ObjectMapper objectMapper;
+    @org.springframework.beans.factory.annotation.Value("${app.gemini.model-name:gemini-3.1-flash-lite}")
+    private String geminiModelName;
+    @org.springframework.beans.factory.annotation.Value("${app.gemini.prompt-version:v1.0}")
+    private String promptVersion;
     private static final int MAX_RETRY_ATTEMPTS = 3;
     private static final Set<ResumeScanStatusEnum> TERMINAL_OR_ACTIVE_STATUSES = Set.of(
             ResumeScanStatusEnum.EXTRACTING,
@@ -68,9 +73,11 @@ public class ResumeScanWorker {
             }
 
             String extractedText = "";
+            boolean textExtractionSucceeded = true;
             try {
                 extractedText = resumeParserService.extractText(new ByteArrayInputStream(fileBytes));
             } catch (Exception e) {
+                textExtractionSucceeded = false;
                 log.warn("Text extraction failed for scan {}. Falling back to vision-first path.", scan.getId(), e);
             }
             scan.setExtractedText(extractedText);
@@ -81,8 +88,8 @@ public class ResumeScanWorker {
             scan = resumeScanStateService.markAnalyzing(scan.getId(), extractedText, contentHash);
 
             String atsJson;
-            if (isTextCorrupted(extractedText)) {
-                atsJson = geminiService.parseResume(fileBytes, message.getContentType());
+            if (shouldUseVisionFirst(message.getContentType(), extractedText, textExtractionSucceeded)) {
+                atsJson = parseResumeWithTextFallback(fileBytes, message.getContentType(), extractedText, textExtractionSucceeded);
             } else {
                 atsJson = geminiService.parseResumeText(extractedText);
             }
@@ -92,10 +99,12 @@ public class ResumeScanWorker {
 
             ResumeScanRawAiOutput rawOutput = rawAiOutputRepository.findByResumeScanId(scan.getId())
                     .orElse(ResumeScanRawAiOutput.builder().resumeScan(scan).build());
+            rawOutput.setRawAiJson(atsJson);
             rawOutput.setAtsJson(enrichedJson);
             rawOutput.setProfileJson("");
-            rawOutput.setAiModel("gemini-3.1-flash-lite-preview");
-            rawOutput.setPromptVersion("v1.0");
+            rawOutput.setAiModel(geminiModelName);
+            rawOutput.setPromptVersion(promptVersion);
+            rawOutput.setPromptHash(sha256(promptVersion));
             rawAiOutputRepository.save(rawOutput);
             scan.setRawAiOutput(rawOutput);
 
@@ -139,11 +148,41 @@ public class ResumeScanWorker {
         return message.length() > 1000 ? message.substring(0, 1000) : message;
     }
 
-    private boolean isTextCorrupted(String extractedText) {
-        if (extractedText == null || extractedText.trim().length() < 300) {
+    boolean shouldUseVisionFirst(String contentType, String extractedText, boolean textExtractionSucceeded) {
+        if (isPdf(contentType)) {
             return true;
         }
-        return !extractedText.contains("@") && !extractedText.matches(".*\\d{9,11}.*");
+        return !textExtractionSucceeded || extractedText == null || extractedText.trim().isEmpty();
+    }
+
+    private boolean isPdf(String contentType) {
+        return contentType != null && contentType.toLowerCase().contains("pdf");
+    }
+
+    private String parseResumeWithTextFallback(byte[] fileBytes, String contentType, String extractedText, boolean textExtractionSucceeded) {
+        try {
+            return geminiService.parseResume(fileBytes, contentType);
+        } catch (RuntimeException e) {
+            if (hasCause(e, WebClientResponseException.BadRequest.class)
+                    && textExtractionSucceeded
+                    && extractedText != null
+                    && !extractedText.trim().isEmpty()) {
+                log.warn("Gemini vision request returned 400. Falling back to text-only resume analysis.");
+                return geminiService.parseResumeText(extractedText);
+            }
+            throw e;
+        }
+    }
+
+    private boolean hasCause(Throwable throwable, Class<? extends Throwable> causeType) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (causeType.isInstance(current)) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 
     private boolean isRetryable(Throwable e) {
@@ -195,6 +234,24 @@ public class ResumeScanWorker {
             return hexString.toString();
         } catch (Exception e) {
             return java.util.UUID.randomUUID().toString();
+        }
+    }
+
+    private String sha256(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) {
+                String h = Integer.toHexString(0xff & b);
+                if (h.length() == 1) {
+                    hex.append('0');
+                }
+                hex.append(h);
+            }
+            return hex.toString();
+        } catch (Exception ex) {
+            return null;
         }
     }
 }
