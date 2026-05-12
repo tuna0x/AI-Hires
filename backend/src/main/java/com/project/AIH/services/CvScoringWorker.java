@@ -177,7 +177,6 @@ public class CvScoringWorker {
 
         } catch (Exception e) {
             log.error("Failed to process CV scoring for message: {}. Error: {}", message, e.getMessage());
-            // Optionally set resume status to FAILED here
             try {
                 Resume resume = resumeRepository.findById(message.getResumeId()).orElse(null);
                 if (resume != null) {
@@ -187,6 +186,7 @@ public class CvScoringWorker {
             } catch (Exception innerE) {
                 log.error("Could not update resume status to FAILED: {}", innerE.getMessage());
             }
+            throw new RuntimeException("CV scoring failed for application: " + message.getApplicationId(), e);
         }
     }
 }

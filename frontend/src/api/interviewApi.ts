@@ -4,6 +4,7 @@ import {
   InterviewSession,
   InterviewQuestion,
   InterviewReport,
+  InterviewReportResponse,
   StartInterviewRequest,
   StartMockInterviewRequest,
   SubmitAnswerResponse,
@@ -59,8 +60,8 @@ export const interviewApi = {
     return res.data;
   },
 
-  getReport: async (sessionId: number): Promise<InterviewReport> => {
-    const res = await apiClient.get<any, RestResponse<InterviewReport>>(`/api/v1/interviews/${sessionId}/report`);
+  getReport: async (sessionId: number): Promise<InterviewReportResponse> => {
+    const res = await apiClient.get<any, RestResponse<InterviewReportResponse>>(`/api/v1/interviews/${sessionId}/report`);
     return res.data;
   },
 

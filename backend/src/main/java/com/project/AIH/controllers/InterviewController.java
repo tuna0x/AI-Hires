@@ -91,10 +91,18 @@ public class InterviewController {
     }
 
     @GetMapping("/{sessionId}/report")
-    public ResponseEntity<InterviewReport> getReport(@PathVariable Long sessionId) {
-        return interviewService.getReportBySessionId(sessionId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<com.project.AIH.dto.InterviewReportResponseDTO> getReport(@PathVariable Long sessionId) {
+        java.util.Optional<InterviewReport> reportOpt = interviewService.getReportBySessionId(sessionId);
+        if (reportOpt.isPresent()) {
+            return ResponseEntity.ok(com.project.AIH.dto.InterviewReportResponseDTO.builder()
+                    .status("COMPLETED")
+                    .report(reportOpt.get())
+                    .build());
+        }
+        return ResponseEntity.ok(com.project.AIH.dto.InterviewReportResponseDTO.builder()
+                .status("PROCESSING")
+                .report(null)
+                .build());
     }
 
     @GetMapping("/my-sessions")

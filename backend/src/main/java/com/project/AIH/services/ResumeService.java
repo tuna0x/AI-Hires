@@ -112,6 +112,18 @@ public class ResumeService {
             } catch (Exception e) {
                 log.error("Async detailed parsing failed for resume ID: {}", resumeId, e);
             }
+        }).exceptionally(ex -> {
+            log.error("Unhandled exception in background detailed parsing for resume ID: {}", resumeId, ex);
+            try {
+                Resume bgResume = resumeRepository.findById(resumeId).orElse(null);
+                if (bgResume != null) {
+                    bgResume.setParseStatus(ResumeStatusEnum.FAILED);
+                    resumeRepository.save(bgResume);
+                }
+            } catch (Exception e) {
+                log.error("Failed to set FAILED status in exceptionally for resume ID: {}", resumeId, e);
+            }
+            return null;
         });
 
         // 4. Create Application
@@ -333,6 +345,18 @@ public class ResumeService {
                     log.error("Failed to set FAILED status for resume ID: {}", resumeId, ex);
                 }
             }
+        }).exceptionally(ex -> {
+            log.error("Unhandled exception in async background processing for resume ID: {}", resumeId, ex);
+            try {
+                Resume bgResume = resumeRepository.findById(resumeId).orElse(null);
+                if (bgResume != null) {
+                    bgResume.setParseStatus(ResumeStatusEnum.FAILED);
+                    resumeRepository.save(bgResume);
+                }
+            } catch (Exception e) {
+                log.error("Failed to set FAILED status in exceptionally for resume ID: {}", resumeId, e);
+            }
+            return null;
         });
 
         return resume;

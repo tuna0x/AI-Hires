@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Trophy, Award, BookOpen, User, Cpu, ChevronDown, ChevronUp,
-  CheckCircle2, AlertCircle, XCircle, RefreshCw, Loader2, ArrowRight, ShieldAlert
+  CheckCircle2, AlertCircle, XCircle, RefreshCw, Loader2, ArrowRight, ShieldAlert, Sparkles
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,9 +80,13 @@ export default function InterviewResult() {
 
         try {
           const reportData = await interviewApi.getReport(id);
-          setReport(reportData);
+          if (reportData && reportData.status === "COMPLETED" && reportData.report) {
+            setReport(reportData.report);
+          } else {
+            console.log("Report is still processing, starting polling...");
+          }
         } catch (reportErr) {
-          console.log("Report is not ready yet, will start polling.");
+          console.log("Failed to load report initially:", reportErr);
         }
       } catch (err: any) {
         console.error("Error loading interview result data:", err);
@@ -103,8 +107,8 @@ export default function InterviewResult() {
     const pollReport = async () => {
       try {
         const reportData = await interviewApi.getReport(id);
-        if (reportData) {
-          setReport(reportData);
+        if (reportData && reportData.status === "COMPLETED" && reportData.report) {
+          setReport(reportData.report);
           toast.success("🎉 Báo cáo đánh giá của bạn đã sẵn sàng!");
           // Fetch updated session
           const updatedSession = await interviewApi.getSession(id);

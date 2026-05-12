@@ -98,6 +98,11 @@ apiClient.interceptors.response.use(
       }
     }
 
+    // Không log lỗi "API Error Response" đối với lỗi 401 từ endpoint /auth/refresh (xảy ra bình thường khi khách vãng lai chưa đăng nhập)
+    if (error.response?.status === 401 && originalRequest.url?.includes("/auth/refresh")) {
+      return Promise.reject(error);
+    }
+
     console.error("API Error Response:", error.response || error);
     return Promise.reject(error);
   }
