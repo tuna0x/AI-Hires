@@ -44,6 +44,7 @@ export interface InterviewSession {
   jobTitle?: string;
   jobDescription?: string;
   resumeId?: number;
+  scanId?: number;
 }
 
 export interface InterviewInsight {
@@ -72,7 +73,8 @@ export interface StartInterviewRequest {
 }
 
 export interface StartMockInterviewRequest {
-  resumeId: number;
+  resumeId?: number;
+  scanId?: number;
   targetRole: string;
   jobDescription: string;
   targetLevel?: string;

@@ -29,6 +29,7 @@ public class Application {
     private Resume resume;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private ApplicationStatusEnum status = ApplicationStatusEnum.APPLIED;
 
     @Column(columnDefinition = "TEXT")

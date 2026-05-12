@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from "react";
-import { GeminiParsedData } from "@/types/cv";
+import { GeminiParsedData, ResumeScanSubScore, ResumeScanScoreGap } from "@/types/cv";
 
 export type AnalysisResult = {
   fileName: string;
@@ -17,12 +17,14 @@ export type AnalysisResult = {
   suggestions: { before: string; after: string; reason: string }[];
   topIssues: { title: string; severity: "high" | "medium" | "low"; fix: string }[];
   rawGeminiData?: GeminiParsedData;
+  subScores?: ResumeScanSubScore[];
+  scoreGaps?: ResumeScanScoreGap[];
   createdAt: number;
   resumeId?: number;
+  scanId?: number;
 };
-
-let state: { result: AnalysisResult | null } = { result: null };
 const listeners = new Set<() => void>();
+let state: { result: AnalysisResult | null } = { result: null };
 
 function emit() {
   listeners.forEach((l) => l());
@@ -192,4 +194,4 @@ export function generateMockResult(fileName: string): AnalysisResult {
     },
     createdAt: Date.now(),
   };
-}
+}

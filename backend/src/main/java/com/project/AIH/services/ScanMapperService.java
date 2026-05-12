@@ -1,21 +1,29 @@
 package com.project.AIH.services;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.project.AIH.models.*;
-import com.project.AIH.repositories.*;
+import com.project.AIH.models.ActionPriorityEnum;
+import com.project.AIH.models.ResumeScan;
+import com.project.AIH.models.ScanAction;
+import com.project.AIH.models.ScanScore;
+import com.project.AIH.models.ScanSubScore;
+import com.project.AIH.models.User;
+import com.project.AIH.repositories.ResumeScanRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.*;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -23,64 +31,49 @@ import java.util.regex.Pattern;
 public class ScanMapperService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    
-    private final ResumeScanRepository resumeScanRepository;
-    private final ScanSubScoreRepository scanSubScoreRepository;
-    private final ScanActionRepository scanActionRepository;
 
+    private final ResumeScanRepository resumeScanRepository;
     @Transactional
     public ResumeScan saveScanResult(User user, String fileName, String fileHash, String rawJson) {
+        ResumeScan scan = ResumeScan.builder()
+                .user(user)
+                .fileName(fileName)
+                .storageObjectKey(fileName)
+                .fileHash(fileHash)
+                .scannedAt(Instant.now())
+                .build();
+        scan = resumeScanRepository.save(scan);
+        return populateScanResult(scan, rawJson);
+    }
+
+    @Transactional
+    public ResumeScan populateScanResult(ResumeScan scan, String rawJson) {
         try {
-            // Parse JSON String
+            ResumeScan managedScan = resumeScanRepository.findById(scan.getId())
+                    .orElseThrow(() -> new RuntimeException("Resume scan not found: " + scan.getId()));
             JsonNode root = objectMapper.readTree(rawJson);
 
-            // Extract stage1_detection info
-            String candidateName = "";
-            String level = "";
-            String industry = "";
             JsonNode detection = root.path("stage1_detection");
-            if (detection != null && !detection.isMissingNode()) {
-                candidateName = detection.path("name").asText("");
-                level = detection.path("level").asText("");
-                industry = detection.path("industry").asText("");
-            }
-
-            // 2. Extract ScanScore (Summary & Strengths)
-            int totalScore = root.path("total_score").asInt(0);
-            int stage2Score = root.path("stage2_core").path("score").asInt(0);
-            int stage3Score = root.path("stage3_in_depth").path("score").asInt(0);
-            int stage4Score = root.path("stage4_bonus").path("score").asInt(0);
+            managedScan.setCandidateName(detection.path("name").asText(""));
+            managedScan.setLevel(detection.path("level").asText(""));
+            managedScan.setIndustry(detection.path("industry").asText(""));
+            managedScan.setTotalScore(root.path("total_score").asInt(0));
+            managedScan.setStage2Score(root.path("stage2_core").path("score").asInt(0));
+            managedScan.setStage3Score(root.path("stage3_in_depth").path("score").asInt(0));
+            managedScan.setStage4Score(root.path("stage4_bonus").path("score").asInt(0));
 
             List<String> strengths = new ArrayList<>();
             JsonNode strengthsNode = root.path("strengths");
-            if (strengthsNode != null && strengthsNode.isArray()) {
-                for (JsonNode s : strengthsNode) {
-                    strengths.add(s.asText());
+            if (strengthsNode.isArray()) {
+                for (JsonNode strength : strengthsNode) {
+                    strengths.add(strength.asText());
                 }
             }
+            managedScan.setStrengths(strengths);
 
-            // Create and Save ResumeScan (Parent) once
-            ResumeScan scan = ResumeScan.builder()
-                    .user(user)
-                    .fileName(fileName)
-                    .fileHash(fileHash)
-                    .candidateName(candidateName)
-                    .level(level)
-                    .industry(industry)
-                    .totalScore(totalScore)
-                    .stage2Score(stage2Score)
-                    .stage3Score(stage3Score)
-                    .stage4Score(stage4Score)
-                    .strengths(strengths)
-                    .scannedAt(Instant.now())
-                    .build();
-
-            scan = resumeScanRepository.save(scan);
-
-            // 3. Extract sub_tips Map
             Map<String, String> tipsMap = new HashMap<>();
             JsonNode tipsNode = root.path("sub_tips");
-            if (tipsNode != null && !tipsNode.isMissingNode()) {
+            if (!tipsNode.isMissingNode()) {
                 Iterator<Map.Entry<String, JsonNode>> fields = tipsNode.fields();
                 while (fields.hasNext()) {
                     Map.Entry<String, JsonNode> field = fields.next();
@@ -90,79 +83,80 @@ public class ScanMapperService {
                 }
             }
 
-            // 4. Extract and Save ScanSubScores (Criteria detailed lines)
+            List<ScanSubScore> managedSubScores = managedScan.getSubScores();
+            if (managedSubScores == null) {
+                managedSubScores = new ArrayList<>();
+                managedScan.setSubScores(managedSubScores);
+            } else {
+                managedSubScores.clear();
+            }
+
+            List<ScanAction> managedActions = managedScan.getActions();
+            if (managedActions == null) {
+                managedActions = new ArrayList<>();
+                managedScan.setActions(managedActions);
+            } else {
+                managedActions.clear();
+            }
+
             List<ScanSubScore> subScores = new ArrayList<>();
-
-            // Giai đoạn 2 - Core Criteria
-            extractCategorySubScores(scan, root.path("stage2_core").path("ats_format"), "ats_format",
+            extractCategorySubScores(managedScan, root.path("stage2_core").path("ats_format"), "ats_format",
                     new String[]{"file_technical", "ats_parsability", "typography", "length"}, tipsMap, subScores);
-            
-            extractCategorySubScores(scan, root.path("stage2_core").path("professional_foundation"), "professional_foundation",
+            extractCategorySubScores(managedScan, root.path("stage2_core").path("professional_foundation"), "professional_foundation",
                     new String[]{"contact", "summary", "sections", "organization"}, tipsMap, subScores);
-
-            extractCategorySubScores(scan, root.path("stage2_core").path("content_quality"), "content_quality",
+            extractCategorySubScores(managedScan, root.path("stage2_core").path("content_quality"), "content_quality",
                     new String[]{"language", "quantification", "keywords", "consistency"}, tipsMap, subScores);
-
-            // Giai đoạn 3 - In-Depth Criteria
-            extractCategorySubScores(scan, root.path("stage3_in_depth").path("experience_eval"), "experience_eval",
+            extractCategorySubScores(managedScan, root.path("stage3_in_depth").path("experience_eval"), "experience_eval",
                     new String[]{"progression", "bullet_quality", "scope_impact"}, tipsMap, subScores);
-
-            extractCategorySubScores(scan, root.path("stage3_in_depth").path("technical_evidence"), "technical_evidence",
+            extractCategorySubScores(managedScan, root.path("stage3_in_depth").path("technical_evidence"), "technical_evidence",
                     new String[]{"technical_evidence"}, tipsMap, subScores);
-
-            extractCategorySubScores(scan, root.path("stage3_in_depth").path("projects"), "projects",
+            extractCategorySubScores(managedScan, root.path("stage3_in_depth").path("projects"), "projects",
                     new String[]{"projects"}, tipsMap, subScores);
-
-            extractCategorySubScores(scan, root.path("stage3_in_depth").path("certs"), "certs",
+            extractCategorySubScores(managedScan, root.path("stage3_in_depth").path("certs"), "certs",
                     new String[]{"certs"}, tipsMap, subScores);
-
-            // Giai đoạn 4 - Bonus Criteria
-            extractCategorySubScores(scan, root.path("stage4_bonus"), "stage4_bonus",
+            extractCategorySubScores(managedScan, root.path("stage4_bonus"), "stage4_bonus",
                     new String[]{"leadership", "international", "awards", "learning", "category_specific"}, tipsMap, subScores);
 
-            scanSubScoreRepository.saveAll(subScores);
-            scan.setSubScores(subScores);
+            managedSubScores.addAll(subScores);
 
-            // 5. Extract and Save ScanActions
             List<ScanAction> actions = new ArrayList<>();
             JsonNode actionsNode = root.path("priority_actions");
-            if (actionsNode != null && actionsNode.isArray()) {
+            if (actionsNode.isArray()) {
                 int index = 0;
                 for (JsonNode actionNode : actionsNode) {
-                    String prioStr = actionNode.path("priority").asText("Trung bình").toLowerCase();
+                    String prioStr = actionNode.path("priority").asText("Trung binh").toLowerCase();
                     ActionPriorityEnum prioEnum = ActionPriorityEnum.MEDIUM;
                     if (prioStr.contains("cao") || prioStr.contains("high")) {
                         prioEnum = ActionPriorityEnum.HIGH;
-                    } else if (prioStr.contains("thấp") || prioStr.contains("low")) {
+                    } else if (prioStr.contains("thap") || prioStr.contains("low")) {
                         prioEnum = ActionPriorityEnum.LOW;
                     }
-                    
-                    ScanAction scanAction = ScanAction.builder()
-                            .scan(scan)
+
+                    actions.add(ScanAction.builder()
+                            .scan(managedScan)
                             .action(actionNode.path("action").asText(""))
                             .priority(prioEnum)
                             .sortOrder(index++)
-                            .build();
-                    actions.add(scanAction);
+                            .build());
                 }
             }
-            scanActionRepository.saveAll(actions);
-            scan.setActions(actions);
+            managedActions.addAll(actions);
 
-            return scan;
-
+            return resumeScanRepository.save(managedScan);
         } catch (Exception e) {
             log.error("Failed to map Gemini JSON to structured tables: {}", e.getMessage(), e);
             throw new RuntimeException("Database structuring failed", e);
         }
     }
 
-    private void extractCategorySubScores(ResumeScan scan, JsonNode categoryNode, String categoryName, 
+    private void extractCategorySubScores(ResumeScan scan, JsonNode categoryNode, String categoryName,
                                           String[] keys, Map<String, String> tipsMap, List<ScanSubScore> subScores) {
-        if (categoryNode == null || categoryNode.isMissingNode()) return;
+        if (categoryNode == null || categoryNode.isMissingNode()) {
+            return;
+        }
 
         JsonNode detailsNode = categoryNode.path("details");
-        if (detailsNode != null && detailsNode.isArray()) {
+        if (detailsNode.isArray()) {
             for (int i = 0; i < detailsNode.size(); i++) {
                 String detailText = detailsNode.get(i).asText();
                 String sectionKey = (i < keys.length) ? keys[i] : (categoryName + "_item_" + i);
@@ -172,8 +166,7 @@ public class ScanMapperService {
                 int score = Math.max(0, Math.min(parsed[0], maxScore));
                 int lostPoints = maxScore - score;
 
-                // Build sub score entity
-                ScanSubScore sub = ScanSubScore.builder()
+                subScores.add(ScanSubScore.builder()
                         .scan(scan)
                         .sectionKey(sectionKey)
                         .score(score)
@@ -181,9 +174,7 @@ public class ScanMapperService {
                         .lostPoints(lostPoints)
                         .details(Collections.singletonList(detailText))
                         .tip(tipsMap.get(sectionKey))
-                        .build();
-
-                subScores.add(sub);
+                        .build());
             }
         }
     }
@@ -196,18 +187,14 @@ public class ScanMapperService {
     public String reconstructJson(ResumeScan scan) {
         try {
             ObjectNode root = objectMapper.createObjectNode();
-
-            // Populate base properties
             ScanScore scoreSummary = scan.getScoreSummary();
             root.put("total_score", scoreSummary != null ? scoreSummary.getTotalScore() : 0);
 
-            // stage1_detection
             ObjectNode detection = root.putObject("stage1_detection");
             detection.put("name", scan.getCandidateName());
             detection.put("level", scan.getLevel());
             detection.put("industry", scan.getIndustry());
 
-            // Build map of category scores and details
             Map<String, List<String>> detailsMap = new HashMap<>();
             Map<String, Integer> categoryScores = new HashMap<>();
 
@@ -220,34 +207,28 @@ public class ScanMapperService {
                 }
             }
 
-            // stage2_core
             ObjectNode stage2 = root.putObject("stage2_core");
             stage2.put("score", scoreSummary != null ? scoreSummary.getStage2Score() : 0);
-            
             populateCategoryNode(stage2, "ats_format", detailsMap, categoryScores);
             populateCategoryNode(stage2, "professional_foundation", detailsMap, categoryScores);
             populateCategoryNode(stage2, "content_quality", detailsMap, categoryScores);
 
-            // stage3_in_depth
             ObjectNode stage3 = root.putObject("stage3_in_depth");
             stage3.put("score", scoreSummary != null ? scoreSummary.getStage3Score() : 0);
-
             populateCategoryNode(stage3, "experience_eval", detailsMap, categoryScores);
             populateCategoryNode(stage3, "technical_evidence", detailsMap, categoryScores);
             populateCategoryNode(stage3, "projects", detailsMap, categoryScores);
             populateCategoryNode(stage3, "certs", detailsMap, categoryScores);
 
-            // stage4_bonus
-            ObjectNode stage4 = stage3.putObject("stage4_bonus"); // note stage4 is inside stage3 in frontend parsing
+            ObjectNode stage4 = root.putObject("stage4_bonus");
             stage4.put("score", scoreSummary != null ? scoreSummary.getStage4Score() : 0);
             ArrayNode bonusDetails = stage4.putArray("details");
             if (detailsMap.containsKey("stage4_bonus")) {
-                for (String d : detailsMap.get("stage4_bonus")) {
-                    bonusDetails.add(d);
+                for (String detail : detailsMap.get("stage4_bonus")) {
+                    bonusDetails.add(detail);
                 }
             }
 
-            // strengths
             ArrayNode strengthsNode = root.putArray("strengths");
             if (scoreSummary != null && scoreSummary.getStrengths() != null) {
                 for (String strength : scoreSummary.getStrengths()) {
@@ -255,7 +236,6 @@ public class ScanMapperService {
                 }
             }
 
-            // priority_actions
             ArrayNode actionsNode = root.putArray("priority_actions");
             if (scan.getActions() != null) {
                 scan.getActions().stream()
@@ -267,7 +247,6 @@ public class ScanMapperService {
                         });
             }
 
-            // sub_tips
             ObjectNode subTips = root.putObject("sub_tips");
             if (subScores != null) {
                 for (ScanSubScore sub : subScores) {
@@ -279,7 +258,6 @@ public class ScanMapperService {
                 }
             }
 
-            // score_gaps
             ArrayNode gapsNode = root.putArray("score_gaps");
             if (subScores != null) {
                 subScores.stream()
@@ -297,21 +275,20 @@ public class ScanMapperService {
             }
 
             return objectMapper.writeValueAsString(root);
-
         } catch (Exception e) {
             log.error("Failed to reconstruct JSON from structured tables: {}", e.getMessage(), e);
             return "{}";
         }
     }
 
-    private void populateCategoryNode(ObjectNode parentNode, String categoryName, 
+    private void populateCategoryNode(ObjectNode parentNode, String categoryName,
                                       Map<String, List<String>> detailsMap, Map<String, Integer> categoryScores) {
         ObjectNode cat = parentNode.putObject(categoryName);
         cat.put("score", categoryScores.getOrDefault(categoryName, 0));
         ArrayNode details = cat.putArray("details");
         if (detailsMap.containsKey(categoryName)) {
-            for (String d : detailsMap.get(categoryName)) {
-                details.add(d);
+            for (String detail : detailsMap.get(categoryName)) {
+                details.add(detail);
             }
         }
     }
@@ -341,7 +318,7 @@ public class ScanMapperService {
         return "stage4_bonus";
     }
 
-    private String getHumanReadableSectionName(String key) {
+    public String getHumanReadableSectionName(String key) {
         switch (key) {
             case "file_technical": return "File Technical";
             case "ats_parsability": return "ATS Parsability";
@@ -382,60 +359,55 @@ public class ScanMapperService {
             }
             ObjectNode root = (ObjectNode) rootNode;
 
-            // 1. Get sub_tips
             JsonNode subTips = root.path("sub_tips");
-
-            // 2. Define Category configurations
             List<ObjectNode> gapsList = new ArrayList<>();
 
-            addCategoryGap(gapsList, "Định dạng & Bố cục", 
-                    root.path("stage2_core").path("ats_format").path("score").asInt(0), 
-                    12, 
-                    subTips, 
+            addCategoryGap(gapsList, "Dinh dang & Bo cuc",
+                    root.path("stage2_core").path("ats_format").path("score").asInt(0),
+                    12,
+                    subTips,
                     new String[]{"ats_parsability", "typography", "length", "file_technical"});
 
-            addCategoryGap(gapsList, "Khả năng đọc & Cấu trúc", 
-                    root.path("stage2_core").path("professional_foundation").path("score").asInt(0), 
-                    18, 
-                    subTips, 
+            addCategoryGap(gapsList, "Kha nang doc & Cau truc",
+                    root.path("stage2_core").path("professional_foundation").path("score").asInt(0),
+                    18,
+                    subTips,
                     new String[]{"sections", "organization", "summary", "contact"});
 
-            addCategoryGap(gapsList, "Từ khóa & Chất lượng", 
-                    root.path("stage2_core").path("content_quality").path("score").asInt(0), 
-                    20, 
-                    subTips, 
+            addCategoryGap(gapsList, "Tu khoa & Chat luong",
+                    root.path("stage2_core").path("content_quality").path("score").asInt(0),
+                    20,
+                    subTips,
                     new String[]{"quantification", "keywords", "language", "consistency"});
 
-            addCategoryGap(gapsList, "Kinh nghiệm làm việc", 
-                    root.path("stage3_in_depth").path("experience_eval").path("score").asInt(0), 
-                    20, 
-                    subTips, 
+            addCategoryGap(gapsList, "Kinh nghiem lam viec",
+                    root.path("stage3_in_depth").path("experience_eval").path("score").asInt(0),
+                    20,
+                    subTips,
                     new String[]{"bullet_quality", "scope_impact", "progression"});
 
-            addCategoryGap(gapsList, "Kỹ năng chuyên môn", 
-                    root.path("stage3_in_depth").path("technical_evidence").path("score").asInt(0), 
-                    10, 
-                    subTips, 
+            addCategoryGap(gapsList, "Ky nang chuyen mon",
+                    root.path("stage3_in_depth").path("technical_evidence").path("score").asInt(0),
+                    10,
+                    subTips,
                     new String[]{"technical_evidence"});
 
-            int educationScore = root.path("stage3_in_depth").path("projects").path("score").asInt(0) 
+            int educationScore = root.path("stage3_in_depth").path("projects").path("score").asInt(0)
                     + root.path("stage3_in_depth").path("certs").path("score").asInt(0);
-            addCategoryGap(gapsList, "Học vấn & Dự án", 
-                    educationScore, 
-                    10, 
-                    subTips, 
+            addCategoryGap(gapsList, "Hoc van & Du an",
+                    educationScore,
+                    10,
+                    subTips,
                     new String[]{"projects", "certs"});
 
-            addCategoryGap(gapsList, "Điểm cộng & Hoạt động khác", 
-                    root.path("stage4_bonus").path("score").asInt(0), 
-                    10, 
-                    subTips, 
+            addCategoryGap(gapsList, "Diem cong & Hoat dong khac",
+                    root.path("stage4_bonus").path("score").asInt(0),
+                    10,
+                    subTips,
                     new String[]{"leadership", "learning", "international", "awards", "category_specific"});
 
-            // 3. Filter lost > 0 and sort descending by lost
             gapsList.sort((a, b) -> Integer.compare(b.get("lost").asInt(), a.get("lost").asInt()));
 
-            // Limit to 5 gaps
             ArrayNode gapsArray = root.putArray("score_gaps");
             int count = 0;
             for (ObjectNode gap : gapsList) {
@@ -461,7 +433,6 @@ public class ScanMapperService {
             return;
         }
 
-        // Find the first non-null, non-empty tip from subTips
         String tip = null;
         if (subTips != null && !subTips.isMissingNode()) {
             for (String key : tipKeys) {
@@ -477,32 +448,7 @@ public class ScanMapperService {
         }
 
         if (tip == null || tip.isEmpty()) {
-            // Fallback generic tips based on category
-            switch (categoryName) {
-                case "Định dạng & Bố cục":
-                    tip = "Đảm bảo sử dụng các tiêu đề mục chuẩn (Education, Experience) và định dạng lề, cỡ chữ đồng đều.";
-                    break;
-                case "Khả năng đọc & Cấu trúc":
-                    tip = "Bổ sung đầy đủ thông tin liên hệ chuyên nghiệp (LinkedIn, GitHub) và viết tóm tắt mục tiêu nghề nghiệp súc tích.";
-                    break;
-                case "Từ khóa & Chất lượng":
-                    tip = "Bổ sung thêm các số liệu định lượng (%, $) và từ khóa chuyên ngành khớp với bản mô tả công việc (JD).";
-                    break;
-                case "Kinh nghiệm làm việc":
-                    tip = "Viết lại các gạch đầu dòng mô tả công việc theo mô hình STAR (Hành động đi kèm kết quả đo lường được).";
-                    break;
-                case "Kỹ năng chuyên môn":
-                    tip = "Phân loại rõ ràng các nhóm kỹ năng công nghệ và cung cấp các minh chứng thực tế trong các dự án của bạn.";
-                    break;
-                case "Học vấn & Dự án":
-                    tip = "Mô tả chi tiết các dự án nổi bật (vai trò, công nghệ sử dụng, kết quả) và bổ sung các chứng chỉ liên quan.";
-                    break;
-                case "Điểm cộng & Hoạt động khác":
-                    tip = "Bổ sung thêm các thông tin về khả năng ngoại ngữ, hoạt động tự học công nghệ mới hoặc kinh nghiệm dẫn dắt đội nhóm.";
-                    break;
-                default:
-                    tip = "Cập nhật và hoàn thiện phần thông tin liên quan để đạt điểm tối đa từ máy quét ATS.";
-            }
+            tip = "Cap nhat va hoan thien phan thong tin lien quan de dat diem toi da tu may quet ATS.";
         }
 
         ObjectNode gap = objectMapper.createObjectNode();

@@ -442,6 +442,41 @@ public class GeminiService {
                 return callTextOnlyGemini(prompt, 10, generationConfig); // 10s timeout for scoring
         }
 
+        public String evaluateAndSummarizeAnswer(String currentSummary, String questionText, String answerText, String targetRole, String industry, String level) {
+                String prompt = String.format(
+                                "Bạn là chuyên gia tuyển dụng đang đánh giá câu trả lời của ứng viên và cập nhật tóm tắt năng lực tích lũy.\n" +
+                                "Vị trí: %s, Ngành: %s, Trình độ: %s.\n\n" +
+                                "Tóm tắt năng lực trước đó: %s\n\n" +
+                                "Câu hỏi: %s\n" +
+                                "Câu trả lời của ứng viên: %s\n\n" +
+                                "Nhiệm vụ:\n" +
+                                "1. Chấm điểm câu trả lời khách quan (1-10).\n" +
+                                "2. Cập nhật bản tóm tắt năng lực tích lũy (Running Summary) súc tích bằng Tiếng Việt (không quá 150 từ, mang tính chuyên môn).\n\n" +
+                                "Yêu cầu trả về đúng 1 chuỗi JSON duy nhất (KHÔNG CÓ MARKDOWN) theo định dạng:\n" +
+                                "{\n" +
+                                "  \"evaluation\": {\n" +
+                                "    \"score\": <Tổng điểm 1-10>,\n" +
+                                "    \"feedback\": \"<Nhận xét xây dựng ngắn>\",\n" +
+                                "    \"scores\": {\n" +
+                                "      \"RELEVANCE\": { \"score\": <0-10>, \"comment\": \"...\" },\n" +
+                                "      \"DEPTH\": { \"score\": <0-10>, \"comment\": \"...\" },\n" +
+                                "      \"STRUCTURE\": { \"score\": <0-10>, \"comment\": \"...\" },\n" +
+                                "      \"COMMUNICATION\": { \"score\": <0-10>, \"comment\": \"...\" }\n" +
+                                "    }\n" +
+                                "  },\n" +
+                                "  \"updated_summary\": \"<Bản tóm tắt mới tích hợp câu trả lời này>\"\n" +
+                                "}",
+                                targetRole, industry, level,
+                                (currentSummary != null && !currentSummary.isEmpty()) ? currentSummary : "Chưa có đánh giá tích lũy.",
+                                questionText, answerText);
+                
+                Map<String, Object> generationConfig = Map.of(
+                                "temperature", 0.2,
+                                "responseMimeType", "application/json");
+                
+                return callTextOnlyGemini(prompt, 15, generationConfig);
+        }
+
 
         public String generateAllQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
                 String levelInstruction = getLevelInstruction(level);

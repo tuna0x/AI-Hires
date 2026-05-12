@@ -1,4 +1,4 @@
-import { Resume, GeminiParsedData } from "@/types/cv";
+import { Resume, GeminiParsedData, ResumeScanResult } from "@/types/cv";
 import { AnalysisResult } from "@/lib/store";
 
 // Hàm tiện ích tìm kiếm ghi chú chi tiết từ mảng details của Gemini
@@ -69,6 +69,15 @@ const getCategoryPoints = (detailsList: string[] | undefined) => {
   return { sum, max };
 };
 
+const getCategoryPercentage = (subScores: any[] | undefined, keys: string[]) => {
+  if (!subScores || !Array.isArray(subScores)) return 0;
+  const relevant = subScores.filter(s => keys.includes(s.sectionKey));
+  if (relevant.length === 0) return 0;
+  const total = relevant.reduce((acc, s) => acc + (s.score || 0), 0);
+  const max = relevant.reduce((acc, s) => acc + (s.maxScore || 0), 0);
+  return max > 0 ? Math.round((total / max) * 100) : 0;
+};
+
 export function mapResumeToAnalysisResult(resume: Resume): AnalysisResult {
   let geminiData: GeminiParsedData;
 
@@ -89,19 +98,19 @@ export function mapResumeToAnalysisResult(resume: Resume): AnalysisResult {
         industry: resume.basicInfo?.predictedIndustry || "Công nghệ thông tin",
       },
       stage2_core: {
-        score: 45,
-        ats_format: { score: 15, details: ["File Technical: +5/5", "ATS Parsability: +6/8", "Typography: +4/4", "Length: +3/3"] },
-        professional_foundation: { score: 15, details: ["Contact: +4/4", "Summary: +3/5", "Sections: +5/6", "Organization: +3/5"] },
-        content_quality: { score: 15, details: ["Language: +4/5", "Quantification: +3/8", "Keywords: +3/4", "Consistency: +3/3"] },
+        score: 35,
+        ats_format: { score: 10, details: ["File Technical: +3/3", "ATS Parsability: +4/5", "Typography: +1/2", "Length: +2/2"] },
+        professional_foundation: { score: 12, details: ["Contact: +4/4", "Summary: +3/5", "Sections: +3/5", "Organization: +2/4"] },
+        content_quality: { score: 13, details: ["Language: +4/5", "Quantification: +3/8", "Keywords: +3/4", "Consistency: +3/3"] },
       },
       stage3_in_depth: {
-        score: 22,
-        experience_eval: { score: 11, details: ["Progression: +2/3", "Bullet Quality: +4/6", "Scope & Impact: +4/6"] },
-        technical_evidence: { score: 6, details: ["Chi tiết bằng chứng kỹ năng: +6/8"] },
-        projects: { score: 4, details: ["Đánh giá chất lượng dự án: +4/5"] },
-        certs: { score: 1, details: ["Bằng cấp, chứng chỉ liên quan: +1/2"] },
+        score: 30,
+        experience_eval: { score: 15, details: ["Progression: +3/4", "Bullet Quality: +6/8", "Scope & Impact: +6/8"] },
+        technical_evidence: { score: 8, details: ["Chi tiết bằng chứng kỹ năng: +8/10"] },
+        projects: { score: 5, details: ["Đánh giá chất lượng dự án: +5/7"] },
+        certs: { score: 2, details: ["Bằng cấp, chứng chỉ liên quan: +2/3"] },
       },
-      stage4_bonus: { score: 8, details: ["Leadership: +1/2", "International: +1/2", "Learning: +2/2"] },
+      stage4_bonus: { score: 10, details: ["Leadership: +2/2", "International: +2/2", "Awards: +2/2", "Learning: +2/2", "Category-Specific: +2/2"] },
       strengths: ["Cấu trúc CV mạch lạc", "Trình độ học vấn tốt"],
       priority_actions: [
         { action: "Bổ sung số liệu định lượng cho phần kinh nghiệm", priority: "Cao" },
@@ -188,26 +197,17 @@ export function mapResumeToAnalysisResult(resume: Resume): AnalysisResult {
   const finalScore = geminiData.total_score || 0;
   const status = finalScore >= 85 ? "CV Xuất Sắc" : finalScore >= 70 ? "CV Tốt — Có Thể Cải Thiện" : "CV Cần Cải Thiện Nhiều";
 
-  const getPercentage = (score: number | undefined | null, max: number) => {
-    if (score === undefined || score === null) return 0;
-    return Math.round((score / max) * 100);
-  };
-
-  const certsScore = geminiData.stage3_in_depth?.certs?.score || 0;
-  const projectsScore = geminiData.stage3_in_depth?.projects?.score || 0;
-  const educationScore = Math.round(((certsScore + projectsScore) / 7) * 100);
-
   return {
     fileName: resume.fileUrl.split("/").pop() || "CV_Cua_Ban.pdf",
     score: finalScore,
     status,
     breakdown: {
-      formatting: getPercentage(geminiData.stage2_core?.ats_format?.score, 20),
+      formatting: getPercentage(geminiData.stage2_core?.ats_format?.score, 12),
       keywords: getPercentage(geminiData.stage2_core?.content_quality?.score, 20),
-      experience: getPercentage(geminiData.stage3_in_depth?.experience_eval?.score, 15),
-      education: educationScore,
-      skills: getPercentage(geminiData.stage3_in_depth?.technical_evidence?.score, 8),
-      readability: getPercentage(geminiData.stage2_core?.professional_foundation?.score, 20),
+      experience: getPercentage(geminiData.stage3_in_depth?.experience_eval?.score, 20),
+      education: Math.round(((geminiData.stage3_in_depth?.certs?.score || 0) + (geminiData.stage3_in_depth?.projects?.score || 0)) / 10 * 100),
+      skills: getPercentage(geminiData.stage3_in_depth?.technical_evidence?.score, 10),
+      readability: getPercentage(geminiData.stage2_core?.professional_foundation?.score, 18),
     },
     sections,
     suggestions,
@@ -215,5 +215,100 @@ export function mapResumeToAnalysisResult(resume: Resume): AnalysisResult {
     rawGeminiData: geminiData,
     createdAt: Date.now(),
     resumeId: resume.id,
+  };
+}
+
+export function mapResumeScanToAnalysisResult(scan: ResumeScanResult): AnalysisResult {
+  const geminiData: GeminiParsedData = scan.rawGeminiData || {
+    total_score: scan.totalScore || 0,
+    stage1_detection: {
+      name: scan.candidateName || "Ung vien",
+      level: scan.level || "Junior",
+      industry: scan.industry || "Cong nghe thong tin",
+    },
+    stage2_core: {
+      score: scan.stage2Score || 0,
+      ats_format: { score: 0, details: [] },
+      professional_foundation: { score: 0, details: [] },
+      content_quality: { score: 0, details: [] },
+    },
+    stage3_in_depth: {
+      score: scan.stage3Score || 0,
+      experience_eval: { score: 0, details: [] },
+      technical_evidence: { score: 0, details: [] },
+      projects: { score: 0, details: [] },
+      certs: { score: 0, details: [] },
+    },
+    stage4_bonus: {
+      score: scan.stage4Score || 0,
+      details: [],
+    },
+    strengths: scan.strengths || [],
+    priority_actions: (scan.priorityActions || []).map((action) => ({
+      action: action.action,
+      priority: action.priority,
+    })),
+    score_gaps: scan.scoreGaps?.map((gap) => ({
+      section: gap.section,
+      current: gap.current,
+      max: gap.max,
+      lost: gap.lost,
+      tip: gap.tip,
+    })),
+  };
+
+  const pseudoResume: Resume = {
+    id: scan.id,
+    fileUrl: scan.fileName,
+    contentType: "",
+    fileSize: 0,
+    extractedText: null,
+    parsedData: JSON.stringify(geminiData),
+    parseStatus: scan.status === "COMPLETED" ? "DONE" : scan.status === "FAILED" ? "FAILED" : "PROCESSING",
+    basicInfo: {
+      fullName: scan.candidateName || null,
+      email: null,
+      phone: null,
+      address: null,
+      dateOfBirth: null,
+      linkedinUrl: null,
+      githubUrl: null,
+      portfolioUrl: null,
+      objective: null,
+      predictedLevel: scan.level || null,
+      predictedIndustry: scan.industry || null,
+    },
+    skills: [],
+    experiences: [],
+    educations: [],
+    certifications: [],
+    projects: [],
+    languages: [],
+    createdAt: scan.createdAt,
+    updatedAt: scan.completedAt || undefined,
+  };
+
+  const result = mapResumeToAnalysisResult(pseudoResume);
+  
+  // Nâng cấp breakdown để tự động tính toán từ subScores (Bất tử trước thay đổi Prompt)
+  if (scan.subScores && scan.subScores.length > 0) {
+    result.breakdown = {
+      formatting: getCategoryPercentage(scan.subScores, ["file_technical", "ats_parsability", "typography", "length"]),
+      keywords: getCategoryPercentage(scan.subScores, ["language", "quantification", "keywords", "consistency"]),
+      experience: getCategoryPercentage(scan.subScores, ["progression", "bullet_quality", "scope_impact"]),
+      education: getCategoryPercentage(scan.subScores, ["projects", "certs"]),
+      skills: getCategoryPercentage(scan.subScores, ["technical_evidence"]),
+      readability: getCategoryPercentage(scan.subScores, ["contact", "summary", "sections", "organization"]),
+    };
+  }
+
+  return {
+    ...result,
+    fileName: scan.fileName,
+    scanId: scan.id,
+    resumeId: undefined,
+    rawGeminiData: geminiData,
+    subScores: scan.subScores,
+    scoreGaps: scan.scoreGaps,
   };
 }

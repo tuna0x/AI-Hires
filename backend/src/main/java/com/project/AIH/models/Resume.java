@@ -47,6 +47,7 @@ public class Resume {
     private String contentHash;
 
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private ResumeStatusEnum parseStatus = ResumeStatusEnum.PENDING;
 
     @OneToOne(mappedBy = "resume", cascade = CascadeType.ALL)
@@ -83,6 +84,7 @@ public class Resume {
 
     // --- Virtual Backwards Compatible Getters ---
     @Transient
+    @com.fasterxml.jackson.annotation.JsonProperty("basicInfo")
     public ResumeBasicInfo getBasicInfo() {
         return ResumeBasicInfo.builder()
                 .fullName(this.fullName)
@@ -101,6 +103,7 @@ public class Resume {
     }
 
     @Transient
+    @com.fasterxml.jackson.annotation.JsonProperty("parsedData")
     public String getParsedData() {
         return (this.rawAiOutput != null) ? this.rawAiOutput.getAtsJson() : null;
     }

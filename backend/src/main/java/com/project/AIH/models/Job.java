@@ -59,6 +59,7 @@ public class Job {
     @JoinColumn(name = "company_id")
     private Company company;
 
+    @Builder.Default
     private boolean active = true;
     private Instant startDate;
     private Instant endDate;

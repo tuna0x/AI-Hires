@@ -51,10 +51,14 @@ public class InterviewController {
 
     @PostMapping("/start-mock")
     public ResponseEntity<InterviewSession> startMockInterview(@RequestBody Map<String, Object> request) {
-        Long resumeId = Long.valueOf(request.get("resumeId").toString());
         String targetRole = (String) request.get("targetRole");
         String jobDescription = (String) request.get("jobDescription");
         String targetLevel = request.containsKey("targetLevel") ? (String) request.get("targetLevel") : null;
+        if (request.containsKey("scanId") && request.get("scanId") != null) {
+            Long scanId = Long.valueOf(request.get("scanId").toString());
+            return ResponseEntity.ok(interviewService.startMockSessionByScan(scanId, targetRole, jobDescription, targetLevel));
+        }
+        Long resumeId = Long.valueOf(request.get("resumeId").toString());
         return ResponseEntity.ok(interviewService.startMockSession(resumeId, targetRole, jobDescription, targetLevel));
     }
 

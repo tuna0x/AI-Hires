@@ -31,6 +31,7 @@ public class Role {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Builder.Default
     private boolean active = true;
 
     // Audit fields

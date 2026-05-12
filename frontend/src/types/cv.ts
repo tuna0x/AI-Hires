@@ -152,3 +152,47 @@ export interface GeminiParsedData {
     tip: string;
   }[];
 }
+
+export interface ResumeScanAction {
+  action: string;
+  priority: string;
+}
+
+export interface ResumeScanScoreGap {
+  section: string;
+  current: number;
+  max: number;
+  lost: number;
+  tip: string;
+}
+
+export interface ResumeScanSubScore {
+  sectionKey: string;
+  score: number;
+  maxScore: number;
+  lostPoints: number;
+  details: string[];
+  tip: string | null;
+}
+
+export interface ResumeScanResult {
+  id: number;
+  status: "PENDING" | "EXTRACTING" | "ANALYZING" | "COMPLETED" | "FAILED";
+  fileName: string;
+  createdAt?: string;
+  completedAt?: string | null;
+  candidateName?: string | null;
+  level?: string | null;
+  industry?: string | null;
+  totalScore?: number | null;
+  stage2Score?: number | null;
+  stage3Score?: number | null;
+  stage4Score?: number | null;
+  strengths?: string[];
+  priorityActions?: ResumeScanAction[];
+  scoreGaps?: ResumeScanScoreGap[];
+  subScores?: ResumeScanSubScore[];
+  failureCode?: string | null;
+  failureMessage?: string | null;
+  rawGeminiData?: GeminiParsedData;
+}

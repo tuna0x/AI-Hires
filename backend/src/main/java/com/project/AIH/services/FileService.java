@@ -79,4 +79,18 @@ public class FileService {
             throw new RuntimeException("Could not read file from MinIO", e);
         }
     }
+
+    public void deleteFile(String fileName) {
+        try {
+            minioClient.removeObject(
+                    RemoveObjectArgs.builder()
+                            .bucket(bucketName)
+                            .object(fileName)
+                            .build()
+            );
+            log.info("Deleted file from MinIO: {}", fileName);
+        } catch (Exception e) {
+            log.warn("Failed to delete file from MinIO {}: {}", fileName, e.getMessage());
+        }
+    }
 }
