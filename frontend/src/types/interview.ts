@@ -61,6 +61,11 @@ export interface InterviewReport {
   insights: InterviewInsight[];
 }
 
+export interface InterviewReportResponse {
+  status: "PROCESSING" | "COMPLETED";
+  report: InterviewReport | null;
+}
+
 export interface StartInterviewRequest {
   applicationId: number;
   targetLevel?: string;

@@ -26,6 +26,7 @@ public class InterviewScoringWorker {
     private final InterviewEvaluationRepository evaluationRepository;
     private final InterviewSessionRepository sessionRepository;
     private final ObjectMapper objectMapper;
+    private final com.project.AIH.services.ReportGenerationPublisher reportGenerationPublisher;
 
     @RabbitListener(queues = RabbitMQConfig.INTERVIEW_SCORING_QUEUE)
     @Transactional
@@ -56,9 +57,9 @@ public class InterviewScoringWorker {
                     .feedback(feedback)
                     .build();
 
-            evaluation = evaluationRepository.save(evaluation);
+            evaluation = evaluationRepository.saveAndFlush(evaluation);
             answer.setInterviewEvaluation(evaluation);
-            answerRepository.save(answer);
+            answerRepository.saveAndFlush(answer);
 
             // Update running summary
             InterviewSession session = answer.getInterviewQuestion().getInterviewSession();
@@ -70,7 +71,7 @@ public class InterviewScoringWorker {
                         score
                 );
                 session.setRunningSummary(updatedSummary);
-                sessionRepository.save(session);
+                sessionRepository.saveAndFlush(session);
             } catch (Exception ex) {
                 log.error("Failed to update runningSummary for session ID: {}", session.getId(), ex);
             }
@@ -89,14 +90,54 @@ public class InterviewScoringWorker {
                             .score(0)
                             .feedback("Hệ thống AI hiện đang quá tải và không thể chấm điểm câu trả lời này. Vui lòng bỏ qua.")
                             .build();
-                    evaluation = evaluationRepository.save(evaluation);
+                    evaluation = evaluationRepository.saveAndFlush(evaluation);
                     answer.setInterviewEvaluation(evaluation);
-                    answerRepository.save(answer);
+                    answerRepository.saveAndFlush(answer);
                     log.info("Saved fallback score 0 for answer ID: {}", message.getAnswerId());
                 }
             } catch (Exception ex) {
                 log.error("Failed to save fallback score for answer ID: {}", message.getAnswerId(), ex);
             }
+        }
+
+        // Event-driven report generation trigger: Check if all answers are scored
+        try {
+            Long sessionId = message.getSessionId();
+            if (sessionId != null) {
+                long pendingCount = answerRepository.countPendingEvaluationsNative(sessionId);
+                long answeredCount = answerRepository.countTotalAnswersNative(sessionId);
+                log.info("Session {} progress check: pending={}, answered={}", sessionId, pendingCount, answeredCount);
+                if (pendingCount == 0 && answeredCount >= 5) {
+                    if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive()) {
+                        org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                            new org.springframework.transaction.support.TransactionSynchronization() {
+                                @Override
+                                public void afterCommit() {
+                                    try {
+                                        log.info("All answers scored and transaction committed for session {}. Triggering final report generation.", sessionId);
+                                        com.project.AIH.dto.ReportGenerationMessage reportMessage = 
+                                                com.project.AIH.dto.ReportGenerationMessage.builder()
+                                                        .sessionId(sessionId)
+                                                        .build();
+                                        reportGenerationPublisher.publishReportJob(reportMessage);
+                                    } catch (Exception ex) {
+                                        log.error("Failed to publish report job after commit for session ID: {}", sessionId, ex);
+                                    }
+                                }
+                            }
+                        );
+                    } else {
+                        log.info("All answers scored for session {} (no active transaction). Triggering report generation directly.", sessionId);
+                        com.project.AIH.dto.ReportGenerationMessage reportMessage = 
+                                com.project.AIH.dto.ReportGenerationMessage.builder()
+                                        .sessionId(sessionId)
+                                        .build();
+                        reportGenerationPublisher.publishReportJob(reportMessage);
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            log.error("Failed to check or trigger report generation at the end of processInterviewScoring for message: {}", message, ex);
         }
     }
 }

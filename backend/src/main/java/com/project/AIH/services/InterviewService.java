@@ -439,12 +439,6 @@ public class InterviewService {
             }
         }
 
-        if (isFinished) {
-            ReportGenerationMessage reportMessage = ReportGenerationMessage.builder()
-                    .sessionId(sessionId)
-                    .build();
-            reportGenerationPublisher.publishReportJob(reportMessage);
-        }
 
         return InterviewSubmitAnswerResponseDTO.builder()
                 .evaluation(null) // Evaluation is async now
