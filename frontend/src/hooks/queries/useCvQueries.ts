@@ -11,7 +11,7 @@ export function useUploadCvMutation() {
     mutationFn: async (file: File) => {
       const response = await cvApi.uploadCv(file);
       if (response.statusCode >= 400 || !response.data) {
-        throw new Error(response.message || "Tai len CV that bai!");
+        throw new Error(response.message || "Tải lên CV thất bại!");
       }
       return response.data;
     },
@@ -22,11 +22,11 @@ export function useUploadCvMutation() {
       }
 
       queryClient.invalidateQueries({ queryKey: ["resume-scans"] });
-      toast.success("Tai len ho so thanh cong! Dang tien hanh phan tich...");
+      toast.success("Tải lên hồ sơ thành công! Đang tiến hành phân tích...");
     },
     onError: (error: any) => {
       console.error("Error uploading CV:", error);
-      const msg = error.response?.data?.message || error.message || "Da xay ra loi khi tai len CV. Vui long thu lai!";
+      const msg = error.response?.data?.message || error.message || "Lỗi hệ thống! Vui lòng thử lại sau.";
       toast.error(msg);
     },
   });

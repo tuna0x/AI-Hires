@@ -43,6 +43,16 @@ public class ScoringResultValidator {
         Map.entry("learning", 2),
         Map.entry("category_specific", 2)
     );
+    private static final Map<String, String[]> CATEGORY_KEYS = Map.of(
+            "ats_format", new String[]{"file_technical", "ats_parsability", "typography", "length"},
+            "professional_foundation", new String[]{"contact", "summary", "sections", "organization"},
+            "content_quality", new String[]{"language", "quantification", "keywords", "consistency"},
+            "experience_eval", new String[]{"progression", "bullet_quality", "scope_impact"},
+            "technical_evidence", new String[]{"technical_evidence"},
+            "projects", new String[]{"projects"},
+            "certs", new String[]{"certs"},
+            "stage4_bonus", new String[]{"leadership", "international", "awards", "learning", "category_specific"}
+    );
 
     public JsonNode validateAndNormalize(JsonNode root) {
         if (root == null || root.isMissingNode() || !root.isObject()) {
@@ -52,9 +62,9 @@ public class ScoringResultValidator {
         ObjectNode rootNode = (ObjectNode) root;
 
         // 1. Process stage2_core
-        ObjectNode stage2Node = (ObjectNode) rootNode.path("stage2_core");
+        ObjectNode stage2Node = ensureObject(rootNode, "stage2_core");
         int calculatedStage2 = 0;
-        if (stage2Node != null && !stage2Node.isMissingNode()) {
+        if (stage2Node != null) {
             calculatedStage2 += processCategory(stage2Node, "ats_format", 
                 new String[]{"file_technical", "ats_parsability", "typography", "length"});
             calculatedStage2 += processCategory(stage2Node, "professional_foundation", 
@@ -65,9 +75,9 @@ public class ScoringResultValidator {
         }
 
         // 2. Process stage3_in_depth
-        ObjectNode stage3Node = (ObjectNode) rootNode.path("stage3_in_depth");
+        ObjectNode stage3Node = ensureObject(rootNode, "stage3_in_depth");
         int calculatedStage3 = 0;
-        if (stage3Node != null && !stage3Node.isMissingNode()) {
+        if (stage3Node != null) {
             calculatedStage3 += processCategory(stage3Node, "experience_eval", 
                 new String[]{"progression", "bullet_quality", "scope_impact"});
             calculatedStage3 += processCategory(stage3Node, "technical_evidence", 
@@ -80,15 +90,15 @@ public class ScoringResultValidator {
         }
 
         // 3. Process stage4_bonus (currently under root, but can be under stage3_in_depth depending on frontend, let's support both)
-        ObjectNode stage4Node = (ObjectNode) rootNode.path("stage4_bonus");
-        if (stage4Node == null || stage4Node.isMissingNode()) {
-            // check under stage3_in_depth.stage4_bonus
-            if (stage3Node != null) {
-                stage4Node = (ObjectNode) stage3Node.path("stage4_bonus");
-            }
+        ObjectNode stage4Node = objectNodeOrNull(rootNode.path("stage4_bonus"));
+        if (stage4Node == null && stage3Node != null) {
+            stage4Node = objectNodeOrNull(stage3Node.path("stage4_bonus"));
+        }
+        if (stage4Node == null) {
+            stage4Node = rootNode.putObject("stage4_bonus");
         }
         int calculatedStage4 = 0;
-        if (stage4Node != null && !stage4Node.isMissingNode()) {
+        if (stage4Node != null) {
             calculatedStage4 = processBonusStage(stage4Node, 
                 new String[]{"leadership", "international", "awards", "learning", "category_specific"});
             stage4Node.put("score", calculatedStage4);
@@ -105,28 +115,21 @@ public class ScoringResultValidator {
     }
 
     private int processCategory(ObjectNode parentNode, String categoryKey, String[] itemKeys) {
-        ObjectNode categoryNode = (ObjectNode) parentNode.path(categoryKey);
-        if (categoryNode == null || categoryNode.isMissingNode()) {
-            return 0;
-        }
+        ObjectNode categoryNode = ensureObject(parentNode, categoryKey);
 
         int categorySum = 0;
-        ArrayNode detailsArray = (ArrayNode) categoryNode.path("details");
-        if (detailsArray != null && detailsArray.isArray()) {
-            for (int i = 0; i < detailsArray.size(); i++) {
-                if (i >= itemKeys.length) break;
-                String itemKey = itemKeys[i];
-                int maxScore = MAX_SCORES.getOrDefault(itemKey, 10);
-                String detailStr = detailsArray.get(i).asText();
-                
-                int[] scores = parseScores(detailStr, maxScore);
-                int score = Math.max(0, Math.min(scores[0], maxScore));
-                categorySum += score;
+        ArrayNode detailsArray = normalizeDetailsArray(categoryNode, categoryKey, itemKeys);
+        for (int i = 0; i < itemKeys.length; i++) {
+            String itemKey = itemKeys[i];
+            int maxScore = MAX_SCORES.getOrDefault(itemKey, 10);
+            String detailStr = detailsArray.get(i).asText();
 
-                // Rewrite the detail line string to match our clean output pattern
-                String rewritten = clampAndRewriteDetailString(detailStr, score, maxScore);
-                detailsArray.set(i, rewritten);
-            }
+            int[] scores = parseScores(detailStr, maxScore);
+            int score = Math.max(0, Math.min(scores[0], maxScore));
+            categorySum += score;
+
+            String rewritten = clampAndRewriteDetailString(detailStr, score, maxScore);
+            detailsArray.set(i, rewritten);
         }
         categoryNode.put("score", categorySum);
         return categorySum;
@@ -134,23 +137,124 @@ public class ScoringResultValidator {
 
     private int processBonusStage(ObjectNode stage4Node, String[] itemKeys) {
         int bonusSum = 0;
-        ArrayNode detailsArray = (ArrayNode) stage4Node.path("details");
-        if (detailsArray != null && detailsArray.isArray()) {
-            for (int i = 0; i < detailsArray.size(); i++) {
-                if (i >= itemKeys.length) break;
-                String itemKey = itemKeys[i];
-                int maxScore = MAX_SCORES.getOrDefault(itemKey, 2);
-                String detailStr = detailsArray.get(i).asText();
+        ArrayNode detailsArray = normalizeDetailsArray(stage4Node, "stage4_bonus", itemKeys);
+        for (int i = 0; i < itemKeys.length; i++) {
+            String itemKey = itemKeys[i];
+            int maxScore = MAX_SCORES.getOrDefault(itemKey, 2);
+            String detailStr = detailsArray.get(i).asText();
 
-                int[] scores = parseScores(detailStr, maxScore);
-                int score = Math.max(0, Math.min(scores[0], maxScore));
-                bonusSum += score;
+            int[] scores = parseScores(detailStr, maxScore);
+            int score = Math.max(0, Math.min(scores[0], maxScore));
+            bonusSum += score;
 
-                String rewritten = clampAndRewriteDetailString(detailStr, score, maxScore);
-                detailsArray.set(i, rewritten);
-            }
+            String rewritten = clampAndRewriteDetailString(detailStr, score, maxScore);
+            detailsArray.set(i, rewritten);
         }
         return bonusSum;
+    }
+
+    private ObjectNode ensureObject(ObjectNode parentNode, String fieldName) {
+        JsonNode node = parentNode.path(fieldName);
+        if (node instanceof ObjectNode objectNode) {
+            return objectNode;
+        }
+        if (!node.isMissingNode() && !node.isNull()) {
+            log.warn("Field '{}' is not an object. Replacing it with an empty object.", fieldName);
+        }
+        return parentNode.putObject(fieldName);
+    }
+
+    private ObjectNode objectNodeOrNull(JsonNode node) {
+        return node instanceof ObjectNode objectNode ? objectNode : null;
+    }
+
+    private ArrayNode normalizeDetailsArray(ObjectNode categoryNode, String categoryKey, String[] itemKeys) {
+        JsonNode detailsNode = categoryNode.path("details");
+        ArrayNode input = detailsNode instanceof ArrayNode arrayNode ? arrayNode : objectMapper.createArrayNode();
+        if (!detailsNode.isMissingNode() && !detailsNode.isArray()) {
+            log.warn("Category '{}' has non-array details. Replacing with defaults.", categoryKey);
+        }
+        if (input.size() != itemKeys.length) {
+            log.warn("Category '{}' has {} detail items, expected {}", categoryKey, input.size(), itemKeys.length);
+        }
+
+        Map<String, String> keyedDetails = new HashMap<>();
+        List<String> unmappedDetails = new ArrayList<>();
+        for (JsonNode detailNode : input) {
+            String detailText = detailNode.asText("");
+            String sectionKey = deriveSectionKey(detailText, categoryKey, itemKeys);
+            if (sectionKey == null) {
+                unmappedDetails.add(detailText);
+                continue;
+            }
+            if (keyedDetails.containsKey(sectionKey)) {
+                log.warn("Category '{}' has duplicate detail for key '{}'. Keeping the first value.", categoryKey, sectionKey);
+                continue;
+            }
+            keyedDetails.put(sectionKey, detailText);
+        }
+
+        ArrayNode normalized = objectMapper.createArrayNode();
+        for (String itemKey : itemKeys) {
+            String detail = keyedDetails.get(itemKey);
+            if (detail == null || detail.isBlank()) {
+                int maxScore = MAX_SCORES.getOrDefault(itemKey, 10);
+                detail = humanizeKey(itemKey) + ": +0/" + maxScore + " (Missing from AI output)";
+            }
+            normalized.add(detail);
+        }
+
+        if (!unmappedDetails.isEmpty()) {
+            log.warn("Category '{}' has {} unmapped detail items. Ignoring them.", categoryKey, unmappedDetails.size());
+        }
+        categoryNode.set("details", normalized);
+        return normalized;
+    }
+
+    private String deriveSectionKey(String detailText, String categoryKey, String[] keys) {
+        if (keys.length == 1) {
+            return keys[0];
+        }
+        if (detailText == null) {
+            return null;
+        }
+        String lower = detailText.toLowerCase(Locale.ROOT);
+        for (String key : keys) {
+            String normalized = key.replace("_", " ").toLowerCase(Locale.ROOT);
+            if (lower.contains(normalized)) {
+                return key;
+            }
+        }
+        if (lower.contains("file technical")) return "file_technical";
+        if (lower.contains("parsability")) return "ats_parsability";
+        if (lower.contains("typography")) return "typography";
+        if (lower.contains("length")) return "length";
+        if (lower.contains("contact")) return "contact";
+        if (lower.contains("summary")) return "summary";
+        if (lower.contains("sections")) return "sections";
+        if (lower.contains("organization")) return "organization";
+        if (lower.contains("language")) return "language";
+        if (lower.contains("quantification")) return "quantification";
+        if (lower.contains("keywords")) return "keywords";
+        if (lower.contains("consistency")) return "consistency";
+        if (lower.contains("progression")) return "progression";
+        if (lower.contains("bullet")) return "bullet_quality";
+        if (lower.contains("scope")) return "scope_impact";
+        if (lower.contains("leadership")) return "leadership";
+        if (lower.contains("international")) return "international";
+        if (lower.contains("award")) return "awards";
+        if (lower.contains("learning")) return "learning";
+        if (lower.contains("category")) return "category_specific";
+        log.warn("Could not derive a schema key for category '{}' detail '{}'", categoryKey, detailText);
+        return null;
+    }
+
+    private String humanizeKey(String key) {
+        return Arrays.stream(key.split("_"))
+                .filter(part -> !part.isBlank())
+                .map(part -> part.substring(0, 1).toUpperCase(Locale.ROOT) + part.substring(1))
+                .reduce((left, right) -> left + " " + right)
+                .orElse(key);
     }
 
     public static int[] parseScores(String text, int defaultMax) {
@@ -202,5 +306,9 @@ public class ScoringResultValidator {
             }
             return detail + " (+" + clampedScore + "/" + maxScore + ")";
         }
+    }
+
+    public Map<String, String[]> getCategoryKeys() {
+        return CATEGORY_KEYS;
     }
 }

@@ -145,7 +145,7 @@ public class CvScoringWorker {
                     .resume(resume)
                     .atsJson(aiResultText)
                     .profileJson("")
-                    .aiModel("gemini-3.1-flash-lite-preview")
+                    .aiModel("gemini-3.1-flash-lite")
                     .promptVersion("v1.0")
                     .build();
             rawAiOutputRepository.save(rawOutput);

@@ -157,26 +157,142 @@ public class ScanMapperService {
 
         JsonNode detailsNode = categoryNode.path("details");
         if (detailsNode.isArray()) {
-            for (int i = 0; i < detailsNode.size(); i++) {
-                String detailText = detailsNode.get(i).asText();
-                String sectionKey = (i < keys.length) ? keys[i] : (categoryName + "_item_" + i);
+            Map<String, String> mappedDetails = new HashMap<>();
+            List<String> unmappedDetails = new ArrayList<>();
+            for (JsonNode detailNode : detailsNode) {
+                String detailText = detailNode.asText();
+                String derivedKey = deriveSectionKey(detailText, categoryName, keys);
+                if (derivedKey == null) {
+                    unmappedDetails.add(detailText);
+                    continue;
+                }
+                if (mappedDetails.containsKey(derivedKey)) {
+                    log.warn("Duplicate derived key '{}' in category '{}', keeping first", derivedKey, categoryName);
+                    continue;
+                }
+                mappedDetails.put(derivedKey, detailText);
+            }
 
+            for (int i = 0; i < keys.length; i++) {
+                String expectedKey = keys[i];
+                String detailText = mappedDetails.get(expectedKey);
+                if (detailText == null || detailText.isBlank()) {
+                    log.warn("Missing expected key '{}' in category '{}'", expectedKey, categoryName);
+                    int maxScore = getExpectedMaxScore(expectedKey);
+                    subScores.add(ScanSubScore.builder()
+                            .scan(scan)
+                            .sectionKey(expectedKey)
+                            .score(0)
+                            .maxScore(maxScore)
+                            .lostPoints(maxScore)
+                            .details(Collections.singletonList(humanizeKey(expectedKey) + ": +0/" + maxScore + " (Missing from AI output)"))
+                            .tip(tipsMap.get(expectedKey))
+                            .build());
+                    continue;
+                }
                 int[] parsed = parseScores(detailText);
-                int maxScore = parsed[1];
+                int maxScore = getExpectedMaxScore(expectedKey);
                 int score = Math.max(0, Math.min(parsed[0], maxScore));
                 int lostPoints = maxScore - score;
 
                 subScores.add(ScanSubScore.builder()
                         .scan(scan)
-                        .sectionKey(sectionKey)
+                        .sectionKey(expectedKey)
                         .score(score)
                         .maxScore(maxScore)
                         .lostPoints(lostPoints)
                         .details(Collections.singletonList(detailText))
-                        .tip(tipsMap.get(sectionKey))
+                        .tip(tipsMap.get(expectedKey))
                         .build());
             }
+
+            if (!unmappedDetails.isEmpty()) {
+                log.warn("Category '{}' has {} unmapped detail items. Ignoring them.", categoryName, unmappedDetails.size());
+            }
         }
+    }
+
+    private String deriveSectionKey(String detailText, String categoryName, String[] keys) {
+        if (detailText == null) {
+            return null;
+        }
+        if (keys.length == 1) {
+            return keys[0];
+        }
+        String lower = detailText.toLowerCase();
+        for (String key : keys) {
+            String normalized = key.replace("_", " ").toLowerCase();
+            if (lower.contains(normalized)) {
+                return key;
+            }
+        }
+        if (lower.contains("file technical")) return "file_technical";
+        if (lower.contains("parsability")) return "ats_parsability";
+        if (lower.contains("typography")) return "typography";
+        if (lower.contains("length")) return "length";
+        if (lower.contains("contact")) return "contact";
+        if (lower.contains("summary")) return "summary";
+        if (lower.contains("sections")) return "sections";
+        if (lower.contains("organization")) return "organization";
+        if (lower.contains("language")) return "language";
+        if (lower.contains("quantification")) return "quantification";
+        if (lower.contains("keywords")) return "keywords";
+        if (lower.contains("consistency")) return "consistency";
+        if (lower.contains("progression")) return "progression";
+        if (lower.contains("bullet")) return "bullet_quality";
+        if (lower.contains("scope")) return "scope_impact";
+        if (lower.contains("technical evidence")) return "technical_evidence";
+        if (lower.contains("project")) return "projects";
+        if (lower.contains("cert")) return "certs";
+        if (lower.contains("leadership")) return "leadership";
+        if (lower.contains("international")) return "international";
+        if (lower.contains("award")) return "awards";
+        if (lower.contains("learning")) return "learning";
+        if (lower.contains("category")) return "category_specific";
+        log.warn("Could not derive section key for category '{}' detail '{}'", categoryName, detailText);
+        return null;
+    }
+
+    private int getExpectedMaxScore(String key) {
+        switch (key) {
+            case "file_technical": return 3;
+            case "ats_parsability": return 5;
+            case "typography": return 2;
+            case "length": return 2;
+            case "contact": return 4;
+            case "summary": return 5;
+            case "sections": return 5;
+            case "organization": return 4;
+            case "language": return 5;
+            case "quantification": return 8;
+            case "keywords": return 4;
+            case "consistency": return 3;
+            case "progression": return 4;
+            case "bullet_quality": return 8;
+            case "scope_impact": return 8;
+            case "technical_evidence": return 10;
+            case "projects": return 7;
+            case "certs": return 3;
+            case "leadership":
+            case "international":
+            case "awards":
+            case "learning":
+            case "category_specific":
+                return 2;
+            default:
+                return 10;
+        }
+    }
+
+    private String humanizeKey(String key) {
+        String[] parts = key.split("_");
+        List<String> words = new ArrayList<>();
+        for (String part : parts) {
+            if (!part.isBlank()) {
+                words.add(part.substring(0, 1).toUpperCase() + part.substring(1));
+            }
+        }
+        return String.join(" ", words);
     }
 
     private int[] parseScores(String text) {

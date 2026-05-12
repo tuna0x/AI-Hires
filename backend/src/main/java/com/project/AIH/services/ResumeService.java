@@ -261,11 +261,11 @@ public class ResumeService {
                 // Parallel AI Analysis
                 CompletableFuture<String> generalAnalysisFuture = CompletableFuture.supplyAsync(() -> {
                     try {
-                        if (isTextCorrupted(finalExtractedText)) {
-                            log.info("Extracted text is empty or corrupted. Falling back to Gemini Vision using file bytes.");
+                        if (shouldUseVisionFirst(contentType, finalExtractedText)) {
+                            log.info("Using Gemini Vision for resume analysis.");
                             return geminiService.parseResume(finalFileBytes, contentType);
                         } else {
-                            log.info("Extracted text is of high quality. Calling Gemini with text thô for high speed.");
+                            log.info("Using text-only Gemini for non-PDF resume analysis.");
                             return geminiService.parseResumeText(finalExtractedText);
                         }
                     } catch (Exception e) {
@@ -327,7 +327,7 @@ public class ResumeService {
                                 .resume(bgResume)
                                 .atsJson(parsedData)
                                 .profileJson(detailedJson)
-                                .aiModel("gemini-3.1-flash-lite-preview")
+                                .aiModel("gemini-3.1-flash-lite")
                                 .promptVersion("v1.0")
                                 .build();
                         rawAiOutputRepository.save(rawOutput);
@@ -384,15 +384,11 @@ public class ResumeService {
         return resume;
     }
 
-    private boolean isTextCorrupted(String extractedText) {
-        if (extractedText == null || extractedText.trim().length() < 300) {
-            return true; // PDF Scan hoặc ảnh rỗng
+    private boolean shouldUseVisionFirst(String contentType, String extractedText) {
+        if (contentType != null && contentType.toLowerCase().contains("pdf")) {
+            return true;
         }
-        // Kiểm tra xem có chứa @ (email) hoặc số điện thoại hay không để xác minh không bị lỗi font/mã hóa
-        if (!extractedText.contains("@") && !extractedText.matches(".*\\d{9,11}.*")) {
-            return true; // Thiếu email và SĐT, nhiều khả năng text bị vỡ hoặc lỗi font nặng
-        }
-        return false;
+        return extractedText == null || extractedText.trim().isEmpty();
     }
 
     @Transactional(readOnly = true)

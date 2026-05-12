@@ -212,6 +212,7 @@ public class GeminiService {
                                 "generationConfig", generationConfig);
 
                 try {
+                        ensureApiKeyConfigured();
                         log.info("Sending multimodal request to Gemini AI for resume analysis...");
                         return webClient.post()
                                         .uri(apiUrl + "?key=" + apiKey)
@@ -223,8 +224,7 @@ public class GeminiService {
                                             .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientResponseException.TooManyRequests || ex instanceof WebClientResponseException.InternalServerError))
                                         .block();
                 } catch (Exception e) {
-                        log.error("Error calling Gemini API: {}", e.getMessage());
-                        throw new RuntimeException("AI Analysis service is temporarily unavailable", e);
+                        throw handleGeminiException("Gemini API", e, "AI Analysis service is temporarily unavailable");
                 }
         }
 
@@ -377,6 +377,7 @@ public class GeminiService {
                                 "generationConfig", generationConfig);
 
                 try {
+                        ensureApiKeyConfigured();
                         log.info("Sending multimodal request to Gemini AI for general resume analysis...");
                         String response = webClient.post()
                                         .uri(apiUrl + "?key=" + apiKey)
@@ -400,8 +401,7 @@ public class GeminiService {
                         }
                         return cleaned;
                 } catch (Exception e) {
-                        log.error("Error calling Gemini API for general parsing: {}", e.getMessage());
-                        throw new RuntimeException("AI Analysis service is temporarily unavailable", e);
+                        throw handleGeminiException("Gemini API for general parsing", e, "AI Analysis service is temporarily unavailable");
                 }
         }
 
@@ -802,6 +802,7 @@ public class GeminiService {
                 }
 
                 try {
+                        ensureApiKeyConfigured();
                         log.info("Sending text-only request to Gemini API with {}s timeout...", timeoutSeconds);
                         String responseStr = webClient.post()
                                         .uri(apiUrl + "?key=" + apiKey)
@@ -819,8 +820,34 @@ public class GeminiService {
                                         .path("text").asText();
                         return aiResultText.replace("```json", "").replace("```", "").trim();
                 } catch (Exception e) {
-                        log.error("Error calling Gemini API: {}", e.getMessage());
-                        throw new RuntimeException("AI Interview service is temporarily unavailable", e);
+                        throw handleGeminiException("Gemini API", e, "AI Interview service is temporarily unavailable");
                 }
+        }
+
+        private void ensureApiKeyConfigured() {
+                if (apiKey == null || apiKey.isBlank()) {
+                        throw new IllegalStateException("GEMINI_API_KEY is not configured");
+                }
+        }
+
+        private RuntimeException handleGeminiException(String context, Exception e, String userMessage) {
+                if (e instanceof WebClientResponseException webClientException) {
+                        String responseBody = webClientException.getResponseBodyAsString();
+                        log.error("{} failed with status {} and body: {}",
+                                        context,
+                                        webClientException.getStatusCode(),
+                                        responseBody);
+                        return new RuntimeException(userMessage + ": " + webClientException.getStatusCode() + " " + truncate(responseBody, 500), e);
+                } else {
+                        log.error("{} failed: {}", context, e.getMessage(), e);
+                }
+                return new RuntimeException(userMessage, e);
+        }
+
+        private String truncate(String value, int maxLength) {
+                if (value == null) {
+                        return "";
+                }
+                return value.length() <= maxLength ? value : value.substring(0, maxLength);
         }
 }
