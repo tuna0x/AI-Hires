@@ -64,6 +64,7 @@ public class InterviewService {
         try {
             log.info("Attempting to fix interview_sessions schema: allowing NULL application_id...");
             jdbcTemplate.execute("ALTER TABLE interview_sessions MODIFY application_id BIGINT NULL");
+            jdbcTemplate.execute("ALTER TABLE interview_sessions MODIFY status VARCHAR(32) NOT NULL");
             log.info("Successfully fixed interview_sessions schema.");
         } catch (Exception e) {
             log.warn("Schema fix (ALTER TABLE) skipped or failed: {}. This is normal if the column is already NULL or if permissions are restricted.", e.getMessage());
@@ -82,6 +83,57 @@ public class InterviewService {
         } else {
             return DifficultyLevelEnum.HARD;
         }
+    }
+
+    private String buildContextualFallbackQuestion(String targetRole, String jobDescription,
+                                                   String candidateCvText, DifficultyLevelEnum difficulty,
+                                                   int questionOrder) {
+        String role = (targetRole == null || targetRole.isBlank()) ? "vị trí ứng tuyển" : targetRole.trim();
+        String jdContext = compactContext(jobDescription, 180);
+        String cvContext = compactContext(candidateCvText, 180);
+        String levelHint = switch (difficulty) {
+            case EASY -> "ở mức nền tảng, phù hợp Intern/Fresher";
+            case MEDIUM -> "ở mức triển khai thực tế, phù hợp Junior/Middle";
+            case HARD, ADAPTIVE -> "ở mức thiết kế, tối ưu và đánh đổi kỹ thuật";
+        };
+
+        return switch (questionOrder) {
+            case 1 -> "Dựa trên JD của vị trí " + role + ", hãy chọn một yêu cầu kỹ thuật quan trọng và giải thích cách bạn sẽ tiếp cận " + levelHint + ".";
+            case 2 -> "Trong CV của bạn có liên quan đến: \"" + cvContext + "\". Hãy mô tả phần bạn trực tiếp triển khai, quyết định kỹ thuật chính và kết quả đạt được.";
+            case 3 -> "Với bối cảnh JD: \"" + jdContext + "\", nếu gặp một lỗi hoặc rủi ro kỹ thuật trong quá trình triển khai, bạn sẽ debug và cô lập nguyên nhân như thế nào?";
+            case 4 -> "Hãy phân tích một lựa chọn kỹ thuật bạn sẽ cân nhắc cho vị trí " + role + ": vì sao chọn cách đó, trade-off là gì và khi nào cần đổi hướng?";
+            default -> "Nếu được cải thiện một phần kỹ thuật trong project hoặc CV hiện tại để phù hợp hơn với vị trí " + role + ", bạn sẽ ưu tiên phần nào và đo kết quả ra sao?";
+        };
+    }
+
+    private String compactContext(String value, int maxLength) {
+        if (value == null || value.isBlank()) {
+            return "chưa có ngữ cảnh cụ thể";
+        }
+        String normalized = value.replaceAll("\\s+", " ").trim();
+        return normalized.length() <= maxLength ? normalized : normalized.substring(0, maxLength) + "...";
+    }
+
+    private void publishReportIfReady(Long sessionId) {
+        InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
+        if (session == null || session.getStatus() != InterviewSessionStatusEnum.IN_PROGRESS) {
+            return;
+        }
+
+        long answeredCount = answerRepository.countTotalAnswersNative(sessionId);
+        int requiredAnswers = session.getMaxQuestions() == null ? 5 : session.getMaxQuestions();
+        if (answeredCount < requiredAnswers) {
+            log.info("Session {} is not ready for report yet: answered={}/{}", sessionId, answeredCount, requiredAnswers);
+            return;
+        }
+
+        if (reportRepository.findByInterviewSessionId(sessionId).isPresent()) {
+            return;
+        }
+
+        reportGenerationPublisher.publishReportJob(ReportGenerationMessage.builder()
+                .sessionId(sessionId)
+                .build());
     }
 
     @Transactional(readOnly = true)
@@ -325,19 +377,11 @@ public class InterviewService {
             }
         }
 
-        // Fallback for missing questions
-        String[] fallbacks = {
-            "Hãy giới thiệu bản thân và tóm tắt những dự án nổi bật nhất mà bạn từng thực hiện.",
-            "Bạn xử lý thế nào khi gặp một vấn đề kỹ thuật khó khăn mà không tìm được giải pháp trên mạng?",
-            "Hãy chia sẻ về một lần bạn làm việc nhóm và có bất đồng quan điểm. Bạn đã giải quyết như thế nào?",
-            "Điều gì là thành tựu tự hào nhất của bạn trong công việc/học tập từ trước đến nay?",
-            "Bạn mong muốn đạt được điều gì trong 2-3 năm tới trên con đường sự nghiệp của mình?"
-        };
-        
+        String candidateCvText = resume != null ? resume.getExtractedText() : null;
         for (int i = sessionQuestions.size(); i < 5; i++) {
             sessionQuestions.add(InterviewQuestion.builder()
                     .interviewSession(session)
-                    .questionText(fallbacks[i])
+                    .questionText(buildContextualFallbackQuestion(targetRole, jobDescription, candidateCvText, difficulty, i + 1))
                     .questionType(QuestionTypeEnum.TECHNICAL)
                     .difficulty(difficulty)
                     .questionOrder(i + 1)
@@ -559,8 +603,8 @@ public class InterviewService {
     public InterviewSession finishSession(Long sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
-        // Simply return session. Background worker is handling report generation.
-        log.info("finishSession called for session {}. Returning immediately for async processing.", sessionId);
+        publishReportIfReady(sessionId);
+        log.info("finishSession called for session {}. Report generation was requested when ready.", sessionId);
         return session;
     }
 
@@ -569,15 +613,15 @@ public class InterviewService {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
 
-        if (session.getStatus() == InterviewSessionStatusEnum.COMPLETED || 
-            session.getStatus() == InterviewSessionStatusEnum.REPORT_GENERATING) {
-            log.info("Report for session {} is already COMPLETED or GENERATING. Skipping.", sessionId);
+        if (reportRepository.findByInterviewSessionId(sessionId).isPresent()) {
+            log.info("Report for session {} already exists. Skipping generation.", sessionId);
             return session;
         }
 
-        // Set status to REPORT_GENERATING to prevent race conditions
-        session.setStatus(InterviewSessionStatusEnum.REPORT_GENERATING);
-        session = sessionRepository.saveAndFlush(session);
+        if (session.getStatus() == InterviewSessionStatusEnum.COMPLETED) {
+            log.info("Report for session {} is already COMPLETED. Skipping.", sessionId);
+            return session;
+        }
 
         try {
             List<InterviewQuestion> questions = questionRepository.findByInterviewSessionIdOrderByQuestionOrderAsc(sessionId);

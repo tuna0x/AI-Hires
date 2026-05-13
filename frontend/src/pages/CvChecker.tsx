@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useDropzone } from "react-dropzone";
+import { type FileRejection, useDropzone } from "react-dropzone";
 import { motion, AnimatePresence } from "framer-motion";
 import { UploadCloud, FileText, Sparkles, ShieldCheck, Zap, Loader2, Check, AlertCircle, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -37,6 +37,24 @@ const LOADER_STAGES = [
     range: [75, 100],
   },
 ];
+
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+};
+
+const getErrorMessage = (err: unknown, fallback: string) => {
+  if (typeof err !== "object" || err === null) {
+    return fallback;
+  }
+
+  const error = err as ApiErrorLike;
+  return error.response?.data?.message || error.message || fallback;
+};
 
 export default function CvChecker() {
   const navigate = useNavigate();
@@ -111,10 +129,10 @@ export default function CvChecker() {
         } else {
           setTimeout(() => pollResumeStatus(scanId), 3500);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         clearInterval(tick);
         setAnalyzing(false);
-        setError(err.response?.data?.message || err.message || "Có lỗi xảy ra khi kiểm tra tiến độ phân tích.");
+        setError(getErrorMessage(err, "Có lỗi xảy ra khi kiểm tra tiến độ phân tích."));
       }
     };
 
@@ -151,10 +169,10 @@ export default function CvChecker() {
             setTimeout(() => pollResumeStatus(scan.id), 5000);
           }
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
           clearInterval(tick);
           setAnalyzing(false);
-          const errMsg = err.response?.data?.message || err.message || "Tải lên và phân tích CV thất bại. Vui lòng thử lại!";
+          const errMsg = getErrorMessage(err, "Tải lên và phân tích CV thất bại. Vui lòng thử lại!");
           setError(errMsg);
         }
       });
@@ -167,10 +185,10 @@ export default function CvChecker() {
     }
   }, [params, startAnalysis]);
 
-  const onDrop = useCallback((accepted: File[], rejections: any[]) => {
+  const onDrop = useCallback((accepted: File[], rejections: FileRejection[]) => {
     setError(null);
     if (rejections.length) {
-      setError("Vui lòng tải lên file PDF hoặc DOCX dung lượng dưới 5MB.");
+      setError("Vui lòng tải lên file PDF hoặc DOCX dung lượng dưới 10MB.");
       return;
     }
     const f = accepted[0];
@@ -186,7 +204,7 @@ export default function CvChecker() {
       "application/pdf": [".pdf"],
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
     },
-    maxSize: 5 * 1024 * 1024,
+    maxSize: 10 * 1024 * 1024,
     maxFiles: 1,
     disabled: analyzing,
   });
@@ -207,7 +225,7 @@ export default function CvChecker() {
             <Sparkles className="h-3.5 w-3.5" /> Bước 1 — Phân tích CV
           </span>
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">Tải CV lên để được phân tích chuẩn ATS</h1>
-          <p className="mt-4 text-lg text-muted-foreground">PDF hoặc DOCX, tối đa 5MB. File của bạn được xử lý riêng tư và không chia sẻ.</p>
+          <p className="mt-4 text-lg text-muted-foreground">PDF hoặc DOCX, tối đa 10MB. File của bạn được xử lý riêng tư và không chia sẻ.</p>
 
           <div {...getRootProps()} className={`mt-10 rounded-3xl border-2 border-dashed p-10 lg:p-14 cursor-pointer transition-all bg-card ${isDragActive ? "border-primary bg-primary-light" : "border-border hover:border-primary/50 hover:bg-secondary/40"} ${analyzing ? "opacity-60 pointer-events-none" : ""}`}>
             <input {...getInputProps()} />
@@ -216,7 +234,7 @@ export default function CvChecker() {
                 <UploadCloud className="h-7 w-7" />
               </div>
               <h3 className="mt-5 text-xl font-bold">{isDragActive ? "Thả file vào đây" : "Kéo & thả CV của bạn"}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">hoặc bấm để chọn file — PDF, DOCX · tối đa 5MB</p>
+              <p className="mt-2 text-sm text-muted-foreground">hoặc bấm để chọn file — PDF, DOCX · tối đa 10MB</p>
               <div className="mt-6 flex flex-wrap gap-3 justify-center">
                 <Button className="bg-gradient-primary text-primary-foreground shadow-soft hover:shadow-glow rounded-xl h-11 px-6 font-semibold">Tải CV lên</Button>
                 <Button

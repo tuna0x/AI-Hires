@@ -22,7 +22,7 @@ public class ResumeScanStateService {
         int updated = resumeScanRepository.claimForProcessing(
                 scanId,
                 ResumeScanStatusEnum.EXTRACTING,
-                List.of(ResumeScanStatusEnum.PENDING, ResumeScanStatusEnum.FAILED)
+                List.of(ResumeScanStatusEnum.PENDING)
         );
         if (updated == 0) {
             return null;

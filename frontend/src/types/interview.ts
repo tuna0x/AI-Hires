@@ -34,7 +34,7 @@ export interface InterviewQuestion {
 
 export interface InterviewSession {
   id: number;
-  status: "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
+  status: "IN_PROGRESS" | "REPORT_GENERATING" | "COMPLETED" | "CANCELLED";
   interviewType: string;
   difficultyLevel: "EASY" | "MEDIUM" | "HARD" | "ADAPTIVE";
   totalQuestions: number;

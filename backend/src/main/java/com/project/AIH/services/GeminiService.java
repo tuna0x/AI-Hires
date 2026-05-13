@@ -195,7 +195,7 @@ public class GeminiService {
                                                 "    { \"action\": \"<Hành động 2>\", \"priority\": \"Trung bình\" }\n" +
                                                 "  ]\n" +
                                                 "}\n\n" +
-                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.",
+                                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt có dấu cho các mô tả (details, strengths, actions, sub_tips). Mỗi detail phải có bằng chứng quan sát được, lý do cộng/trừ điểm và tác động đến ATS/nhà tuyển dụng; không viết chung chung. sub_tips phải dài 20-35 từ, cá nhân hóa và chỉ rõ sửa mục nào. priority_actions phải là việc làm cụ thể có thể sửa ngay. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.",
                                 levelInstruction, jobDescription);
 
                 Map<String, Object> generationConfig = Map.of(
@@ -361,7 +361,7 @@ public class GeminiService {
                                 "    }\n" +
                                 "  ]\n" +
                                 "}\n\n" +
-                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Quy tắc lọc sub_tips và score_gaps: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
+                                "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt có dấu cho các mô tả (details, strengths, actions, sub_tips, score_gaps). Mỗi detail phải có bằng chứng quan sát được, lý do cộng/trừ điểm và tác động đến ATS/nhà tuyển dụng; không viết chung chung. sub_tips và score_gaps phải cá nhân hóa, dài vừa đủ để ứng viên biết sửa mục nào, thêm dữ liệu gì và viết theo công thức nào. Sắp xếp score_gaps theo 'lost' giảm dần, tối đa 5 mục. Phân tích thật sâu, dựa trên cả hình ảnh trực quan của CV.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
 
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
@@ -415,6 +415,26 @@ public class GeminiService {
                 } else {
                         return "Ứng viên ở cấp độ SENIOR/LEAD. Tập trung hỏi về: Thiết kế hệ thống phân tán (System Design), khả năng mở rộng hệ thống chịu tải (Scalability), tối ưu hóa hiệu năng cao (Performance tuning), xử lý bất đồng bộ/đồng thời phức tạp (concurrency/locking), bảo mật, microservices, giải quyết bài toán thắt nút cổ chai (Bottlenecks) và khả năng biện luận đưa ra các lựa chọn đánh đổi kiến trúc (Architectural Trade-offs) dựa trên các dự án lớn trong CV.";
                 }
+        }
+
+        private String buildTechnicalInterviewInstruction(String targetRole, String level) {
+                String role = targetRole == null ? "" : targetRole;
+                String normalizedLevel = level == null ? "" : level.toUpperCase();
+                String easyExamples = normalizedLevel.contains("EASY") || normalizedLevel.contains("INTERN") || normalizedLevel.contains("FRESHER")
+                                ? "Với EASY/INTERN/FRESHER, câu hỏi phải vừa sức nhưng vẫn là kỹ thuật: OOP, Java core, collection, exception, SQL cơ bản, HTTP/REST, CRUD, Git, debug lỗi đơn giản và project môn học khi phù hợp.\n"
+                                : "";
+                return "QUY TẮC BẮT BUỘC CHO TECHNICAL SCREENING - vị trí: " + role + "\n"
+                                + "Toàn bộ câu hỏi phải dùng tiếng Việt có dấu đầy đủ trong field JSON \"question\".\n"
+                                + "Mỗi câu hỏi phải kiểm tra kiến thức kỹ thuật, cách triển khai thực tế, debug, lựa chọn thiết kế hoặc quyết định kỹ thuật trong project.\n"
+                                + "Nếu role/JD có Java, Spring, backend, frontend, data, DevOps hoặc IT, mọi câu hỏi phải bám sát stack đó hoặc project kỹ thuật của ứng viên.\n"
+                                + easyExamples
+                                + "Không hỏi định hướng nghề nghiệp, mục tiêu tương lai, giới thiệu bản thân, điểm mạnh/yếu, xung đột teamwork, động lực hoặc behavioral chung chung nếu JD không yêu cầu rõ.\n"
+                                + "Câu hỏi xấu: 'Bạn mong muốn đạt được điều gì trong 2-3 năm tới?'\n"
+                                + "Câu hỏi tốt cho Java intern: 'Trong Java, interface khác abstract class như thế nào và khi nào em dùng mỗi loại?'\n";
+        }
+
+        private String nullToEmpty(String value) {
+                return value == null ? "" : value;
         }
 
 
@@ -480,6 +500,7 @@ public class GeminiService {
 
         public String generateAllQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
                 String levelInstruction = getLevelInstruction(level);
+                String technicalJobDescription = buildTechnicalInterviewInstruction(targetRole, level) + "\n\n" + nullToEmpty(jobDescription);
                 String prompt = String.format(
                                 "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
                                 "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
@@ -501,7 +522,7 @@ public class GeminiService {
                                 "  // ... tiếp tục cho đến câu 5, lưu ý câu 4, 5 can_reuse thường là false\n" +
                                 "]\n" +
                                 "Đảm bảo trả về đúng 5 phần tử trong mảng JSON.",
-                                targetRole, industry, level, levelInstruction, jobDescription, candidateCvText);
+                                targetRole, industry, level, levelInstruction, technicalJobDescription, candidateCvText);
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
                                 "responseMimeType", "application/json");
@@ -510,6 +531,7 @@ public class GeminiService {
 
         public String generatePersonalizedQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level, int count) {
                 String levelInstruction = getLevelInstruction(level);
+                String technicalJobDescription = buildTechnicalInterviewInstruction(targetRole, level) + "\n\n" + nullToEmpty(jobDescription);
                 String prompt = String.format(
                                 "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
                                 "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
@@ -529,7 +551,7 @@ public class GeminiService {
                                 "  }\n" +
                                 "]\n" +
                                 "Đảm bảo trả về đúng %d phần tử trong mảng JSON.",
-                                targetRole, industry, level, levelInstruction, jobDescription, candidateCvText, count, count, count);
+                                targetRole, industry, level, levelInstruction, technicalJobDescription, candidateCvText, count, count, count);
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
                                 "responseMimeType", "application/json");
@@ -666,6 +688,11 @@ public class GeminiService {
                 + "- 55-69 : Trung bình — cần cải thiện đáng kể\n"
                 + "- Dưới 55: Yếu — cần làm lại CV từ đầu\n"
                 + "Hầu hết CV thực tế nằm ở mức 45-70. Không grade inflate.\n\n"
+                + "YÊU CẦU ĐỘ CHI TIẾT BẮT BUỘC:\n"
+                + "- Mỗi dòng trong details phải nêu rõ bằng chứng quan sát được trong CV, lý do cộng/trừ điểm và tác động đến ATS/nhà tuyển dụng; không viết chung chung.\n"
+                + "- sub_tips phải là gợi ý cá nhân hóa 20-35 từ, chỉ rõ ứng viên cần thêm/sửa nội dung gì, ở mục nào, theo công thức hoặc ví dụ nào.\n"
+                + "- strengths phải nêu điểm mạnh có bằng chứng cụ thể từ CV, không chỉ liệt kê tính từ.\n"
+                + "- priority_actions phải là việc làm cụ thể, có thứ tự ưu tiên, đủ rõ để ứng viên sửa CV ngay.\n\n"
                 + "NỘI DUNG VĂN BẢN CV:\n" + extractedText + "\n\n"
                 + "YÊU CẦU TRẢ VỀ ĐÚNG 1 OBJECT JSON DUY NHẤT (TUYỆT ĐỐI KHÔNG CÓ MARKDOWN HAY TEXT THỪA) THEO CẤU TRÚC SAU:\n"
                 + "{\n"
@@ -739,29 +766,29 @@ public class GeminiService {
                 + "    ]\n"
                 + "  },\n"
                 + "  \"sub_tips\": {\n"
-                + "    \"file_technical\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"ats_parsability\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"typography\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"length\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"contact\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"summary\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"sections\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"organization\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"language\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"quantification\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"keywords\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"consistency\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"progression\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"bullet_quality\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"scope_impact\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"technical_evidence\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"projects\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"certs\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"leadership\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"international\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"awards\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"learning\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\",\n"
-                + "    \"category_specific\": \"<tip ngắn ≤ 15 từ nếu điểm < 70% tối đa, ngược lại null>\"\n"
+                + "    \"file_technical\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"ats_parsability\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"typography\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"length\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"contact\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"summary\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"sections\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"organization\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"language\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"quantification\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"keywords\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"consistency\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"progression\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"bullet_quality\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"scope_impact\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"technical_evidence\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"projects\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"certs\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"leadership\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"international\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"awards\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"learning\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\",\n"
+                + "    \"category_specific\": \"<tip 20-35 từ, cụ thể nếu điểm < 70% tối đa, ngược lại null>\"\n"
                 + "  },\n"
                 + "  \"strengths\": [\"<Liệt kê 2-3 điểm mạnh cốt lõi>\"],\n"
                 + "  \"priority_actions\": [\n"
@@ -775,7 +802,7 @@ public class GeminiService {
                 + "- Awards (max 2đ): 0đ nếu không có, 1đ nếu đạt giải nội bộ, cuộc thi nhỏ, 2đ nếu đạt giải cấp quốc gia/quốc tế hoặc được công nhận bởi tổ chức uy tín.\n"
                 + "- Learning (max 2đ): 0đ nếu không có bằng chứng tự học, 1đ nếu có chứng chỉ online lẻ hoặc học công nghệ mới, 2đ nếu có chuỗi chứng chỉ học tập liên tục hoặc contribute open source hoặc blog kỹ thuật.\n"
                 + "- Category-Specific (max 2đ): 0đ nếu không có portfolio/bằng chứng chuyên ngành, 1đ nếu có portfolio/GitHub nhưng sơ sài, 2đ nếu portfolio cực mạnh bám sát vị trí (IT->GitHub active, Design->Behance, Marketing->Case study chi tiết, Finance->CFA/CPA/số liệu P&L, Sales->Revenue quota attainment).\n\n"
-                + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
+                + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt có dấu cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, chỉ ra bằng chứng cụ thể từ CV và đề xuất hành động sửa được ngay.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
                                 "responseMimeType", "application/json");

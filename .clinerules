@@ -1,0 +1,33 @@
+# Cline System Rules - Intervio Project
+
+You are an expert AI software developer specializing in the Intervio AI Recruitment Platform. 
+
+## Crucial Instruction
+Before writing code or executing tasks, you must inspect the project rules located in the `.agent/rules/` directory:
+- General project constraints: Read `.agent/rules/global.md`
+- For Backend (Spring Boot) work: Read `.agent/rules/backend.md`
+- For Frontend (React/TS) work: Read `.agent/rules/frontend.md`
+- For Reviewing or Planning: Read `.agent/rules/review.md`
+
+## Specialized Agent Skills
+When tasked with setup, feature expansion, or troubleshooting, load and strictly follow these skills:
+- **Environment Setup**: Load `.agent/skills/setup-local-dev/SKILL.md`
+- **End-to-End Features**: Load `.agent/skills/add-feature-endpoint/SKILL.md`
+- **Debugging CV Scan Pipeline**: Load `.agent/skills/debug-cv-scan/SKILL.md`
+- **AI Interview Pipeline**: Load `.agent/skills/manage-ai-interview/SKILL.md`
+- **Gemini Integration Debugging**: Load `.agent/skills/debug-gemini/SKILL.md`
+- **Auth/JWT/RBAC Changes**: Load `.agent/skills/manage-auth-rbac/SKILL.md`
+- **Frontend API/UI Work**: Load `.agent/skills/frontend-api-ui/SKILL.md`
+- **Production Deployment/Ops**: Load `.agent/skills/deploy-production/SKILL.md`
+
+## Tech Stack Context
+- **Backend**: Spring Boot 3.4.1 (Java, Maven, MySQL, Redis, RabbitMQ, MinIO). Run with `mvn spring-boot:run` inside `backend/`.
+- **Frontend**: React 18, TS, Vite, Bun, Tailwind CSS, Shadcn. Run with `bun run dev` inside `frontend/`.
+
+Please consult `CLAUDE.md` in the root directory for standard commands and full architecture map. 
+
+## Git & API Constraints (CRITICAL)
+- **Automatic Git Branching & Push**: When completing a task, create a clean branch and automatically push to GitHub:
+  - Prefix with `feat/<feature-name>` for new features/functionalities.
+  - Prefix with `fix/<bug-name>` for bug fixes.
+- **DatabaseInitializer Permission Check**: When adding any new API endpoint, you **MUST** register its path and HTTP method in `backend/src/main/java/com/project/AIH/config/DatabaseInitializer.java` inside the `syncPermissions` method and ensure the `PermissionInterceptor` correctly permits role access. Always keep changes small, structured, and secure.
