@@ -46,7 +46,8 @@ public class ResumeScanWorker {
     private static final Set<ResumeScanStatusEnum> TERMINAL_OR_ACTIVE_STATUSES = Set.of(
             ResumeScanStatusEnum.EXTRACTING,
             ResumeScanStatusEnum.ANALYZING,
-            ResumeScanStatusEnum.COMPLETED
+            ResumeScanStatusEnum.COMPLETED,
+            ResumeScanStatusEnum.FAILED
     );
 
     @RabbitListener(queues = RabbitMQConfig.CV_PARSING_QUEUE)
@@ -117,9 +118,7 @@ public class ResumeScanWorker {
                 if (isRetryable(e) && !hasExhaustedRetries(scan)) {
                     throw new RuntimeException("Retryable resume scan failure", e);
                 }
-                if (isRetryable(e)) {
-                    throw new RuntimeException("Resume scan exhausted retries", e);
-                }
+                throw new AmqpRejectAndDontRequeueException("Resume scan processing failed", e);
             }
             if (e instanceof AmqpRejectAndDontRequeueException rejectAndDontRequeueException) {
                 throw rejectAndDontRequeueException;
@@ -149,14 +148,34 @@ public class ResumeScanWorker {
     }
 
     boolean shouldUseVisionFirst(String contentType, String extractedText, boolean textExtractionSucceeded) {
-        if (isPdf(contentType)) {
-            return true;
-        }
-        return !textExtractionSucceeded || extractedText == null || extractedText.trim().isEmpty();
+        return !textExtractionSucceeded || isTextCorrupted(extractedText);
     }
 
-    private boolean isPdf(String contentType) {
-        return contentType != null && contentType.toLowerCase().contains("pdf");
+    boolean isTextCorrupted(String extractedText) {
+        if (extractedText == null) {
+            return true;
+        }
+
+        String trimmed = extractedText.trim();
+        if (trimmed.length() < 80) {
+            return true;
+        }
+
+        int suspiciousChars = 0;
+        int letters = 0;
+        for (int i = 0; i < trimmed.length(); i++) {
+            char ch = trimmed.charAt(i);
+            if (ch == '\uFFFD' || (Character.isISOControl(ch) && !Character.isWhitespace(ch))) {
+                suspiciousChars++;
+            }
+            if (Character.isLetter(ch)) {
+                letters++;
+            }
+        }
+
+        double suspiciousRatio = (double) suspiciousChars / trimmed.length();
+        double letterRatio = (double) letters / trimmed.length();
+        return suspiciousRatio > 0.03 || letterRatio < 0.25;
     }
 
     private String parseResumeWithTextFallback(byte[] fileBytes, String contentType, String extractedText, boolean textExtractionSucceeded) {

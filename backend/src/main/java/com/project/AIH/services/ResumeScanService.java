@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Slf4j
 public class ResumeScanService {
-    private static final long MAX_SCAN_FILE_SIZE_BYTES = 50L * 1024 * 1024;
+    private static final long MAX_SCAN_FILE_SIZE_BYTES = 10L * 1024 * 1024;
 
     private final ResumeScanRepository resumeScanRepository;
     private final FileService fileService;
@@ -212,7 +212,7 @@ public class ResumeScanService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File khong co noi dung.");
         }
         if (file.getSize() > MAX_SCAN_FILE_SIZE_BYTES) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File qua lon. Toi da 50MB.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File qua lon. Toi da 10MB.");
         }
         try {
             Tika tika = new Tika();

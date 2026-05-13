@@ -52,7 +52,7 @@ app:
     secretKey: "${MINIO_SECRET_KEY:minioadmin}"
     bucket: "${MINIO_BUCKET:ai-hire-resumes}"
   gemini:
-    api-key: "${GEMINI_API_KEY:AIzaSyAIw2jm5GclwW5c_bjQnIbWl-hUJgQG4C8}"
+    api-key: "${GEMINI_API_KEY:AIzaSyDvs-DJYjA7Kvc0Cv70Txqzu899nG_qji4}"
     api-url: "${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent}"
     model-name: "${GEMINI_MODEL_NAME:gemini-3.1-flash-lite}"
     prompt-version: "${GEMINI_PROMPT_VERSION:v1.0}"

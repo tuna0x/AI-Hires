@@ -129,6 +129,16 @@ export default function InterviewResult() {
     navigate("/interview");
   };
 
+  const handleRetryReport = async () => {
+    try {
+      await interviewApi.finishInterview(id);
+      setPollingAttempt(0);
+      toast.success("Da yeu cau tao lai bao cao. Vui long doi them giay lat.");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Khong the yeu cau tao lai bao cao.");
+    }
+  };
+
   // Safe checks and calculations
   const radarData = useMemo(() => {
     if (questions.length === 0) return [];
@@ -210,6 +220,8 @@ export default function InterviewResult() {
       "Hoàn thiện báo cáo phân tích năng lực..."
     ];
     const currentStepIdx = Math.min(Math.floor(pollingAttempt / 2), loadingSteps.length - 1);
+    const isTakingTooLong = pollingAttempt >= 40;
+    const progressPercent = isTakingTooLong ? 95 : Math.min(Math.round((currentStepIdx + 1) / loadingSteps.length * 100), 95);
 
     return (
       <SiteLayout>
@@ -246,13 +258,13 @@ export default function InterviewResult() {
             <div className="bg-secondary/40 border border-border/40 rounded-2xl p-4.5 text-left space-y-3.5 relative">
               <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex justify-between">
                 <span>Tiến trình xử lý</span>
-                <span>{Math.round((currentStepIdx + 1) / loadingSteps.length * 100)}%</span>
+                <span>{progressPercent}%</span>
               </div>
               <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
                 <motion.div 
                   className="h-full bg-gradient-primary rounded-full"
                   initial={{ width: "0%" }}
-                  animate={{ width: `${((currentStepIdx + 1) / loadingSteps.length) * 100}%` }}
+                  animate={{ width: `${progressPercent}%` }}
                   transition={{ duration: 0.5 }}
                 />
               </div>
@@ -271,6 +283,23 @@ export default function InterviewResult() {
                 </motion.div>
               </AnimatePresence>
             </div>
+
+            {isTakingTooLong && (
+              <div className="space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-left">
+                <p className="text-xs font-semibold leading-relaxed text-foreground/90">
+                  Bao cao dang mat nhieu thoi gian hon binh thuong. Ban co the yeu cau backend tao lai job report.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleRetryReport}
+                  className="h-8 rounded-lg text-xs font-bold"
+                >
+                  <RefreshCw className="mr-2 h-3.5 w-3.5" /> Tao lai report
+                </Button>
+              </div>
+            )}
 
             <div className="text-[10px] text-muted-foreground font-semibold">
               Phiên ID: #{id} • Trình độ: {session.difficultyLevel}
