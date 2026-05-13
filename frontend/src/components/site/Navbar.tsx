@@ -18,6 +18,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const links = [
   { href: "/dashboard", label: "Tổng quan" },
+  { href: "/jobs", label: "Việc làm" },
   { href: "/cv-analysis", label: "Phân tích CV" },
   { href: "/interview", label: "Luyện phỏng vấn" },
   // { href: "/pricing", label: "Bảng giá" }, // tạm ẩn
