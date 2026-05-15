@@ -1,10 +1,14 @@
 import { Link } from "react-router-dom";
-import { Users, FileSpreadsheet, Briefcase, Sparkles, TrendingUp, ArrowRight, UserCheck, Star, ChevronRight } from "lucide-react";
+import { 
+  Users, FileSpreadsheet, Briefcase, Sparkles, TrendingUp, 
+  ArrowRight, UserCheck, Star, ChevronRight, 
+  Zap, Clock, Target, ArrowUpRight, MessageSquare
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { motion } from "framer-motion";
 
-// Mock dữ liệu ứng viên mới nhất ứng tuyển
 const RECENT_APPLICANTS = [
   {
     id: 1,
@@ -20,7 +24,7 @@ const RECENT_APPLICANTS = [
     jobTitle: "React Frontend Developer",
     appliedAt: "2 ngày trước",
     atsScore: 88,
-    status: "Đã hoàn thành AI, Đang chấm",
+    status: "Đang chấm điểm",
   },
   {
     id: 3,
@@ -37,185 +41,187 @@ const PIPELINE_STAGES = [
   { label: "Sàng lọc AI", count: 8, color: "bg-primary" },
   { label: "Phỏng vấn AI", count: 5, color: "bg-indigo-500" },
   { label: "Gặp mặt", count: 3, color: "bg-orange-500" },
-  { label: "Offer", count: 2, color: "bg-green-500" }
+  { label: "Offer", count: 2, color: "bg-emerald-500" }
 ];
 
 export default function DashboardHR() {
   return (
-    <div className="space-y-10 pb-10">
+    <div className="space-y-12 pb-20 animate-in fade-in duration-700">
       
-      {/* Recruitment Pipeline (LinkedIn Style) */}
+      {/* SECTION: PIPELINE FUNNEL - Isolated Style */}
       <section className="space-y-6">
-        <div className="flex items-center justify-between px-1">
-          <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-3">
-            <div className="h-6 w-1 bg-primary rounded-full" />
-            Phễu tuyển dụng (Pipeline)
-          </h3>
-          <Badge variant="outline" className="border-primary/20 text-primary bg-primary/5 rounded-lg px-3 py-1 font-bold">
-            Live Updates
-          </Badge>
+        <div className="flex items-center justify-between px-2">
+          <div className="flex items-center gap-3">
+             <div className="h-4 w-1.5 bg-primary rounded-full" />
+             <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-foreground">Phễu Tuyển Dụng</h3>
+          </div>
+          <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold uppercase tracking-widest px-3 py-1">Live Monitor</Badge>
         </div>
+
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
           {PIPELINE_STAGES.map((stage, idx) => (
-            <div key={idx} className="relative p-6 rounded-[2rem] border border-white/5 bg-white/5 hover:border-primary/30 transition-all group overflow-hidden shadow-soft">
-               <div className={cn("absolute top-0 right-0 h-1 w-full opacity-50", stage.color)} />
-               <div className="space-y-2 relative z-10">
-                 <div className="text-3xl font-black tracking-tight">{stage.count}</div>
-                 <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{stage.label}</div>
-               </div>
-               <ChevronRight className="absolute bottom-6 right-6 h-4 w-4 text-muted-foreground/20 group-hover:text-primary group-hover:translate-x-1 transition-all" />
+            <div key={idx} className="relative group">
+              <div className="h-32 rounded-[2rem] bg-card border border-border/80 shadow-soft flex flex-col items-center justify-center space-y-2 text-center transition-all duration-300 hover:border-primary/40 hover:shadow-card group overflow-hidden">
+                <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] group-hover:text-primary transition-colors">{stage.label}</div>
+                <div className="text-4xl font-black text-foreground tracking-tighter">{stage.count}</div>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Grid thống kê tổng quan */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        
-        <div className="rounded-[2.5rem] border border-white/5 bg-white/5 p-8 flex flex-col justify-between h-48 relative group overflow-hidden shadow-soft">
-          <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-primary/10 to-transparent pointer-events-none" />
-          <div className="flex justify-between items-start relative z-10">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Hiệu suất tin đăng</span>
-            <div className="h-10 w-10 rounded-xl bg-yellow-500/10 flex items-center justify-center text-yellow-500">
-              <Sparkles className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="relative z-10">
-            <h3 className="text-5xl font-black tracking-tight">1.2k</h3>
-            <p className="text-[11px] text-muted-foreground mt-2 font-medium">Lượt xem ứng viên tiềm năng trong tuần</p>
-          </div>
+      {/* SECTION: METRICS */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="p-8 rounded-[2.5rem] bg-card border border-border/80 shadow-card flex flex-col justify-between group">
+           <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-background border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors shadow-soft">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <Badge className="bg-emerald-500/10 text-emerald-500 border-none text-[9px] font-black uppercase tracking-widest">+12%</Badge>
+           </div>
+           <div className="mt-8 space-y-1">
+              <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Hiệu suất tin đăng</div>
+              <div className="text-4xl font-black text-foreground tracking-tighter">1.2k views</div>
+           </div>
         </div>
 
-        <div className="rounded-[2.5rem] border border-white/5 bg-white/5 p-8 flex flex-col justify-between h-48 relative group overflow-hidden shadow-soft">
-          <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-primary/10 to-transparent pointer-events-none" />
-          <div className="flex justify-between items-start relative z-10">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Độ chính xác AI (ATS)</span>
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
-              <Star className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="relative z-10">
-            <h3 className="text-5xl font-black tracking-tight">94%</h3>
-            <span className="text-[11px] text-emerald-500 font-bold flex items-center gap-1.5 mt-2 bg-emerald-500/10 w-fit px-3 py-1 rounded-lg">
-              <UserCheck className="h-3.5 w-3.5" /> Tiết kiệm 45h/tuần
-            </span>
-          </div>
+        <div className="p-8 rounded-[2.5rem] bg-card border border-border/80 shadow-card flex flex-col justify-between group">
+           <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-background border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors shadow-soft">
+                <Target className="h-5 w-5" />
+              </div>
+              <div className="text-[9px] font-black text-primary uppercase tracking-[0.2em] flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" /> Precision
+              </div>
+           </div>
+           <div className="mt-8 space-y-1">
+              <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Độ chính xác AI (ATS)</div>
+              <div className="text-4xl font-black text-foreground tracking-tighter">94% pts</div>
+           </div>
         </div>
 
-        <div className="rounded-[2.5rem] border border-white/5 bg-white/5 p-8 flex flex-col justify-between h-48 relative group overflow-hidden shadow-soft">
-          <div className="absolute top-0 right-0 h-full w-32 bg-gradient-to-l from-blue-500/10 to-transparent pointer-events-none" />
-          <div className="flex justify-between items-start relative z-10">
-            <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Chiến dịch mở</span>
-            <div className="h-10 w-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-500">
-              <Briefcase className="h-5 w-5" />
-            </div>
-          </div>
-          <div className="relative z-10">
-            <h3 className="text-5xl font-black tracking-tight">04</h3>
-            <Button asChild variant="link" className="p-0 h-auto text-[11px] text-primary font-bold hover:no-underline mt-2">
-              <Link to="/admin/hr/jobs" className="flex items-center gap-2 group/link">
-                Quản lý tin đăng 
-                <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover/link:translate-x-1" />
-              </Link>
-            </Button>
-          </div>
+        <div className="p-8 rounded-[2.5rem] bg-indigo-600/5 border border-indigo-600/20 shadow-soft flex flex-col justify-between group">
+           <div className="flex justify-between items-start">
+              <div className="h-10 w-10 rounded-xl bg-indigo-600/10 border border-indigo-600/20 flex items-center justify-center text-indigo-500 shadow-soft">
+                <Briefcase className="h-5 w-5" />
+              </div>
+              <ArrowUpRight className="h-5 w-5 text-indigo-400 opacity-40 group-hover:opacity-100 transition-opacity" />
+           </div>
+           <div className="mt-8 space-y-1">
+              <div className="text-[9px] font-black text-indigo-500 uppercase tracking-[0.2em]">Chiến dịch mở</div>
+              <div className="text-4xl font-black text-foreground tracking-tighter">04 jobs</div>
+           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Cột trái: Danh sách hồ sơ mới nộp */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="flex justify-between items-center px-1">
-            <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-3">
-              <div className="h-6 w-1 bg-primary rounded-full" />
-              Ứng viên mới nộp
-            </h3>
-            <Button asChild variant="ghost" className="text-xs text-primary hover:bg-primary/5 font-bold rounded-xl px-4 h-10">
-              <Link to="/admin/hr/applicants" className="flex items-center gap-2">
-                Xem tất cả <ArrowRight className="h-4 w-4" />
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-12">
+        
+        {/* SECTION: CANDIDATE LIST - Isolated Cards */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between px-2">
+            <div className="flex items-center gap-3">
+               <div className="h-4 w-1.5 bg-primary rounded-full shadow-[0_0_10px_rgba(34,197,94,0.3)]" />
+               <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-foreground">Ứng viên mới nộp</h3>
+            </div>
+            <Button asChild variant="link" className="text-[10px] text-primary font-black uppercase tracking-[0.2em] hover:no-underline">
+              <Link to="/admin/hr/applicants" className="flex items-center gap-2 group/link">
+                Tổ hợp hồ sơ <ChevronRight className="h-4 w-4 group-hover:translate-x-1 transition-all" />
               </Link>
             </Button>
           </div>
 
-          <div className="grid gap-4">
+          <div className="space-y-4">
             {RECENT_APPLICANTS.map((app) => (
-              <div key={app.id} className="p-6 rounded-[2.5rem] border border-white/5 bg-white/5 hover:border-primary/30 transition-all flex items-center justify-between gap-4 group shadow-soft">
-                <div className="flex items-center gap-5">
-                  <div className="h-14 w-14 rounded-2xl bg-white/5 flex items-center justify-center font-black text-xl text-primary border border-white/10 group-hover:scale-105 transition-transform shadow-glow shadow-primary/5">
+              <div key={app.id} className="p-6 md:px-10 rounded-[2.5rem] bg-card border border-border shadow-card flex flex-col md:flex-row md:items-center justify-between gap-8 group hover:border-primary/40 transition-all duration-300">
+                <div className="flex items-center gap-8">
+                  <div className="h-14 w-14 rounded-2xl bg-background border border-border flex items-center justify-center font-black text-xl text-primary group-hover:bg-primary group-hover:text-primary-foreground group-hover:scale-105 transition-all duration-500">
                     {app.name.charAt(0)}
                   </div>
-                  <div className="min-w-0 space-y-1.5">
-                    <h4 className="text-base font-bold text-white group-hover:text-primary transition-colors">{app.name}</h4>
-                    <div className="flex items-center gap-3 text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-                      <span className="truncate max-w-[200px]">{app.jobTitle}</span>
-                      <span className="h-1 w-1 rounded-full bg-white/20" />
-                      <span>{app.appliedAt}</span>
+                  <div className="space-y-2">
+                    <h4 className="text-[16px] font-black text-foreground tracking-tight leading-none">{app.name}</h4>
+                    <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase tracking-widest opacity-80">
+                      <span className="truncate max-w-[180px]">{app.jobTitle}</span>
+                      <div className="h-1 w-1 rounded-full bg-border" />
+                      <span className="flex items-center gap-2"><Clock className="h-3 w-3 text-primary" /> {app.appliedAt}</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-10">
-                  <div className="text-right space-y-1">
-                    <div className="text-[9px] text-muted-foreground uppercase font-black tracking-[0.2em]">AI Match Score</div>
-                    <div className="text-2xl font-black text-primary tracking-tight">{app.atsScore}%</div>
+                <div className="flex items-center justify-between md:justify-end gap-12 border-t md:border-none pt-4 md:pt-0">
+                  <div className="flex flex-col items-end">
+                     <span className="text-[9px] text-muted-foreground uppercase font-black tracking-widest mb-1.5 opacity-60">AI Relevance</span>
+                     <div className="flex items-baseline gap-1">
+                        <span className="text-3xl font-black text-primary tracking-tighter leading-none">{app.atsScore}</span>
+                        <span className="text-[10px] font-bold text-muted-foreground">%</span>
+                     </div>
                   </div>
-                  <Button asChild variant="outline" className="rounded-xl h-12 border-white/10 bg-white/5 hover:bg-primary hover:text-primary-foreground hover:border-primary text-xs font-bold px-6 hidden md:flex transition-all">
-                    <Link to="/admin/hr/applicants">Chi tiết hồ sơ</Link>
+                  <Button 
+                    asChild 
+                    className="rounded-xl h-11 px-8 bg-primary hover:bg-primary-dark text-primary-foreground text-[10px] font-black uppercase tracking-[0.2em] shadow-glow shadow-primary/20 transition-all active:scale-95"
+                  >
+                    <Link to="/admin/hr/applicants">Chi tiết</Link>
                   </Button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
 
-        {/* Cột phải: AI Insights */}
-        <div className="lg:col-span-1">
-          <div className="rounded-[3rem] border border-white/10 bg-white/5 p-10 space-y-8 relative overflow-hidden glass shadow-elegant">
-            <div className="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-primary/20 blur-[50px] pointer-events-none" />
-            <div className="absolute -bottom-12 -left-12 h-40 w-40 rounded-full bg-accent/10 blur-[50px] pointer-events-none" />
+        {/* SECTION: AI INTELLIGENCE */}
+        <aside className="space-y-6">
+          <div className="flex items-center gap-3 px-2">
+             <div className="h-4 w-1.5 bg-amber-500 rounded-full" />
+             <h3 className="text-[12px] font-black uppercase tracking-[0.2em] text-foreground">Hệ thống gợi ý</h3>
+          </div>
+
+          <div className="rounded-[3rem] bg-card border border-border p-10 shadow-card space-y-10 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 h-48 w-48 bg-primary/5 blur-[80px] pointer-events-none group-hover:bg-primary/10 transition-colors" />
             
-            <h3 className="text-lg font-black flex items-center gap-3 border-b border-white/5 pb-6 text-white tracking-tight">
-              <div className="h-10 w-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Sparkles className="h-6 w-6 text-primary animate-pulse" />
-              </div>
-              Đề xuất bởi Gemini
-            </h3>
+            <div className="flex items-center gap-5 relative z-10">
+               <div className="h-11 w-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shadow-soft">
+                  <Sparkles className="h-5 w-5" />
+               </div>
+               <div>
+                  <h4 className="text-base font-black text-foreground tracking-tight leading-none">Insight bởi Gemini</h4>
+                  <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary px-2 py-0.5 mt-2">Verified</Badge>
+               </div>
+            </div>
 
             <div className="space-y-8 relative z-10">
-              <div className="flex items-start gap-5">
-                <div className="h-12 w-12 shrink-0 rounded-2xl bg-primary text-primary-foreground flex items-center justify-center shadow-glow shadow-primary/20">
-                   <UserCheck className="h-6 w-6" />
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-[15px] font-bold text-white leading-snug">Thỏa thuận phỏng vấn cho ứng viên #952</h4>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed font-medium">
-                    Dựa trên Match Score 95%, <span className="text-primary font-bold">Nguyễn Văn An</span> nên được ưu tiên phỏng vấn vào khung giờ 14:00 - 15:00 sáng mai.
+               <div className="p-6 rounded-3xl bg-background border border-border/80 shadow-soft space-y-4">
+                  <div className="flex items-center gap-2 text-[10px] font-black text-primary uppercase tracking-[0.2em]">
+                     <Zap className="h-4 w-4" /> Priority Match
+                  </div>
+                  <p className="text-[13px] text-foreground font-bold leading-snug">
+                     Ứng viên <span className="text-primary tracking-tight">Nguyễn Văn An</span> đạt điểm số tuyệt đối.
                   </p>
-                </div>
-              </div>
-              
-              <div className="p-6 rounded-3xl bg-white/5 border border-white/5 space-y-4">
-                 <div className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Key Match Points:</div>
-                 <ul className="text-[11px] space-y-3 font-medium text-white/70">
-                    <li className="flex items-center gap-3">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(34,197,94,0.6)]" /> 
-                      Kinh nghiệm Microservices chuẩn
-                    </li>
-                    <li className="flex items-center gap-3">
-                      <div className="h-1.5 w-1.5 rounded-full bg-primary shadow-[0_0_8px_rgba(34,197,94,0.6)]" /> 
-                      Kỹ năng Java Core vững chắc
-                    </li>
-                 </ul>
-              </div>
-              
-              <Button asChild className="w-full bg-primary hover:bg-primary-dark text-primary-foreground rounded-2xl text-xs font-black h-14 shadow-glow shadow-primary/20 transition-all active:scale-[0.98]">
-                <Link to="/admin/hr/applicants">Gửi thư mời tự động</Link>
-              </Button>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed font-medium">
+                     Phù hợp 95% với yêu cầu hệ thống Microservices & Spring Boot.
+                  </p>
+               </div>
+
+               <div className="space-y-4 px-2">
+                  <div className="text-[9px] font-black text-muted-foreground uppercase tracking-[0.2em]">Chi tiết kỹ năng chuyên môn</div>
+                  {[
+                    "Microservices / Spring Boot",
+                    "Định dạng CV chuẩn ATS",
+                    "Kinh nghiệm lead dự án"
+                  ].map((p, i) => (
+                    <div key={i} className="flex items-center gap-4 group/item">
+                       <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                       <span className="text-[12px] font-bold text-foreground/80">{p}</span>
+                    </div>
+                  ))}
+               </div>
+
+               <Button className="w-full bg-primary hover:bg-primary-dark text-primary-foreground rounded-2xl h-14 font-black text-[11px] uppercase tracking-[0.2em] shadow-glow shadow-primary/30 transition-all active:scale-[0.98]">
+                  Gửi thư mời phỏng vấn
+               </Button>
             </div>
           </div>
-        </div>
-      </div>
+        </aside>
 
+      </div>
     </div>
   );
 }

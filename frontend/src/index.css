@@ -11,34 +11,43 @@ All colors MUST be HSL.
     /* NextStep AI — Dark theme, high-contrast (WCAG AA+)
        bg #0F172A · card #1E293B · primary #22C55E
        text #FFFFFF · secondary #CBD5F5 · muted #94A3B8 */
-    --background: 222 47% 11%;            /* #0F172A */
-    --foreground: 0 0% 100%;              /* #FFFFFF */
+    --background: 222 47% 11%;
+    /* #0F172A */
+    --foreground: 0 0% 100%;
+    /* #FFFFFF */
 
-    --card: 217 33% 17%;                  /* #1E293B */
+    --card: 217 33% 17%;
+    /* #1E293B */
     --card-foreground: 0 0% 100%;
 
     --popover: 217 33% 17%;
     --popover-foreground: 0 0% 100%;
 
-    --primary: 142 71% 45%;               /* #22C55E */
+    --primary: 142 71% 45%;
+    /* #22C55E */
     --primary-foreground: 222 47% 9%;
-    --primary-dark: 142 72% 32%;          /* #15803d */
+    --primary-dark: 142 72% 32%;
+    /* #15803d */
     --primary-light: 142 50% 22%;
     --primary-glow: 142 80% 55%;
 
     --secondary: 217 33% 22%;
-    --secondary-foreground: 226 70% 88%;  /* #CBD5F5 */
+    --secondary-foreground: 226 70% 88%;
+    /* #CBD5F5 */
 
     --muted: 217 33% 22%;
-    --muted-foreground: 215 16% 65%;      /* #94A3B8 */
+    --muted-foreground: 215 16% 65%;
+    /* #94A3B8 */
 
-    --accent: 217 91% 60%;                /* #3B82F6 (blue) */
+    --accent: 217 91% 60%;
+    /* #3B82F6 (blue) */
     --accent-foreground: 0 0% 100%;
 
     --destructive: 0 78% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 92% 50%;                /* #F59E0B (orange) */
+    --warning: 38 92% 50%;
+    /* #F59E0B (orange) */
     --success: 142 71% 45%;
 
     --border: 217 25% 27%;
@@ -138,30 +147,58 @@ All colors MUST be HSL.
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-feature-settings: 'cv11', 'ss01';
   }
-  h1, h2, h3, h4, h5 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5 {
     @apply tracking-tight;
     font-feature-settings: 'cv11', 'ss01';
   }
 }
 
 @layer utilities {
-  .bg-gradient-primary { background-image: var(--gradient-primary); }
-  .bg-gradient-hero { background-image: var(--gradient-hero); }
-  .bg-gradient-glow { background-image: var(--gradient-glow); }
-  .shadow-soft { box-shadow: var(--shadow-soft); }
-  .shadow-card { box-shadow: var(--shadow-card); }
-  .shadow-glow { box-shadow: var(--shadow-glow); }
-  .shadow-elegant { box-shadow: var(--shadow-elegant); }
+  .bg-gradient-primary {
+    background-image: var(--gradient-primary);
+  }
+
+  .bg-gradient-hero {
+    background-image: var(--gradient-hero);
+  }
+
+  .bg-gradient-glow {
+    background-image: var(--gradient-glow);
+  }
+
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+
+  .shadow-glow {
+    box-shadow: var(--shadow-glow);
+  }
+
+  .shadow-elegant {
+    box-shadow: var(--shadow-elegant);
+  }
+
   .text-gradient-primary {
     /* Solid bright color for max readability on dark surfaces */
     color: hsl(var(--primary));
   }
+
   .glass {
     background: hsl(222 47% 11% / 0.75);
     backdrop-filter: blur(20px) saturate(180%);
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid hsl(217 25% 27% / 0.6);
   }
+
   .dark .glass {
     background: hsl(220 28% 10% / 0.7);
     border: 1px solid hsl(220 25% 25% / 0.5);

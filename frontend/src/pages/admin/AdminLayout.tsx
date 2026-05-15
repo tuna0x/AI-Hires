@@ -1,228 +1,215 @@
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
+import { Link, NavLink, useLocation, Outlet } from "react-router-dom";
 import { 
-  Settings, Sliders, ListChecks, Layers, ScrollText, Sparkles, 
-  ArrowLeft, Bell, Search, LogOut, Users, Briefcase, 
-  PlusCircle, PieChart, ClipboardList, ChevronRight, Menu,
-  ChevronDown, LayoutDashboard, Database, User
+  Users, Layers, ScrollText, ListChecks, Sliders,
+  LayoutDashboard, ChevronRight, Menu, 
+  Settings, LogOut, ChevronDown, UserCircle,
+  PanelLeftClose, PanelLeft
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@/components/ui/sidebar";
-import { Seo, breadcrumbLd } from "@/lib/seo";
-import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { 
+  Sidebar, SidebarContent, SidebarHeader, SidebarFooter,
+  SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
+  SidebarMenu, SidebarMenuItem, SidebarMenuButton,
+  SidebarProvider, SidebarTrigger, useSidebar, SidebarInset
+} from "@/components/ui/sidebar";
+import { 
+  Collapsible, CollapsibleContent, CollapsibleTrigger 
+} from "@/components/ui/collapsible";
+import { Button } from "@/components/ui/button";
 
-export const ADMIN_TABS = [
-  { to: "/admin/scoring", label: "Quy tắc chấm điểm CV", icon: Sliders, desc: "Cấu hình trọng số ATS" },
-  { to: "/admin/questions", label: "Cấu hình câu hỏi", icon: ListChecks, desc: "Thiết lập AI Prompts" },
-  { to: "/admin/skills", label: "Danh mục kỹ năng", icon: Layers, desc: "Quản lý nhãn kỹ năng" },
-  { to: "/admin/users", label: "Quản lý người dùng", icon: Users, desc: "Phân quyền và tài khoản" },
-  { to: "/admin/logs", label: "Nhật ký hệ thống", icon: ScrollText, desc: "Lịch sử hoạt động" },
+const HR_TABS = [
+  { to: "/admin/hr/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/admin/hr/jobs", label: "Tin tuyển dụng", icon: Layers },
+  { to: "/admin/hr/applicants", label: "Ứng viên", icon: Users },
+];
+
+const ADMIN_TABS = [
+  { to: "/admin/scoring", label: "Cấu hình Điểm số", icon: Sliders },
+  { to: "/admin/questions", label: "Bộ câu hỏi AI", icon: ListChecks },
+  { to: "/admin/skills", label: "Kỹ năng chuyên môn", icon: Layers },
+  { to: "/admin/users", label: "Nhân sự & Phân quyền", icon: Users },
+  { to: "/admin/logs", label: "Nhật ký hệ thống", icon: ScrollText },
 ] as const;
-
-export const HR_TABS = [
-  { to: "/admin/hr/dashboard", label: "Bảng quản lý HR", icon: PieChart, desc: "Tổng quan hiệu quả tuyển dụng" },
-  { to: "/admin/hr/jobs", label: "Quản lý tin tuyển dụng", icon: Briefcase, desc: "Đăng tin mới và JD" },
-  { to: "/admin/hr/applicants", label: "Danh sách ứng viên", icon: ClipboardList, desc: "Sàng lọc và Phỏng vấn" },
-] as const;
-
-const ALL_TABS = [...ADMIN_TABS, ...HR_TABS];
 
 export default function AdminLayout() {
-  const { pathname } = useLocation();
-  const current = ALL_TABS.find((t) => pathname.startsWith(t.to)) ?? ADMIN_TABS[0];
-
   return (
-    <>
-      <Seo
-        title={`${current.label} — Admin · Intervio`}
-        description="Bảng quản trị hệ thống phỏng vấn AI thông minh."
-        path={current.to}
-        jsonLd={breadcrumbLd([{ name: "Trang chủ", path: "/" }, { name: "Quản trị", path: "/admin" }, { name: current.label, path: current.to }])}
-      />
-      
-      <SidebarProvider defaultOpen={true}>
-        <div className="min-h-screen flex w-full bg-background font-sans text-foreground selection:bg-primary/30">
-          <AdminSidebar />
-          
-          <main className="flex-1 flex flex-col min-w-0 relative">
-            {/* Background Decorations */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 blur-[120px] rounded-full -mr-64 -mt-64 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/5 blur-[100px] rounded-full -ml-40 -mb-40 pointer-events-none" />
-
-            {/* Header / Breadcrumb Frame */}
-            <header className="h-20 flex items-center justify-between px-8 bg-background/60 backdrop-blur-xl border-b border-white/5 sticky top-0 z-40">
-              <div className="flex items-center gap-6">
-                 <SidebarTrigger className="lg:hidden text-muted-foreground hover:text-primary" />
-                 <div className="flex flex-col">
-                   <div className="text-2xl font-black tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent leading-tight">
-                     {current.label}
-                   </div>
-                   <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em] mt-0.5">
-                     Workspace / <span className="text-primary">{current.label}</span>
-                   </div>
-                 </div>
-              </div>
-
-              <div className="flex items-center gap-4">
-                <div className="hidden md:flex items-center gap-3 bg-white/5 border border-white/10 rounded-2xl px-4 h-11 w-72 focus-within:ring-2 ring-primary/20 transition-all group">
-                  <Search className="h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                  <input 
-                    placeholder="Tìm kiếm nhanh..." 
-                    className="bg-transparent text-sm outline-none w-full text-foreground placeholder:text-muted-foreground/50" 
-                  />
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl relative h-10 w-10">
-                    <Bell className="h-5 w-5" />
-                    <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-primary rounded-full border-2 border-background" />
-                  </Button>
-                  <div className="h-8 w-[1px] bg-white/10 mx-2" />
-                  <Button asChild variant="outline" className="border-white/10 bg-white/5 text-xs font-bold rounded-xl hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all px-5 h-10 shadow-soft">
-                    <Link to="/" target="_blank">View Site</Link>
-                  </Button>
-                </div>
-              </div>
-            </header>
-
-            {/* Content "Frame" Workspace */}
-            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar relative z-10">
-              <div className="max-w-7xl mx-auto">
-                <AnimatePresence mode="wait">
-                  <motion.section
-                    key={pathname}
-                    initial={{ opacity: 0, y: 16 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -16 }}
-                    transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                    className="min-h-[calc(100vh-200px)]"
-                  >
-                    <Outlet />
-                  </motion.section>
-                </AnimatePresence>
-              </div>
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+        <AdminSidebar />
+        <SidebarInset className="flex flex-col min-w-0 overflow-hidden relative bg-background">
+          <AdminHeader />
+          <main className="flex-1 overflow-y-auto px-6 py-8 md:px-10 md:py-10">
+            <div className="max-w-[1440px] mx-auto min-h-full">
+              <Outlet />
             </div>
           </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
+  );
+}
+
+function AdminHeader() {
+  const location = useLocation();
+  const { state, toggleSidebar } = useSidebar();
+  const current = [...HR_TABS, ...ADMIN_TABS].find(t => t.to === location.pathname);
+
+  return (
+    <header className="h-16 border-b border-border/50 flex items-center justify-between px-10 bg-background/80 backdrop-blur-md z-30">
+      <div className="flex items-center gap-4">
+        <nav className="flex items-center gap-2 text-[12px] font-semibold text-muted-foreground uppercase tracking-widest overflow-hidden">
+           <span className="hidden sm:inline">Quản trị</span>
+           <ChevronRight className="h-3 w-3 shrink-0" />
+           <span className="text-foreground truncate">{current?.label || "Hệ thống"}</span>
+        </nav>
+      </div>
+
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col items-end hidden sm:flex">
+          <span className="text-[11px] font-bold text-foreground">Admin User</span>
+          <span className="text-[9px] text-primary font-black uppercase tracking-tighter">Super Admin</span>
         </div>
-      </SidebarProvider>
-    </>
+        <div className="h-9 w-9 rounded-xl bg-card border border-border flex items-center justify-center shadow-soft">
+          <UserCircle className="h-5 w-5 text-muted-foreground" />
+        </div>
+      </div>
+    </header>
   );
 }
 
 function AdminSidebar() {
-  const { state } = useSidebar();
-  const { user, signOut } = useAuth();
+  const location = useLocation();
+  const { state, toggleSidebar } = useSidebar();
   const collapsed = state === "collapsed";
 
-  return (
-    <Sidebar collapsible="icon" className="border-r border-white/5 bg-background/50 backdrop-blur-2xl">
-      <SidebarHeader className="h-20 flex items-center px-6 border-b border-white/5">
-        <Link to="/admin/hr/dashboard" className="flex items-center gap-3 group">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center shadow-glow shadow-primary/20 group-hover:scale-105 transition-transform">
-            <Sparkles className="h-6 w-6 text-primary-foreground" />
-          </div>
-          {!collapsed && (
-            <div className="flex flex-col">
-              <span className="text-lg font-black tracking-tighter text-white leading-none">INTERVIO</span>
-              <span className="text-[9px] font-bold text-primary tracking-[0.3em] uppercase opacity-80 mt-1">Admin Panel</span>
-            </div>
+  const SidebarItem = ({ to, label, icon: Icon }: any) => {
+    const isActive = location.pathname === to;
+    return (
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          asChild
+          isActive={isActive}
+          tooltip={label}
+          className={cn(
+            "h-11 rounded-xl transition-all duration-200",
+            collapsed ? "px-0 justify-center" : "px-3",
+            isActive 
+              ? "bg-primary text-primary-foreground font-bold shadow-glow shadow-primary/20" 
+              : "text-muted-foreground hover:text-foreground hover:bg-accent/50 font-medium"
           )}
-        </Link>
+        >
+          <Link to={to} className={cn("flex items-center", collapsed ? "justify-center w-full" : "gap-3")}>
+            <Icon className={cn("h-5 w-5 shrink-0 transition-transform", isActive ? "text-inherit scale-110" : "text-primary/70")} />
+            {!collapsed && <span className="text-[13px] tracking-tight truncate">{label}</span>}
+          </Link>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
+  return (
+    <Sidebar 
+      collapsible="icon" 
+      className="border-r border-border/50 bg-sidebar-background transition-all duration-300 z-40"
+      style={{ "--sidebar-width-icon": "80px" } as React.CSSProperties}
+    >
+      <SidebarHeader className={cn("border-b border-border/50 bg-sidebar-background relative group transition-all", collapsed ? "h-24 flex flex-col items-center justify-center gap-2 px-0" : "h-16 flex items-center px-6")}>
+        <div className={cn("flex items-center transition-all", collapsed ? "flex-col gap-3" : "w-full justify-between")}>
+          <div className="flex items-center gap-3 overflow-hidden">
+            <div className="h-9 w-9 min-w-[36px] rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow shadow-primary/10 transition-transform active:scale-95">
+              <span className="font-black text-primary-foreground text-sm">A</span>
+            </div>
+            {!collapsed && (
+              <div className="flex flex-col animate-in fade-in slide-in-from-left-2 duration-300">
+                <span className="font-black text-sm tracking-tighter leading-none">INTERVIO</span>
+                <span className="text-[9px] text-primary font-black uppercase tracking-widest mt-0.5 opacity-80">Workspace</span>
+              </div>
+            )}
+          </div>
+
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleSidebar}
+            className={cn(
+              "text-muted-foreground hover:text-foreground transition-all rounded-lg",
+              collapsed ? "h-8 w-8 opacity-40 hover:opacity-100 bg-accent/30" : "h-8 w-8 opacity-60"
+            )}
+          >
+            {state === "expanded" ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeft className="h-4 w-4" />}
+          </Button>
+        </div>
       </SidebarHeader>
 
-      <SidebarContent className="px-4 py-8 space-y-8">
-        {/* SECTION: MAIN */}
-        <div className="space-y-2">
-          {!collapsed && <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-4 mb-4">Core</div>}
-          <SidebarMenu className="gap-1.5">
-             <SidebarMenuItem>
-                <SidebarMenuButton asChild tooltip="Dashboard" className="h-12 rounded-xl px-2 transition-all hover:bg-white/5">
-                  <NavLink to="/admin/hr/dashboard" className={({ isActive }) => cn(
-                    "flex items-center gap-4 w-full px-3 h-full rounded-xl transition-all font-bold",
-                    isActive ? "text-primary bg-primary/10 border border-primary/20 shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]" : "text-muted-foreground hover:text-white"
-                  )}>
-                    <LayoutDashboard className="h-5 w-5 shrink-0" />
-                    {!collapsed && <span>Dashboard</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-             </SidebarMenuItem>
+      <SidebarContent className={cn("gap-6 transition-all", collapsed ? "p-0" : "p-3")}>
+        {/* SECTION: CORE */}
+        <SidebarGroup className={cn(collapsed && "px-0")}>
+          {!collapsed && <SidebarGroupLabel className="px-3 text-[10px] font-black text-muted-foreground/50 uppercase tracking-[0.2em] mb-3">Tổng quan</SidebarGroupLabel>}
+          <SidebarMenu className={cn("gap-2", collapsed && "items-center")}>
+             <SidebarItem {...HR_TABS[0]} />
           </SidebarMenu>
-        </div>
+        </SidebarGroup>
 
         {/* SECTION: RECRUITMENT */}
-        <div className="space-y-2">
-          {!collapsed && <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-4 mb-4">Tuyển Dụng</div>}
-          <SidebarMenu className="gap-1.5">
-            {HR_TABS.slice(1).map((t) => (
-              <SidebarMenuItem key={t.to}>
-                <SidebarMenuButton asChild tooltip={t.label} className="h-12 rounded-xl px-2 transition-all hover:bg-white/5">
-                  <NavLink to={t.to} className={({ isActive }) => cn(
-                    "flex items-center gap-4 w-full px-3 h-full rounded-xl transition-all font-bold",
-                    isActive ? "text-primary bg-primary/10 border border-primary/20 shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]" : "text-muted-foreground hover:text-white"
-                  )}>
-                    <t.icon className="h-5 w-5 shrink-0" />
-                    {!collapsed && <span>{t.label}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </div>
+        <SidebarGroup className={cn(collapsed && "px-0")}>
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer px-3 mb-2">
+                {!collapsed ? (
+                  <>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Tuyển Dụng</span>
+                    <ChevronDown className="h-3 w-3 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+                  </>
+                ) : (
+                   <div className="h-[1px] w-full bg-border/40" />
+                )}
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+               <SidebarMenu className={cn("gap-2", collapsed && "items-center")}>
+                  {HR_TABS.slice(1).map((t) => <SidebarItem key={t.to} {...t} />)}
+               </SidebarMenu>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
 
         {/* SECTION: SYSTEM */}
-        <div className="space-y-2">
-          {!collapsed && <div className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em] px-4 mb-4">Hệ Thống</div>}
-          <SidebarMenu className="gap-1.5">
-            {ADMIN_TABS.map((t) => (
-              <SidebarMenuItem key={t.to}>
-                <SidebarMenuButton asChild tooltip={t.label} className="h-12 rounded-xl px-2 transition-all hover:bg-white/5">
-                  <NavLink to={t.to} className={({ isActive }) => cn(
-                    "flex items-center gap-4 w-full px-3 h-full rounded-xl transition-all font-bold",
-                    isActive ? "text-primary bg-primary/10 border border-primary/20 shadow-[inset_0_0_20px_rgba(34,197,94,0.05)]" : "text-muted-foreground hover:text-white"
-                  )}>
-                    <t.icon className="h-5 w-5 shrink-0" />
-                    {!collapsed && <span>{t.label}</span>}
-                  </NavLink>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            ))}
-          </SidebarMenu>
-        </div>
+        <SidebarGroup className={cn(collapsed && "px-0")}>
+          <Collapsible defaultOpen className="group/collapsible">
+            <SidebarGroupLabel asChild>
+              <CollapsibleTrigger className="flex w-full items-center justify-between text-muted-foreground/40 hover:text-foreground transition-colors cursor-pointer px-3 mb-2">
+                {!collapsed ? (
+                  <>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">Hệ Thống</span>
+                    <ChevronDown className="h-3 w-3 transition-transform group-data-[state=closed]/collapsible:-rotate-90" />
+                  </>
+                ) : (
+                  <div className="h-[1px] w-full bg-border/40" />
+                )}
+              </CollapsibleTrigger>
+            </SidebarGroupLabel>
+            <CollapsibleContent>
+               <SidebarMenu className={cn("gap-2", collapsed && "items-center")}>
+                  {ADMIN_TABS.map((t) => <SidebarItem key={t.to} {...t} />)}
+               </SidebarMenu>
+            </CollapsibleContent>
+          </Collapsible>
+        </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="p-4 border-t border-white/5 space-y-4">
-        {!collapsed && user && (
-          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-white/5 border border-white/5">
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-primary/20 flex items-center justify-center font-black text-primary border border-primary/20">
-              {user.name?.charAt(0) || "A"}
-            </div>
-            <div className="flex flex-col min-w-0">
-               <span className="text-[13px] font-bold text-white truncate">{user.name || "Administrator"}</span>
-               <span className="text-[10px] text-muted-foreground truncate">{user.email}</span>
-            </div>
-          </div>
-        )}
-        
-        <button 
-          onClick={signOut}
-          className="w-full flex items-center justify-center gap-3 h-12 rounded-xl text-muted-foreground font-bold hover:bg-destructive/10 hover:text-destructive transition-all border border-white/10 group"
-        >
-          <LogOut className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
-          {!collapsed && <span>Đăng xuất</span>}
-        </button>
+      <SidebarFooter className="p-4 border-t border-border/50">
+        <SidebarMenu>
+          <SidebarMenuItem>
+             <SidebarMenuButton className={cn(
+               "h-11 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all",
+               collapsed ? "px-0 justify-center" : "px-3 gap-3"
+             )}>
+                <LogOut className="h-4 w-4" />
+                {!collapsed && <span className="text-[13px] font-bold">Đăng xuất</span>}
+             </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );
