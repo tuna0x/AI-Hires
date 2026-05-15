@@ -205,64 +205,65 @@ export default function Scoring() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-12 pb-32">
+    <div className="space-y-12 pb-32 animate-in fade-in duration-700">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-8 px-2">
-        <div className="flex items-center gap-6">
-           <div className="h-14 w-2.5 bg-primary rounded-full shadow-glow shadow-primary/20" />
-           <div className="space-y-1">
-             <h2 className="text-4xl font-black text-white tracking-tighter">Thuật toán Scoring CV</h2>
-             <p className="text-[11px] text-muted-foreground font-black uppercase tracking-[0.3em] opacity-60">Phân tích đa tầng & Điều chỉnh điểm số tuyệt đối</p>
-           </div>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+             <div className="h-12 w-1.5 bg-primary rounded-full" />
+             <h2 className="text-3xl font-black text-foreground tracking-tight">Thuật toán Scoring CV</h2>
+          </div>
+          <p className="text-muted-foreground text-sm font-medium ml-4 uppercase tracking-[0.2em] opacity-80">Phân tích đa tầng & Điều chỉnh điểm số tuyệt đối</p>
         </div>
+
         <div className={cn(
-          "flex items-center gap-6 px-10 py-5 rounded-[2.5rem] border transition-all shadow-elegant relative overflow-hidden group",
-          grandTotal === 100 ? "bg-emerald-500/5 border-emerald-500/10" : "bg-destructive/5 border-destructive/10"
+          "flex items-center gap-6 px-8 py-4 rounded-3xl border transition-all shadow-soft relative overflow-hidden group",
+          grandTotal === 100 ? "bg-emerald-500/5 border-emerald-500/20" : "bg-destructive/5 border-destructive/20"
         )}>
-           <div className="flex flex-col items-end">
-             <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Điểm tối đa</span>
-             <div className="flex items-baseline gap-1">
-               <span className={cn("text-4xl font-black tabular-nums", grandTotal === 100 ? "text-emerald-500" : "text-destructive")}>{grandTotal}</span>
-               <span className="text-sm font-bold text-muted-foreground">pts</span>
-             </div>
-           </div>
-           <div className={cn(
-             "h-12 w-12 rounded-2xl flex items-center justify-center border transition-all group-hover:scale-110",
-             grandTotal === 100 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
-           )}>
-             {grandTotal === 100 ? <CheckCircle2 className="h-6 w-6" /> : <AlertCircle className="h-6 w-6" />}
-           </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Điểm tối đa</span>
+            <div className="flex items-baseline gap-1">
+              <span className={cn("text-3xl font-black tabular-nums", grandTotal === 100 ? "text-emerald-500" : "text-destructive")}>{grandTotal}</span>
+              <span className="text-sm font-bold text-muted-foreground">pts</span>
+            </div>
+          </div>
+          <div className={cn(
+            "h-10 w-10 rounded-2xl flex items-center justify-center border transition-all",
+            grandTotal === 100 ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
+          )}>
+            {grandTotal === 100 ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+          </div>
         </div>
       </div>
 
-      <div className="space-y-16">
+      <div className="grid gap-12">
         {SCORING_STRUCTURE.map((stage) => {
           const stageTotal = getStageTotal(stage.id);
           const isStageValid = stageTotal === stage.max;
 
           return (
-            <div key={stage.id} className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div key={stage.id} className="space-y-8">
               {/* Stage Header */}
-              <div className="flex items-center justify-between border-b border-white/5 pb-4">
+              <div className="flex items-center justify-between border-b border-border/50 pb-4">
                 <div className="flex items-center gap-4">
-                   <div className={cn(
-                     "h-12 w-12 rounded-2xl flex items-center justify-center border shadow-soft",
-                     stage.color === "primary" ? "bg-primary/10 text-primary border-primary/20" :
-                     stage.color === "amber" ? "bg-amber-500/10 text-amber-500 border-amber-500/20" :
-                     "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                   )}>
-                      <stage.icon className="h-6 w-6" />
-                   </div>
-                   <div>
-                     <h3 className="text-xl font-black text-white tracking-tight">{stage.title}</h3>
-                     <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl flex items-center justify-center border border-border/50",
+                    stage.color === "primary" ? "bg-primary/10 text-primary" :
+                    stage.color === "amber" ? "bg-amber-500/10 text-amber-500" :
+                    "bg-emerald-500/10 text-emerald-500"
+                  )}>
+                    <stage.icon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-foreground tracking-tight">{stage.title}</h3>
+                    <div className="flex items-center gap-2">
                        <span className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">Stage Target</span>
-                       <Badge variant="outline" className="bg-white/5 text-white border-white/5 rounded-md font-bold text-[10px]">{stage.max} pts</Badge>
-                     </div>
-                   </div>
+                       <Badge variant="outline" className="bg-muted/50 text-foreground border-border rounded-md font-bold text-[10px]">{stage.max} pts</Badge>
+                    </div>
+                  </div>
                 </div>
                 <div className="text-right">
-                  <div className={cn("text-2xl font-black tabular-nums", isStageValid ? "text-white" : "text-destructive")}>{stageTotal} <span className="text-sm">pts</span></div>
+                  <div className={cn("text-2xl font-black tabular-nums", isStageValid ? "text-foreground" : "text-destructive")}>{stageTotal} <span className="text-sm">pts</span></div>
                   {!isStageValid && (
                     <span className="text-[9px] font-black text-destructive uppercase tracking-widest animate-pulse">Lệch: {stageTotal - stage.max} pts</span>
                   )}
@@ -279,29 +280,29 @@ export default function Scoring() {
                     <div 
                       key={category.id} 
                       className={cn(
-                        "rounded-[2.5rem] bg-white/[0.03] border transition-all duration-500 overflow-hidden group",
-                        isExpanded ? "border-white/10 ring-1 ring-white/5" : "border-white/5 hover:border-white/10"
+                        "rounded-[2rem] bg-card border border-border/60 transition-all duration-300 overflow-hidden group",
+                        isExpanded ? "ring-1 ring-primary/20 bg-card/80 shadow-card" : "hover:border-primary/30"
                       )}
                     >
                       {/* Category Header */}
                       <div 
                         onClick={() => toggleCategory(category.id)}
-                        className="p-8 cursor-pointer flex items-center justify-between"
+                        className="p-6 cursor-pointer flex items-center justify-between hover:bg-muted/30 transition-colors"
                       >
-                        <div className="flex items-center gap-5">
-                           <div className="h-10 w-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:text-primary transition-colors border border-white/5">
-                              <category.icon className="h-5 w-5" />
-                           </div>
-                           <div>
-                             <h4 className="text-sm font-black text-white group-hover:translate-x-1 transition-transform">{category.title}</h4>
-                             <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest opacity-40">Target: {category.max} pts</p>
-                           </div>
+                        <div className="flex items-center gap-4">
+                          <div className="h-9 w-9 rounded-xl bg-background border border-border flex items-center justify-center text-muted-foreground group-hover:text-primary transition-colors">
+                            <category.icon className="h-4.5 w-4.5" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-foreground">{category.title}</h4>
+                            <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest opacity-40">Target: {category.max} pts</p>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-6">
-                           <div className={cn("text-lg font-black tabular-nums", catTotal === category.max ? "text-primary" : "text-destructive")}>{catTotal} pts</div>
-                           <div className="h-8 w-8 rounded-lg bg-white/5 flex items-center justify-center text-muted-foreground">
-                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                           </div>
+                        <div className="flex items-center gap-4">
+                          <div className={cn("text-md font-black tabular-nums", catTotal === category.max ? "text-primary" : "text-destructive")}>{catTotal} pts</div>
+                          <div className="h-7 w-7 rounded-lg bg-background border border-border flex items-center justify-center text-muted-foreground">
+                            {isExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                          </div>
                         </div>
                       </div>
 
@@ -312,36 +313,32 @@ export default function Scoring() {
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
-                            transition={{ duration: 0.3 }}
+                            className="bg-background/20"
                           >
-                            <div className="px-8 pb-8 space-y-8 border-t border-white/5 pt-8">
-                               {category.metrics.map((metric) => (
-                                 <div key={metric.id} className="space-y-4">
-                                   <div className="flex items-center justify-between">
-                                      <span className="text-xs font-bold text-white/70">{metric.label}</span>
-                                      <div className="flex items-center gap-2">
-                                        <input 
-                                          type="number"
-                                          value={weights[metric.id]}
-                                          onChange={(e) => handleWeightChange(metric.id, parseInt(e.target.value) || 0)}
-                                          className="w-12 bg-transparent text-right text-sm font-black text-primary border-none focus:ring-0 p-0"
-                                        />
-                                        <span className="text-[10px] text-muted-foreground font-black uppercase">pts</span>
-                                      </div>
-                                   </div>
-                                   <Slider 
-                                     value={[weights[metric.id]]} 
-                                     max={Math.max(metric.max * 2, 10)} 
-                                     step={1} 
-                                     onValueChange={(v) => handleWeightChange(metric.id, v[0])} 
-                                     className="py-1"
-                                   />
-                                   <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-white/20">
-                                      <span>0 pts</span>
-                                      <span>Mặc định: {metric.max} pts</span>
-                                   </div>
-                                 </div>
-                               ))}
+                            <div className="px-6 pb-6 space-y-8 border-t border-border/20 pt-6">
+                              {category.metrics.map((metric) => (
+                                <div key={metric.id} className="space-y-4">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-muted-foreground">{metric.label}</span>
+                                    <div className="flex items-center gap-2">
+                                      <input 
+                                        type="number"
+                                        value={weights[metric.id]}
+                                        onChange={(e) => handleWeightChange(metric.id, parseInt(e.target.value) || 0)}
+                                        className="w-10 bg-transparent text-right text-sm font-black text-primary border-none focus:ring-0 p-0"
+                                      />
+                                      <span className="text-[10px] text-muted-foreground font-black uppercase tracking-tighter">pts</span>
+                                    </div>
+                                  </div>
+                                  <Slider 
+                                    value={[weights[metric.id]]} 
+                                    max={Math.max(metric.max * 2, 10)} 
+                                    step={1} 
+                                    onValueChange={(v) => handleWeightChange(metric.id, v[0])} 
+                                    className="py-1"
+                                  />
+                                </div>
+                              ))}
                             </div>
                           </motion.div>
                         )}
@@ -355,51 +352,51 @@ export default function Scoring() {
         })}
       </div>
 
-      {/* Persistence Bar */}
+      {/* Action Bar */}
       <div className={cn(
-        "fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-4xl px-4 z-50 transition-all duration-500",
-        isValid ? "translate-y-0" : "translate-y-4 opacity-80"
+        "fixed bottom-8 left-1/2 -translate-x-1/2 w-full max-w-3xl px-6 z-40 transition-all duration-500",
+        isValid ? "translate-y-0" : "translate-y-2 opacity-90 scale-[0.98]"
       )}>
         <div className={cn(
-          "p-6 rounded-[2.5rem] border backdrop-blur-2xl shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6",
-          isValid ? "bg-[#0F172A]/80 border-white/10" : "bg-destructive/10 border-destructive/20"
+          "p-5 rounded-[2.5rem] border backdrop-blur-xl shadow-elegant flex flex-col md:flex-row items-center justify-between gap-6 transition-colors",
+          isValid ? "bg-card/95 border-primary/20" : "bg-card/95 border-destructive/20"
         )}>
-          <div className="flex items-center gap-5">
-             <div className={cn(
-               "h-12 w-12 rounded-2xl flex items-center justify-center border",
-               isValid ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
-             )}>
-                {isValid ? <Zap className="h-6 w-6" /> : <AlertCircle className="h-6 w-6" />}
-             </div>
-             <div className="space-y-1">
-                <h4 className="text-sm font-black text-white tracking-tight uppercase">Xác nhận thuật toán</h4>
-                <p className="text-[10px] text-muted-foreground font-bold leading-tight max-w-[300px]">
-                  {isValid 
-                    ? "Toàn bộ cấu trúc điểm đã khớp 100pts (50 Core, 40 In-depth, 10 Bonus). Sẵn sàng đồng bộ prompt AI." 
-                    : "Tổng điểm chưa cân bằng. Vui lòng kiểm tra lại sự lệch điểm ở các giai đoạn phía trên."}
-                </p>
-             </div>
+          <div className="flex items-center gap-4">
+            <div className={cn(
+              "h-10 w-10 rounded-2xl flex items-center justify-center border",
+              isValid ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" : "bg-destructive/10 text-destructive border-destructive/20"
+            )}>
+              {isValid ? <Zap className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+            </div>
+            <div className="space-y-0.5">
+              <h4 className="text-[11px] font-black text-foreground uppercase tracking-widest">Update Engine 🚀</h4>
+              <p className="text-[10px] text-muted-foreground font-medium leading-tight max-w-[280px]">
+                {isValid 
+                  ? "Cấu trúc điểm số hợp lệ. Sẵn sàng cập nhật cho hệ thống." 
+                  : "Tổng điểm chưa đạt 100. Hãy điều chỉnh trước khi lưu."}
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-             <Button 
-               variant="ghost" 
-               className="h-12 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest text-muted-foreground hover:bg-white/5"
-               onClick={() => {
-                 const initial: Record<string, number> = {};
-                 SCORING_STRUCTURE.forEach(s => s.categories.forEach(c => c.metrics.forEach(m => initial[m.id] = m.max)));
-                 setWeights(initial);
-               }}
-             >
-               Reset Defaults
-             </Button>
-             <Button 
-               disabled={!isValid}
-               onClick={() => toast.success("Đã đồng bộ thuật toán Scoring với Gemini engine")}
-               className="bg-primary hover:bg-primary-dark text-primary-foreground h-12 px-10 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] shadow-glow shadow-primary/20 transition-all active:scale-95"
-             >
-               Update Engine 🚀
-             </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              className="h-10 px-6 rounded-2xl font-black text-[10px] uppercase tracking-widest text-muted-foreground hover:bg-accent"
+              onClick={() => {
+                const initial: Record<string, number> = {};
+                SCORING_STRUCTURE.forEach(s => s.categories.forEach(c => c.metrics.forEach(m => initial[m.id] = m.max)));
+                setWeights(initial);
+              }}
+            >
+              Reset
+            </Button>
+            <Button 
+              disabled={!isValid}
+              onClick={() => toast.success("Đã cập nhật thuật toán!")}
+              className="bg-primary hover:bg-primary-dark text-primary-foreground h-10 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-glow shadow-primary/20"
+            >
+              Cập nhật ngay
+            </Button>
           </div>
         </div>
       </div>
@@ -409,7 +406,7 @@ export default function Scoring() {
 
 function Badge({ children, variant = "outline", className }: { children: React.ReactNode, variant?: string, className?: string }) {
   return (
-    <div className={cn("px-2 py-0.5 rounded-md inline-flex items-center", className)}>
+    <div className={cn("px-2 py-0.5 rounded-md inline-flex items-center border border-border text-[11px] font-medium transition-colors", className)}>
       {children}
     </div>
   );

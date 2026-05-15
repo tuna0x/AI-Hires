@@ -3,6 +3,8 @@ import { Search, Filter, ShieldCheck, AlertCircle, Info, RefreshCw, Clock } from
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 const INITIAL_LOGS = [
   { id: 1, time: "12:42:15", level: "SUCCESS", event: "Đã phân tích CV", detail: "user_8821 · điểm 87 · Nguyen_Van_An_CV.pdf" },
@@ -13,9 +15,6 @@ const INITIAL_LOGS = [
   { id: 6, time: "11:55:23", level: "DANGER", event: "Lỗi kết nối RabbitMQ", detail: "ResumeScanWorker · Reconnecting in 5s" }
 ];
 
-import { toast } from "sonner";
-import { cn } from "@/lib/utils";
-
 export default function Logs() {
   const [logs, setLogs] = useState(INITIAL_LOGS);
   const [search, setSearch] = useState("");
@@ -23,10 +22,10 @@ export default function Logs() {
 
   const getBadgeStyle = (level: string) => {
     switch (level) {
-      case "SUCCESS": return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-      case "WARN": return "bg-amber-500/10 text-amber-500 border-amber-500/20";
-      case "DANGER": return "bg-destructive/10 text-destructive border-destructive/20";
-      default: return "bg-blue-500/10 text-blue-500 border-blue-500/20";
+      case "SUCCESS": return "bg-emerald-500/10 text-emerald-500";
+      case "WARN": return "bg-amber-500/10 text-amber-500";
+      case "DANGER": return "bg-destructive/10 text-destructive";
+      default: return "bg-blue-500/10 text-blue-500";
     }
   };
 
@@ -46,82 +45,79 @@ export default function Logs() {
   });
 
   return (
-    <div className="space-y-10 pb-10 max-w-6xl mx-auto">
+    <div className="space-y-8 pb-10 animate-in fade-in duration-500">
       
-      <div className="flex items-center gap-4 px-1">
-        <div className="h-10 w-1.5 bg-primary rounded-full shadow-glow shadow-primary/20" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h2 className="text-2xl font-black text-white tracking-tight">Audit Logs</h2>
-          <p className="text-[11px] text-muted-foreground font-black uppercase tracking-widest">Nhật ký hoạt động hệ thống thời gian thực</p>
+          <div className="flex items-center gap-3">
+             <div className="h-10 w-1.5 bg-primary rounded-full" />
+             <h2 className="text-2xl font-black text-foreground tracking-tight">Audit Logs</h2>
+          </div>
+          <p className="text-muted-foreground text-sm font-medium ml-4 uppercase tracking-widest opacity-80">Nhật ký hoạt động hệ thống thời gian thực</p>
         </div>
       </div>
 
-      {/* Tìm kiếm và Bộ lọc */}
-      <div className="flex flex-col md:flex-row gap-4 p-8 rounded-[2.5rem] bg-white/5 border border-white/5 shadow-soft">
-        <div className="flex-1 relative group">
+      {/* Toolbar */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 p-6 rounded-[2rem] bg-card border border-border/60 shadow-soft">
+        <div className="relative group">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
           <Input 
             value={search} 
             onChange={(e) => setSearch(e.target.value)} 
             placeholder="Tìm kiếm nội dung nhật ký..." 
-            className="pl-12 rounded-2xl border-white/10 bg-white/5 h-12 text-[13px] focus-visible:ring-primary/20" 
+            className="pl-12 rounded-xl border-border bg-background/50 h-11 text-[13px] focus-visible:ring-primary/20" 
           />
         </div>
 
-        <div className="flex gap-4 w-full md:w-auto">
-          <div className="relative flex-1 md:flex-initial">
-            <Filter className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <select 
-              value={filterLevel}
-              onChange={(e) => setFilterLevel(e.target.value)}
-              className="h-12 pl-12 pr-10 text-[13px] font-bold rounded-2xl border border-white/10 bg-[#0B0F19] text-white focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none min-w-[200px] w-full"
-            >
-              <option value="ALL">Tất cả mức độ</option>
-              <option value="SUCCESS">SUCCESS</option>
-              <option value="INFO">INFO</option>
-              <option value="WARN">WARN</option>
-              <option value="DANGER">DANGER</option>
-            </select>
+        <div className="flex gap-4">
+          <div className="flex gap-1 p-1 rounded-xl bg-background border border-border overflow-x-auto">
+             {["ALL", "SUCCESS", "INFO", "WARN", "DANGER"].map((l) => (
+               <Button 
+                key={l}
+                variant={filterLevel === l ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setFilterLevel(l)}
+                className={cn("h-9 rounded-lg text-[10px] font-black uppercase tracking-widest", filterLevel === l && "bg-primary text-primary-foreground")}
+               >
+                 {l}
+               </Button>
+             ))}
           </div>
-          <Button onClick={() => { setLogs(INITIAL_LOGS); toast.success("Đã làm mới danh sách logs"); }} variant="outline" className="h-12 w-12 p-0 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 shrink-0 transition-all active:scale-95">
-            <RefreshCw className="h-5 w-5" />
+          <Button onClick={() => { setLogs(INITIAL_LOGS); toast.success("Đã làm mới logs"); }} variant="outline" className="h-11 w-11 p-0 rounded-xl border-border bg-background/50 hover:bg-accent shrink-0 transition-all active:scale-95">
+            <RefreshCw className="h-4 w-4 text-muted-foreground" />
           </Button>
         </div>
       </div>
 
-      {/* Bảng Logs */}
-      <div className="rounded-[2.5rem] border border-white/5 overflow-hidden bg-white/5 shadow-elegant">
+      {/* Log List */}
+      <div className="rounded-[2.5rem] border border-border/60 overflow-hidden bg-card shadow-card">
         <div className="overflow-x-auto">
-          <div className="divide-y divide-white/5">
+          <div className="divide-y divide-border/20">
             {filteredLogs.length > 0 ? filteredLogs.map((r) => (
-              <div key={r.id} className="grid grid-cols-1 md:grid-cols-[140px_140px_1fr_auto] items-center gap-6 px-10 py-6 text-xs hover:bg-white/[0.03] transition-all duration-300">
+              <div key={r.id} className="grid grid-cols-1 sm:grid-cols-[120px_140px_1fr] items-center gap-6 px-8 py-6 text-xs hover:bg-muted/10 transition-all duration-300">
                 <span className="text-muted-foreground font-black tracking-widest flex items-center gap-3 opacity-60">
-                   <Clock className="h-4 w-4 text-primary" /> {r.time}
+                   <Clock className="h-3.5 w-3.5 text-primary" /> {r.time}
                 </span>
                 <Badge className={cn(
-                  "rounded-lg py-1.5 px-4 font-black w-32 flex items-center justify-center gap-2 border-0 tracking-widest", 
+                  "rounded-lg py-1.5 px-4 font-black w-32 flex items-center justify-center gap-2 border-none tracking-widest", 
                   getBadgeStyle(r.level)
                 )}>
                   {getIcon(r.level)} {r.level}
                 </Badge>
                 <div className="flex flex-col gap-1">
-                   <span className="font-black text-white text-[13px] tracking-tight">{r.event}</span>
+                   <span className="font-bold text-foreground text-[13px] tracking-tight">{r.event}</span>
                    <span className="text-muted-foreground text-[11px] font-medium opacity-80">{r.detail}</span>
-                </div>
-                <div className="h-12 w-12 rounded-2xl bg-white/5 flex items-center justify-center group/arrow cursor-pointer hover:bg-primary/20 transition-all text-white/40 hover:text-primary">
-                    <AlertCircle className="h-4 w-4" />
                 </div>
               </div>
             )) : (
               <div className="p-20 text-center space-y-4">
-                 <div className="text-4xl">🔍</div>
-                 <div className="text-muted-foreground font-bold uppercase tracking-widest">Không tìm thấy nhật ký tương ứng</div>
+                 <div className="text-4xl opacity-20">🔍</div>
+                 <div className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Không có dữ liệu phù hợp</div>
               </div>
             )}
           </div>
         </div>
       </div>
-
     </div>
   );
 }
