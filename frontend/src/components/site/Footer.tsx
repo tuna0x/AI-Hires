@@ -1,7 +1,12 @@
 import { Link } from "react-router-dom";
-import { Sparkles, Twitter, Linkedin, Github } from "lucide-react";
+import { Twitter, Linkedin, Github } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { ADMIN_AREA_PERMISSIONS } from "@/lib/permissions";
 
 export default function Footer() {
+  const { hasPermission } = useAuth();
+  const canAccessAdmin = ADMIN_AREA_PERMISSIONS.some((p) => hasPermission(p));
+
   return (
     <footer className="border-t border-border bg-secondary/40 mt-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-16">
@@ -12,7 +17,7 @@ export default function Footer() {
               <span>Intervio<span className="text-primary">.online</span></span>
             </Link>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Công cụ nghề nghiệp AI tập trung giúp bạn nâng cấp CV và chinh phục phỏng vấn. Phân tích, sửa lỗi, luyện tập, nhận offer.
+              Công cụ nghề nghiệp AI giúp bạn nâng cấp CV và chinh phục phỏng vấn.
             </p>
             <div className="flex gap-3">
               <a aria-label="Twitter" className="p-2 rounded-lg hover:bg-muted"><Twitter className="h-4 w-4" /></a>
@@ -31,10 +36,13 @@ export default function Footer() {
             { to: "/blog/best-resume-tips", label: "Mẹo viết CV hay" },
             { to: "/blog/interview-questions-2025", label: "Câu hỏi phỏng vấn 2025" },
           ]} />
-          <FooterCol title="Công ty" links={[
-            { to: "/contact", label: "Liên hệ" },
-            { to: "/admin", label: "Quản trị" },
-          ]} />
+          <FooterCol
+            title="Công ty"
+            links={[
+              { to: "/contact", label: "Liên hệ" },
+              ...(canAccessAdmin ? [{ to: "/admin", label: "Quản trị" }] : []),
+            ]}
+          />
         </div>
 
         <div className="mt-12 pt-8 border-t border-border text-xs text-muted-foreground flex flex-col sm:flex-row gap-4 justify-between">
@@ -62,3 +70,4 @@ function FooterCol({ title, links }: { title: string; links: { to: string; label
     </div>
   );
 }
+

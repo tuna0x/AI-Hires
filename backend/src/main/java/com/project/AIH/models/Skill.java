@@ -25,6 +25,16 @@ public class Skill {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(length = 64)
+    private String category; // e.g., "Technical", "Soft Skills"
+
+    @Builder.Default
+    private Integer popularity = 0;
+
+    @Column(length = 32)
+    @Builder.Default
+    private String status = "VERIFIED";
+
     // Audit fields
     private Instant createdAt;
     private Instant updatedAt;

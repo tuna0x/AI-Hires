@@ -56,6 +56,13 @@ app:
     api-url: "${GEMINI_API_URL:https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent}"
     model-name: "${GEMINI_MODEL_NAME:gemini-3.1-flash-lite}"
     prompt-version: "${GEMINI_PROMPT_VERSION:v1.0}"
+  interview:
+    max-questions: ${INTERVIEW_MAX_QUESTIONS:5}
+    scoring:
+      max-retry-attempts: ${INTERVIEW_SCORING_MAX_RETRIES:3}
+  outbox:
+    max-retries: ${OUTBOX_MAX_RETRIES:5}
+    poll-rate-ms: ${OUTBOX_POLL_RATE_MS:10000}
 
 logging:
   level:

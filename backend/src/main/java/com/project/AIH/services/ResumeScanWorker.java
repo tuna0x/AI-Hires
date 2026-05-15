@@ -84,7 +84,7 @@ public class ResumeScanWorker {
             scan.setExtractedText(extractedText);
             String contentHash = null;
             if (extractedText != null && !extractedText.isBlank()) {
-                contentHash = calculateHash(extractedText.getBytes(StandardCharsets.UTF_8));
+                contentHash = com.project.AIH.utils.HashUtils.calculateHash(extractedText.getBytes(StandardCharsets.UTF_8));
             }
             scan = resumeScanStateService.markAnalyzing(scan.getId(), extractedText, contentHash);
 
@@ -105,7 +105,7 @@ public class ResumeScanWorker {
             rawOutput.setProfileJson("");
             rawOutput.setAiModel(geminiModelName);
             rawOutput.setPromptVersion(promptVersion);
-            rawOutput.setPromptHash(sha256(promptVersion));
+            rawOutput.setPromptHash(com.project.AIH.utils.HashUtils.calculateHash(promptVersion));
             rawAiOutputRepository.save(rawOutput);
             scan.setRawAiOutput(rawOutput);
 
@@ -238,39 +238,4 @@ public class ResumeScanWorker {
         return "SCAN_PROCESSING_FAILED";
     }
 
-    private String calculateHash(byte[] bytes) {
-        try {
-            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(bytes);
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (Exception e) {
-            return java.util.UUID.randomUUID().toString();
-        }
-    }
-
-    private String sha256(String value) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
-            StringBuilder hex = new StringBuilder();
-            for (byte b : hash) {
-                String h = Integer.toHexString(0xff & b);
-                if (h.length() == 1) {
-                    hex.append('0');
-                }
-                hex.append(h);
-            }
-            return hex.toString();
-        } catch (Exception ex) {
-            return null;
-        }
-    }
 }

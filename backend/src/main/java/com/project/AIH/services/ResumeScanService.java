@@ -49,7 +49,7 @@ public class ResumeScanService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Khong the doc noi dung tep.");
         }
 
-        String fileHash = calculateHash(fileBytes);
+        String fileHash = com.project.AIH.utils.HashUtils.calculateHash(fileBytes);
         ResumeScan reusableScan = findReusableScan(user, fileHash);
         if (reusableScan != null) {
             return toResultDTO(reusableScan);
@@ -229,21 +229,4 @@ public class ResumeScanService {
         }
     }
 
-    private String calculateHash(byte[] bytes) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] hash = digest.digest(bytes);
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : hash) {
-                String hex = Integer.toHexString(0xff & b);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (Exception e) {
-            return java.util.UUID.randomUUID().toString().replace("-", "");
-        }
-    }
 }

@@ -36,8 +36,7 @@ public class ReportGenerationWorker {
 
         } catch (Exception e) {
             log.error("Failed to process report generation message. Error: {}", e.getMessage(), e);
-            // We don't want to throw an exception here because it might cause infinite retry 
-            // if the JSON is invalid. In a real system, we'd send to DLQ.
+            throw new org.springframework.amqp.AmqpRejectAndDontRequeueException("Report generation failed, sending to DLQ", e);
         }
     }
 }

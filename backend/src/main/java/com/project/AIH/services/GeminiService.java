@@ -22,6 +22,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 public class GeminiService {
 
         private final WebClient webClient = WebClient.create();
+        private final ObjectMapper objectMapper;
 
         @Value("${app.gemini.api-key}")
         private String apiKey;
@@ -389,7 +390,7 @@ public class GeminiService {
                                             .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientResponseException.TooManyRequests || ex instanceof WebClientResponseException.InternalServerError))
                                         .block();
 
-                        JsonNode root = new ObjectMapper().readTree(response);
+                        JsonNode root = objectMapper.readTree(response);
                         String aiResultText = root.path("candidates").get(0)
                                         .path("content").path("parts").get(0)
                                         .path("text").asText();
@@ -498,64 +499,76 @@ public class GeminiService {
         }
 
 
-        public String generateAllQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level) {
+        public String generateAllQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level, int count, List<String> skillKeywords) {
                 String levelInstruction = getLevelInstruction(level);
                 String technicalJobDescription = buildTechnicalInterviewInstruction(targetRole, level) + "\n\n" + nullToEmpty(jobDescription);
+                String skillContext = (skillKeywords == null || skillKeywords.isEmpty())
+                                ? "khong co"
+                                : String.join(", ", skillKeywords);
+                technicalJobDescription = "Ky nang trong tam cua job: " + skillContext + "\n\n" + technicalJobDescription;
                 String prompt = String.format(
-                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
-                                "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
-                                "Cấp độ yêu cầu của ứng viên: %s.\n" +
-                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
-                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
-                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
-                                "Nhiệm vụ: Hãy chuẩn bị toàn bộ 5 câu hỏi phỏng vấn bằng Tiếng Việt. \n" +
-                                "- Câu 1, 2, 3: Các câu hỏi nền tảng, tập trung khai thác kỹ năng cốt lõi bám sát JD (có thể tái sử dụng cho ứng viên khác).\n" +
-                                "- Câu 4, 5: Các câu hỏi cá nhân hóa sâu sắc, đào sâu vào các dự án, kinh nghiệm cụ thể mà ứng viên đã ghi trong CV (không tái sử dụng cho ứng viên khác).\n" +
-                                "Yêu cầu phản hồi: Trả về một mảng JSON chứa đúng 5 object (TUYỆT ĐỐI KHÔNG CÓ TRÍCH DẪN MARKDOWN HOẶC TEXT THỪA) theo cấu trúc chính xác sau:\n" +
+                                "Bạn là một chuyên gia phỏng vấn kỹ thuật AI.\n" +
+                                "Vị trí ứng tuyển: %s.\n" +
+                                "Ngành nghề: %s.\n" +
+                                "Mức độ câu hỏi cần tạo: %s.\n" +
+                                "Chỉ thị theo mức độ: %s.\n\n" +
+                                "Mô tả công việc (JD):\n%s\n\n" +
+                                "CV ứng viên:\n%s\n\n" +
+                                "Nhiệm vụ: Hãy tạo CHÍNH XÁC %d câu hỏi phỏng vấn bằng tiếng Việt, phù hợp mức độ đã yêu cầu.\n" +
+                                "Yêu cầu bắt buộc:\n" +
+                                "- Trả về DUY NHẤT một JSON array gồm đúng %d object.\n" +
+                                "- Không markdown, không text thừa, không giải thích.\n" +
+                                "- Mỗi object phải đúng schema bên dưới.\n" +
                                 "[\n" +
                                 "  {\n" +
-                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn số 1>\",\n" +
-                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan, nếu có>\",\n" +
-                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan, nếu có>\",\n" +
-                                "    \"can_reuse\": true\n" +
-                                "  },\n" +
-                                "  // ... tiếp tục cho đến câu 5, lưu ý câu 4, 5 can_reuse thường là false\n" +
+                                "    \"question\": \"<nội dung câu hỏi phỏng vấn>\",\n" +
+                                "    \"cv_context\": \"<trích đoạn CV liên quan hoặc chuỗi rỗng>\",\n" +
+                                "    \"jd_context\": \"<trích đoạn JD liên quan hoặc chuỗi rỗng>\",\n" +
+                                "    \"can_reuse\": true_or_false\n" +
+                                "  }\n" +
                                 "]\n" +
-                                "Đảm bảo trả về đúng 5 phần tử trong mảng JSON.",
-                                targetRole, industry, level, levelInstruction, technicalJobDescription, candidateCvText);
+                                "Đảm bảo số phần tử của mảng đúng bằng %d.",
+                                targetRole, industry, level, levelInstruction, technicalJobDescription, candidateCvText,
+                                count, count, count);
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
                                 "responseMimeType", "application/json");
-                return callTextOnlyGemini(prompt, 20, generationConfig); // 20s timeout for generating 5 questions
+                return callTextOnlyGemini(prompt, 20, generationConfig);
         }
 
-        public String generatePersonalizedQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level, int count) {
+        public String generatePersonalizedQuestions(String jobDescription, String candidateCvText, String targetRole, String industry, String level, int count, List<String> skillKeywords) {
                 String levelInstruction = getLevelInstruction(level);
                 String technicalJobDescription = buildTechnicalInterviewInstruction(targetRole, level) + "\n\n" + nullToEmpty(jobDescription);
+                String skillContext = (skillKeywords == null || skillKeywords.isEmpty())
+                                ? "khong co"
+                                : String.join(", ", skillKeywords);
+                technicalJobDescription = "Ky nang trong tam cua job: " + skillContext + "\n\n" + technicalJobDescription;
                 String prompt = String.format(
-                                "Bạn là một chuyên gia tuyển dụng (Interviewer) AI kỳ cựu.\n" +
-                                "Bạn đang phỏng vấn ứng viên ứng tuyển vị trí: %s trong ngành nghề: %s.\n" +
-                                "Cấp độ yêu cầu của ứng viên: %s.\n" +
-                                "Chỉ thị phỏng vấn theo cấp độ: %s\n\n" +
-                                "Dưới đây là Mô tả công việc (JD):\n%s\n\n" +
-                                "Dưới đây là CV của ứng viên:\n%s\n\n" +
-                                "Nhiệm vụ: Hãy chuẩn bị %d câu hỏi phỏng vấn cá nhân hóa bằng Tiếng Việt. \n" +
-                                "Các câu hỏi này phải cực kỳ cá nhân hóa, đào sâu vào các dự án, kinh nghiệm cụ thể mà ứng viên đã ghi trong CV (không mang tính lý thuyết chung chung, không tái sử dụng cho ứng viên khác).\n" +
-                                "Yêu cầu phản hồi: Trả về một mảng JSON chứa đúng %d object (TUYỆT ĐỐI KHÔNG CÓ TRÍCH DẪN MARKDOWN HOẶC TEXT THỪA) theo cấu trúc chính xác sau:\n" +
+                                "Bạn là một chuyên gia phỏng vấn kỹ thuật AI.\n" +
+                                "Vị trí ứng tuyển: %s.\n" +
+                                "Ngành nghề: %s.\n" +
+                                "Mức độ câu hỏi cần tạo: %s.\n" +
+                                "Chỉ thị theo mức độ: %s.\n\n" +
+                                "Mô tả công việc (JD):\n%s\n\n" +
+                                "CV ứng viên:\n%s\n\n" +
+                                "Nhiệm vụ: Hãy tạo CHÍNH XÁC %d câu hỏi phỏng vấn cá nhân hóa bằng tiếng Việt.\n" +
+                                "Mỗi câu hỏi phải đào sâu vào kinh nghiệm/dự án cụ thể của ứng viên trong CV/JD.\n" +
+                                "Bắt buộc set can_reuse=false cho tất cả câu hỏi.\n" +
+                                "Trả về DUY NHẤT JSON array gồm đúng %d object, không markdown và không text thừa.\n" +
                                 "[\n" +
                                 "  {\n" +
-                                "    \"question\": \"<Nội dung câu hỏi phỏng vấn>\",\n" +
-                                "    \"cv_context\": \"<Đoạn trích dẫn ngắn trong CV liên quan, nếu có>\",\n" +
-                                "    \"jd_context\": \"<Đoạn trích dẫn ngắn trong JD liên quan, nếu có>\",\n" +
+                                "    \"question\": \"<nội dung câu hỏi phỏng vấn>\",\n" +
+                                "    \"cv_context\": \"<trích đoạn CV liên quan hoặc chuỗi rỗng>\",\n" +
+                                "    \"jd_context\": \"<trích đoạn JD liên quan hoặc chuỗi rỗng>\",\n" +
                                 "    \"can_reuse\": false\n" +
                                 "  }\n" +
                                 "]\n" +
-                                "Đảm bảo trả về đúng %d phần tử trong mảng JSON.",
+                                "Đảm bảo số phần tử của mảng đúng bằng %d.",
                                 targetRole, industry, level, levelInstruction, technicalJobDescription, candidateCvText, count, count, count);
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
                                 "responseMimeType", "application/json");
-                return callTextOnlyGemini(prompt, 15, generationConfig); // 15s timeout for generating personalized questions
+                return callTextOnlyGemini(prompt, 15, generationConfig);
         }
 
 
@@ -802,7 +815,14 @@ public class GeminiService {
                 + "- Awards (max 2đ): 0đ nếu không có, 1đ nếu đạt giải nội bộ, cuộc thi nhỏ, 2đ nếu đạt giải cấp quốc gia/quốc tế hoặc được công nhận bởi tổ chức uy tín.\n"
                 + "- Learning (max 2đ): 0đ nếu không có bằng chứng tự học, 1đ nếu có chứng chỉ online lẻ hoặc học công nghệ mới, 2đ nếu có chuỗi chứng chỉ học tập liên tục hoặc contribute open source hoặc blog kỹ thuật.\n"
                 + "- Category-Specific (max 2đ): 0đ nếu không có portfolio/bằng chứng chuyên ngành, 1đ nếu có portfolio/GitHub nhưng sơ sài, 2đ nếu portfolio cực mạnh bám sát vị trí (IT->GitHub active, Design->Behance, Marketing->Case study chi tiết, Finance->CFA/CPA/số liệu P&L, Sales->Revenue quota attainment).\n\n"
-                + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt có dấu cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, chỉ ra bằng chứng cụ thể từ CV và đề xuất hành động sửa được ngay.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";
+                + "Lưu ý: Toàn bộ JSON trả về phải sử dụng Tiếng Việt có dấu cho các mô tả (details, strengths, actions, sub_tips). Quy tắc lọc sub_tips: Sinh dữ liệu tip cá nhân hóa sâu sắc (bám sát theo ngành nghề, vai trò, trình độ và thể loại CV cụ thể) cho tất cả các sub-item chưa đạt điểm tối đa (current < max). Nếu đã đạt tối đa thì trả về null. Phân tích thật sâu, chỉ ra bằng chứng cụ thể từ CV và đề xuất hành động sửa được ngay.\n\nQUY TẮC PHÁT HIỆN GIAN LẬN (Credibility Audit): Đánh giá xem ứng viên có dùng thủ thuật như nhồi nhét từ khóa vô nghĩa (keyword stuffing), sao chép nguyên bản mô tả JD, hoặc ghi lệch thời gian không. Nếu phát hiện nghi vấn, hãy trừ điểm thẳng tay tại mục Keywords hoặc Consistency (Stage 2) và bắt buộc thêm một hành động cảnh báo mức độ 'Cao' trong 'priority_actions' có tiền tố '⚠️ PHÁT HIỆN NGHI VẤN GIAN LẬN: <chi tiết>'.";        promptText = promptText
+                + "\n\nRANG BUOC BO SUNG BAT BUOC (uu tien chat luong cai thien):\n"
+                + "- total_score phai bang stage2_core.score + stage3_in_depth.score + stage4_bonus.score.\n"
+                + "- stage2_core.score <= 50, stage3_in_depth.score <= 40, stage4_bonus.score <= 10.\n"
+                + "- Tra them mang score_gaps (toi da 5 phan tu), sap xep theo lost giam dan. Moi phan tu gom: section, current, max, lost, tip.\n"
+                + "- priority_actions phai la cac hanh dong co the lam ngay, gom cac field: action, priority, expected_gain, effort, priority_rank.\n"
+                + "- expected_gain la so diem du kien cai thien (0-10), effort thuoc LOW|MEDIUM|HIGH, priority_rank tu 1 den 5 va khong trung nhau.\n"
+                + "- Neu co dau hieu gian lan, bat buoc mot action priority=High, expected_gain=0 de canh bao ro rang.";
                 Map<String, Object> generationConfig = Map.of(
                                 "temperature", 0.1,
                                 "responseMimeType", "application/json");
@@ -841,7 +861,7 @@ public class GeminiService {
                                             .filter(ex -> ex instanceof TimeoutException || ex instanceof WebClientResponseException.TooManyRequests || ex instanceof WebClientResponseException.InternalServerError))
                                         .block();
 
-                        JsonNode root = new ObjectMapper().readTree(responseStr);
+                        JsonNode root = objectMapper.readTree(responseStr);
                         String aiResultText = root.path("candidates").get(0)
                                         .path("content").path("parts").get(0)
                                         .path("text").asText();
@@ -878,3 +898,6 @@ public class GeminiService {
                 return value.length() <= maxLength ? value : value.substring(0, maxLength);
         }
 }
+
+
+

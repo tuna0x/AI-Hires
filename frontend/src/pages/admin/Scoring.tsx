@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   CheckCircle2, AlertCircle, Info, Layout, BrainCircuit, 
   Star, ChevronDown, ChevronRight, Gauge, FileText, 
-  UserCircle, MessageSquare, Zap, BarChart3, Binary, Award, Globe, GraduationCap, Github
+  UserCircle, MessageSquare, Zap, BarChart3, Binary, Award, Globe, GraduationCap, Github, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios";
 
 interface Metric {
   id: string;
@@ -31,6 +32,16 @@ interface Stage {
   color: string;
   max: number;
   categories: Category[];
+}
+
+interface ScoringRule {
+  id?: number;
+  ruleCode: string;
+  category: string;
+  criteriaName: string;
+  maxScore: number;
+  weight: number;
+  isActive: boolean;
 }
 
 const SCORING_STRUCTURE: Stage[] = [
@@ -167,15 +178,83 @@ const SCORING_STRUCTURE: Stage[] = [
 ];
 
 export default function Scoring() {
-  const [weights, setWeights] = useState<Record<string, number>>(() => {
-    const initial: Record<string, number> = {};
-    SCORING_STRUCTURE.forEach(s => 
-      s.categories.forEach(c => 
-        c.metrics.forEach(m => initial[m.id] = m.max)
-      )
-    );
-    return initial;
-  });
+  const [weights, setWeights] = useState<Record<string, number>>({});
+  const [dbRules, setDbRules] = useState<ScoringRule[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const fetchRules = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get("/api/v1/admin/scoring-rules");
+      const rules: ScoringRule[] = response.data;
+      setDbRules(rules);
+      
+      const initialWeights: Record<string, number> = {};
+      // Initialize with defaults from SCORING_STRUCTURE first
+      SCORING_STRUCTURE.forEach(s => 
+        s.categories.forEach(c => 
+          c.metrics.forEach(m => initialWeights[m.id] = m.max)
+        )
+      );
+
+      // Override with DB values
+      if (rules && rules.length > 0) {
+        rules.forEach(r => {
+          initialWeights[r.ruleCode] = r.maxScore;
+        });
+      }
+      
+      setWeights(initialWeights);
+    } catch (error) {
+      console.error("Failed to fetch scoring rules", error);
+      toast.error("Không thể tải cấu hình từ server.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRules();
+  }, []);
+
+  const handleUpdate = async () => {
+    if (!isValid && grandTotal !== 100) {
+        toast.error("Tổng điểm phải bằng 100!");
+        return;
+    }
+
+    try {
+      setIsSaving(true);
+      
+      const rulesToSave: ScoringRule[] = [];
+      SCORING_STRUCTURE.forEach(s => {
+        s.categories.forEach(c => {
+          c.metrics.forEach(m => {
+            const existing = dbRules.find(r => r.ruleCode === m.id);
+            rulesToSave.push({
+              id: existing?.id,
+              ruleCode: m.id,
+              category: c.id,
+              criteriaName: m.label,
+              maxScore: weights[m.id] || 0,
+              weight: 1.0,
+              isActive: true
+            });
+          });
+        });
+      });
+
+      await axios.post("/api/v1/admin/scoring-rules", rulesToSave);
+      toast.success("Đã cập nhật thuật toán lên hệ thống!");
+      fetchRules();
+    } catch (error) {
+      console.error("Failed to save rules", error);
+      toast.error("Lỗi khi lưu cấu hình!");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     ats_format: true, professional_foundation: true, experience_eval: true
@@ -391,11 +470,11 @@ export default function Scoring() {
               Reset
             </Button>
             <Button 
-              disabled={!isValid}
-              onClick={() => toast.success("Đã cập nhật thuật toán!")}
+              disabled={!isValid || isSaving}
+              onClick={handleUpdate}
               className="bg-primary hover:bg-primary-dark text-primary-foreground h-10 px-8 rounded-2xl font-black text-[10px] uppercase tracking-widest shadow-glow shadow-primary/20"
             >
-              Cập nhật ngay
+              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cập nhật ngay"}
             </Button>
           </div>
         </div>

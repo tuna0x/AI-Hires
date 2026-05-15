@@ -46,7 +46,9 @@ public class InterviewController {
     public ResponseEntity<InterviewSession> startInterview(@RequestBody Map<String, Object> request) {
         Long applicationId = Long.valueOf(request.get("applicationId").toString());
         String targetLevel = request.containsKey("targetLevel") ? (String) request.get("targetLevel") : null;
-        return ResponseEntity.ok(interviewService.startSession(applicationId, targetLevel));
+        Integer maxQuestions = parseInteger(request.get("maxQuestions"));
+        Map<String, Integer> difficultyRule = parseDifficultyRule(request.get("difficultyRule"));
+        return ResponseEntity.ok(interviewService.startSession(applicationId, targetLevel, maxQuestions, difficultyRule));
     }
 
     @PostMapping("/start-mock")
@@ -54,12 +56,62 @@ public class InterviewController {
         String targetRole = (String) request.get("targetRole");
         String jobDescription = (String) request.get("jobDescription");
         String targetLevel = request.containsKey("targetLevel") ? (String) request.get("targetLevel") : null;
+        Integer maxQuestions = parseInteger(request.get("maxQuestions"));
+        Map<String, Integer> difficultyRule = parseDifficultyRule(request.get("difficultyRule"));
+        List<String> skillKeywords = parseSkillKeywords(request.get("skills"));
         if (request.containsKey("scanId") && request.get("scanId") != null) {
             Long scanId = Long.valueOf(request.get("scanId").toString());
-            return ResponseEntity.ok(interviewService.startMockSessionByScan(scanId, targetRole, jobDescription, targetLevel));
+            return ResponseEntity.ok(interviewService.startMockSessionByScan(scanId, targetRole, jobDescription, targetLevel, maxQuestions, difficultyRule, skillKeywords));
         }
         Long resumeId = Long.valueOf(request.get("resumeId").toString());
-        return ResponseEntity.ok(interviewService.startMockSession(resumeId, targetRole, jobDescription, targetLevel));
+        return ResponseEntity.ok(interviewService.startMockSession(resumeId, targetRole, jobDescription, targetLevel, maxQuestions, difficultyRule, skillKeywords));
+    }
+
+    private Integer parseInteger(Object value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.toString());
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Integer> parseDifficultyRule(Object value) {
+        if (!(value instanceof Map<?, ?> raw)) {
+            return null;
+        }
+        Map<String, Integer> parsed = new java.util.HashMap<>();
+        Object easy = raw.get("easy");
+        Object medium = raw.get("medium");
+        Object hard = raw.get("hard");
+        Integer easyInt = parseInteger(easy);
+        Integer mediumInt = parseInteger(medium);
+        Integer hardInt = parseInteger(hard);
+        if (easyInt != null) parsed.put("easy", easyInt);
+        if (mediumInt != null) parsed.put("medium", mediumInt);
+        if (hardInt != null) parsed.put("hard", hardInt);
+        return parsed.isEmpty() ? null : parsed;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<String> parseSkillKeywords(Object value) {
+        if (!(value instanceof List<?> raw)) {
+            return null;
+        }
+        List<String> parsed = new java.util.ArrayList<>();
+        for (Object item : raw) {
+            if (item == null) {
+                continue;
+            }
+            String skill = item.toString().trim();
+            if (!skill.isEmpty()) {
+                parsed.add(skill);
+            }
+        }
+        return parsed.isEmpty() ? null : parsed;
     }
 
     @GetMapping("/{sessionId}")

@@ -106,6 +106,16 @@ public class DatabaseInitializer implements CommandLineRunner {
         perms.add(new PermDef("Get Interview Score Status", "/api/v1/interviews/{sessionId}/scores", "GET", "INTERVIEWS", true, true));
         perms.add(new PermDef("Get My Interview Sessions", "/api/v1/interviews/my-sessions", "GET", "INTERVIEWS", true, true));
 
+        // --- Frontend Admin UI Permissions ---
+        perms.add(new PermDef("view:hr:dashboard", "UI:/admin/hr/dashboard",  "UI", "ADMIN_UI", true,  false));
+        perms.add(new PermDef("manage:jobs",        "UI:/admin/hr/jobs",       "UI", "ADMIN_UI", true,  false));
+        perms.add(new PermDef("manage:applicants",  "UI:/admin/hr/applicants", "UI", "ADMIN_UI", true,  false));
+        perms.add(new PermDef("manage:scoring",     "UI:/admin/scoring",       "UI", "ADMIN_UI", false, false));
+        perms.add(new PermDef("manage:questions",   "UI:/admin/questions",     "UI", "ADMIN_UI", false, false));
+        perms.add(new PermDef("manage:skills",      "UI:/admin/skills",        "UI", "ADMIN_UI", false, false));
+        perms.add(new PermDef("manage:users",       "UI:/admin/users",         "UI", "ADMIN_UI", false, false));
+        perms.add(new PermDef("view:logs",          "UI:/admin/logs",          "UI", "ADMIN_UI", false, false));
+
         for (PermDef def : perms) {
             Permission p = this.permissionRepository.findByModuleAndApiPathAndMethod(def.module, def.path, def.method);
             if (p == null) {

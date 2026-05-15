@@ -1,32 +1,95 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Trash2, Tag, Search, Shield, Award, Sparkles, Layers, Filter, ArrowUpRight, X, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Tag, Search, Shield, Award, Sparkles, Layers, Filter, ArrowUpRight, X, CheckCircle2, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import axios from "axios";
 
-const INITIAL_SKILLS = [
-  { name: "Java Core", category: "Technical", popularity: 42, status: "VERIFIED" },
-  { name: "Spring Boot", category: "Technical", popularity: 38, status: "VERIFIED" },
-  { name: "React", category: "Technical", popularity: 56, status: "VERIFIED" },
-  { name: "TypeScript", category: "Technical", popularity: 49, status: "VERIFIED" },
-  { name: "RabbitMQ", category: "Technical", popularity: 12, status: "VERIFIED" },
-  { name: "Docker", category: "Technical", popularity: 31, status: "VERIFIED" },
-  { name: "Giao tiếp", category: "Soft Skills", popularity: 88, status: "VERIFIED" },
-  { name: "Giải quyết vấn đề", category: "Soft Skills", popularity: 92, status: "VERIFIED" },
-  { name: "Làm việc nhóm", category: "Soft Skills", popularity: 85, status: "VERIFIED" },
-];
+interface Skill {
+  id?: number;
+  name: string;
+  category: string;
+  description?: string;
+  popularity?: number;
+  status: "VERIFIED" | "DRAFT";
+}
 
 export default function Skills() {
-  const [skills, setSkills] = useState(INITIAL_SKILLS);
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [selectedSkills, setSelectedSkills] = useState<number[]>([]);
   const [isBulkMode, setIsBulkMode] = useState(false);
   const [draft, setDraft] = useState("");
   const [activeCategory, setActiveCategory] = useState("ALL");
   const [addingToCategory, setAddingToCategory] = useState("Technical");
   const [search, setSearch] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchSkills();
+  }, []);
+
+  const fetchSkills = async () => {
+    try {
+      setIsLoading(true);
+      const response = await axios.get("/api/v1/admin/skills");
+      setSkills(response.data);
+    } catch (error) {
+      console.error("Failed to fetch skills", error);
+      toast.error("Không thể tải danh sách kỹ năng.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddSkill = async () => {
+    if (!draft.trim()) return;
+    if (skills.some(s => s.name.toLowerCase() === draft.trim().toLowerCase())) {
+      toast.warning("Kỹ năng này đã tồn tại!");
+      return;
+    }
+    
+    try {
+      const newSkill: Skill = { 
+        name: draft.trim(), 
+        category: addingToCategory, 
+        popularity: 0, 
+        status: "VERIFIED" 
+      };
+      const response = await axios.post("/api/v1/admin/skills", [newSkill]);
+      setSkills([...skills, ...response.data]);
+      setDraft("");
+      toast.success("Đã thêm kỹ năng mới!");
+    } catch (error) {
+      toast.error("Lỗi khi thêm kỹ năng!");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await axios.delete(`/api/v1/admin/skills/${id}`);
+      setSkills(skills.filter(s => s.id !== id));
+      setSelectedSkills(selectedSkills.filter(sId => sId !== id));
+      toast.success("Đã xóa kỹ năng");
+    } catch (error) {
+      toast.error("Lỗi khi xóa kỹ năng!");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      const promises = selectedSkills.map(id => axios.delete(`/api/v1/admin/skills/${id}`));
+      await Promise.all(promises);
+      setSkills(skills.filter(s => !selectedSkills.includes(s.id!)));
+      setSelectedSkills([]);
+      setIsBulkMode(false);
+      toast.success(`Đã xóa ${selectedSkills.length} kỹ năng`);
+    } catch (error) {
+      toast.error("Lỗi khi xóa hàng loạt!");
+    }
+  };
 
   const categories = ["Technical", "Soft Skills"]; 
   const categoryCounts = skills.reduce((acc, s) => {
@@ -34,36 +97,11 @@ export default function Skills() {
     return acc;
   }, {} as Record<string, number>);
 
-  const handleAddSkill = () => {
-    if (!draft.trim()) return;
-    if (skills.some(s => s.name.toLowerCase() === draft.trim().toLowerCase())) {
-      toast.warning("Kỹ năng này đã tồn tại!");
-      return;
-    }
-    const newSkill = { name: draft.trim(), category: addingToCategory, popularity: 0, status: "VERIFIED" as const };
-    setSkills([...skills, newSkill]);
-    setDraft("");
-    toast.success("Đã thêm kỹ năng mới!");
-  };
-
-  const handleDelete = (name: string) => {
-    setSkills(skills.filter(s => s.name !== name));
-    setSelectedSkills(selectedSkills.filter(s => s !== name));
-    toast.success(`Đã xóa ${name}`);
-  };
-
-  const handleBulkDelete = () => {
-    setSkills(skills.filter(s => !selectedSkills.includes(s.name)));
-    setSelectedSkills([]);
-    setIsBulkMode(false);
-    toast.success(`Đã xóa ${selectedSkills.length} kỹ năng`);
-  };
-
   const handleAISuggest = () => {
     toast.promise(new Promise(resolve => setTimeout(resolve, 1500)), {
       loading: 'Gemini AI đang phân tích xu hướng...',
       success: () => {
-        const suggestions = [
+        const suggestions: Skill[] = [
           { name: "Next.js", category: "Technical", popularity: 45, status: "DRAFT" as const },
           { name: "Tailwind CSS", category: "Technical", popularity: 52, status: "DRAFT" as const },
           { name: "Quản lý thời gian", category: "Soft Skills", popularity: 30, status: "DRAFT" as const }
@@ -75,9 +113,9 @@ export default function Skills() {
     });
   };
 
-  const toggleSelect = (name: string) => {
+  const toggleSelect = (id: number) => {
     setSelectedSkills(prev => 
-      prev.includes(name) ? prev.filter(s => s !== name) : [...prev, name]
+      prev.includes(id) ? prev.filter(sId => sId !== id) : [...prev, id]
     );
   };
 
@@ -234,7 +272,7 @@ export default function Skills() {
                 <div className="flex flex-wrap gap-3">
                   <AnimatePresence mode="popLayout">
                     {filteredSkills.filter(s => s.category === "Technical").map((s) => (
-                      <SkillChip key={s.name} s={s} isBulkMode={isBulkMode} isSelected={selectedSkills.includes(s.name)} onToggle={() => toggleSelect(s.name)} onDelete={() => handleDelete(s.name)} color="primary" />
+                      <SkillChip key={s.name} s={s} isBulkMode={isBulkMode} isSelected={selectedSkills.includes(s.id!)} onToggle={() => toggleSelect(s.id!)} onDelete={() => handleDelete(s.id!)} color="primary" />
                     ))}
                   </AnimatePresence>
                 </div>
@@ -250,7 +288,7 @@ export default function Skills() {
                 <div className="flex flex-wrap gap-3">
                   <AnimatePresence mode="popLayout">
                     {filteredSkills.filter(s => s.category === "Soft Skills").map((s) => (
-                      <SkillChip key={s.name} s={s} isBulkMode={isBulkMode} isSelected={selectedSkills.includes(s.name)} onToggle={() => toggleSelect(s.name)} onDelete={() => handleDelete(s.name)} color="amber" />
+                      <SkillChip key={s.name} s={s} isBulkMode={isBulkMode} isSelected={selectedSkills.includes(s.id!)} onToggle={() => toggleSelect(s.id!)} onDelete={() => handleDelete(s.id!)} color="amber" />
                     ))}
                   </AnimatePresence>
                 </div>

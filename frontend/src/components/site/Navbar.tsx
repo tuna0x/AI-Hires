@@ -5,6 +5,7 @@ import { Menu, X, Sparkles, LogOut, Shield, User as UserIcon, LayoutDashboard } 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { ADMIN_AREA_PERMISSIONS } from "@/lib/permissions";
 import { toast } from "sonner";
 import {
   DropdownMenu,
@@ -28,8 +29,9 @@ const links = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
-  const { user, isAdmin, signOut } = useAuth();
+  const { user, hasPermission, signOut } = useAuth();
   const navigate = useNavigate();
+  const canAccessAdmin = ADMIN_AREA_PERMISSIONS.some((p) => hasPermission(p));
 
   async function handleSignOut() {
     await signOut();
@@ -98,7 +100,7 @@ export default function Navbar() {
                   <DropdownMenuSeparator className="bg-border/60" />
                   
                   {/* Tích hợp lối tắt Admin ngay trong danh mục tài khoản của Quản trị viên */}
-                  {isAdmin && (
+                  {canAccessAdmin && (
                     <>
                       <DropdownMenuItem asChild className="rounded-xl px-3 py-2 text-xs font-semibold cursor-pointer text-primary bg-primary/5 hover:bg-primary-light hover:text-primary transition-all duration-200">
                         <Link to="/admin" className="flex items-center gap-2">

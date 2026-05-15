@@ -85,6 +85,68 @@ public class InterviewService {
         }
     }
 
+    private int clampMaxQuestions(Integer requestedMaxQuestions) {
+        int configured = requestedMaxQuestions == null ? 5 : requestedMaxQuestions;
+        if (configured < 1) {
+            return 1;
+        }
+        return Math.min(configured, 10);
+    }
+
+    private Map<DifficultyLevelEnum, Integer> resolveDifficultyQuestionCounts(int totalQuestions, Map<String, Integer> difficultyRule, DifficultyLevelEnum fallbackDifficulty) {
+        Map<DifficultyLevelEnum, Integer> result = new HashMap<>();
+        result.put(DifficultyLevelEnum.EASY, 0);
+        result.put(DifficultyLevelEnum.MEDIUM, 0);
+        result.put(DifficultyLevelEnum.HARD, 0);
+
+        double easyWeight = 0.5d;
+        double mediumWeight = 0.3d;
+        double hardWeight = 0.2d;
+
+        if (difficultyRule != null) {
+            int easyRaw = Math.max(0, difficultyRule.getOrDefault("easy", 0));
+            int mediumRaw = Math.max(0, difficultyRule.getOrDefault("medium", 0));
+            int hardRaw = Math.max(0, difficultyRule.getOrDefault("hard", 0));
+            int sum = easyRaw + mediumRaw + hardRaw;
+            if (sum > 0) {
+                easyWeight = (double) easyRaw / sum;
+                mediumWeight = (double) mediumRaw / sum;
+                hardWeight = (double) hardRaw / sum;
+            }
+        }
+
+        int easyCount = (int) Math.floor(totalQuestions * easyWeight);
+        int mediumCount = (int) Math.floor(totalQuestions * mediumWeight);
+        int hardCount = (int) Math.floor(totalQuestions * hardWeight);
+        int assigned = easyCount + mediumCount + hardCount;
+        int remaining = totalQuestions - assigned;
+
+        result.put(DifficultyLevelEnum.EASY, easyCount);
+        result.put(DifficultyLevelEnum.MEDIUM, mediumCount);
+        result.put(DifficultyLevelEnum.HARD, hardCount);
+
+        List<DifficultyLevelEnum> fillOrder = List.of(
+                DifficultyLevelEnum.MEDIUM,
+                DifficultyLevelEnum.HARD,
+                DifficultyLevelEnum.EASY
+        );
+        int idx = 0;
+        while (remaining > 0) {
+            DifficultyLevelEnum d = fillOrder.get(idx % fillOrder.size());
+            result.put(d, result.get(d) + 1);
+            idx++;
+            remaining--;
+        }
+
+        if (totalQuestions > 0 && result.get(DifficultyLevelEnum.EASY) == 0
+                && result.get(DifficultyLevelEnum.MEDIUM) == 0
+                && result.get(DifficultyLevelEnum.HARD) == 0) {
+            result.put(fallbackDifficulty, 1);
+        }
+
+        return result;
+    }
+
     private String buildContextualFallbackQuestion(String targetRole, String jobDescription,
                                                    String candidateCvText, DifficultyLevelEnum difficulty,
                                                    int questionOrder) {
@@ -116,7 +178,7 @@ public class InterviewService {
 
     private void publishReportIfReady(Long sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId).orElse(null);
-        if (session == null || session.getStatus() != InterviewSessionStatusEnum.IN_PROGRESS) {
+        if (session == null || (session.getStatus() != InterviewSessionStatusEnum.IN_PROGRESS && session.getStatus() != InterviewSessionStatusEnum.REPORT_GENERATING)) {
             return;
         }
 
@@ -147,7 +209,20 @@ public class InterviewService {
         log.info("Fetching paginated interview sessions for user ID: {}", user.getId());
 
         // Secure boundary: Force filtering by current user (join through application and resume)
-        Specification<InterviewSession> combinedSpec = (root, query, cb) -> cb.equal(root.get("application").get("resume").get("user").get("id"), user.getId());
+        Specification<InterviewSession> combinedSpec = (root, query, cb) -> {
+            jakarta.persistence.criteria.Join<Object, Object> appJoin = root.join("application", jakarta.persistence.criteria.JoinType.LEFT);
+            jakarta.persistence.criteria.Join<Object, Object> appResumeJoin = appJoin.join("resume", jakarta.persistence.criteria.JoinType.LEFT);
+            jakarta.persistence.criteria.Join<Object, Object> appUserJoin = appResumeJoin.join("user", jakarta.persistence.criteria.JoinType.LEFT);
+            
+            jakarta.persistence.criteria.Join<Object, Object> mockResumeJoin = root.join("mockResume", jakarta.persistence.criteria.JoinType.LEFT);
+            jakarta.persistence.criteria.Join<Object, Object> mockUserJoin = mockResumeJoin.join("user", jakarta.persistence.criteria.JoinType.LEFT);
+
+            jakarta.persistence.criteria.Predicate appCondition = cb.equal(appUserJoin.get("id"), user.getId());
+            jakarta.persistence.criteria.Predicate mockCondition = cb.equal(mockUserJoin.get("id"), user.getId());
+            jakarta.persistence.criteria.Predicate createdByCondition = cb.equal(root.get("createdBy"), user.getEmail());
+            
+            return cb.or(appCondition, mockCondition, createdByCondition);
+        };
         if (spec != null) {
             combinedSpec = combinedSpec.and(spec);
         }
@@ -172,14 +247,24 @@ public class InterviewService {
     }
 
     @Transactional
-    public InterviewSession startMockSession(Long resumeId, String targetRole, String jobDescription, String targetLevel) {
-        Resume resume = resumeRepository.findById(resumeId)
-                .orElseThrow(() -> new RuntimeException("Resume not found"));
-        return startMockSessionWithResume(resume, targetRole, jobDescription, targetLevel, null);
+    public InterviewSession startMockSession(Long resumeId, String targetRole, String jobDescription, String targetLevel, Integer maxQuestions, Map<String, Integer> difficultyRule) {
+        return startMockSession(resumeId, targetRole, jobDescription, targetLevel, maxQuestions, difficultyRule, null);
     }
 
     @Transactional
-    public InterviewSession startMockSessionByScan(Long scanId, String targetRole, String jobDescription, String targetLevel) {
+    public InterviewSession startMockSession(Long resumeId, String targetRole, String jobDescription, String targetLevel, Integer maxQuestions, Map<String, Integer> difficultyRule, List<String> skillKeywords) {
+        Resume resume = resumeRepository.findById(resumeId)
+                .orElseThrow(() -> new RuntimeException("Resume not found"));
+        return startMockSessionWithResume(resume, targetRole, jobDescription, targetLevel, null, maxQuestions, difficultyRule, skillKeywords);
+    }
+
+    @Transactional
+    public InterviewSession startMockSessionByScan(Long scanId, String targetRole, String jobDescription, String targetLevel, Integer maxQuestions, Map<String, Integer> difficultyRule) {
+        return startMockSessionByScan(scanId, targetRole, jobDescription, targetLevel, maxQuestions, difficultyRule, null);
+    }
+
+    @Transactional
+    public InterviewSession startMockSessionByScan(Long scanId, String targetRole, String jobDescription, String targetLevel, Integer maxQuestions, Map<String, Integer> difficultyRule, List<String> skillKeywords) {
         ResumeScan scan = resumeScanRepository.findById(scanId)
                 .orElseThrow(() -> new RuntimeException("Resume scan not found"));
         Resume syntheticResume = Resume.builder()
@@ -187,11 +272,12 @@ public class InterviewService {
                 .fullName(scan.getCandidateName())
                 .predictedIndustry(scan.getIndustry())
                 .build();
-        return startMockSessionWithResume(syntheticResume, targetRole, jobDescription, targetLevel, scanId);
+        return startMockSessionWithResume(syntheticResume, targetRole, jobDescription, targetLevel, scanId, maxQuestions, difficultyRule, skillKeywords);
     }
 
-    private InterviewSession startMockSessionWithResume(Resume resume, String targetRole, String jobDescription, String targetLevel, Long sourceResumeScanId) {
+    private InterviewSession startMockSessionWithResume(Resume resume, String targetRole, String jobDescription, String targetLevel, Long sourceResumeScanId, Integer requestedMaxQuestions, Map<String, Integer> difficultyRule, List<String> skillKeywords) {
         DifficultyLevelEnum difficulty = mapLevelToDifficulty(targetLevel);
+        int maxQuestions = clampMaxQuestions(requestedMaxQuestions);
         
         InterviewSession session = InterviewSession.builder()
                 .sessionType(InterviewSessionTypeEnum.MOCK)
@@ -203,7 +289,7 @@ public class InterviewService {
                 .interviewType(InterviewTypeEnum.MIXED)
                 .difficultyLevel(difficulty)
                 .totalQuestions(1)
-                .maxQuestions(5)
+                .maxQuestions(maxQuestions)
                 .build();
         session = sessionRepository.save(session);
 
@@ -212,18 +298,28 @@ public class InterviewService {
             industry = "IT";
         }
 
-        setupQuestionsForSession(session, targetRole, jobDescription, resume, difficulty, null, industry);
+        setupQuestionsForSession(session, targetRole, jobDescription, resume, difficulty, null, industry, difficultyRule, skillKeywords);
         
         return session;
     }
 
     @Transactional
     public InterviewSession startSession(Long applicationId) {
-        return startSession(applicationId, null);
+        return startSession(applicationId, null, null, null);
     }
 
     @Transactional
     public InterviewSession startSession(Long applicationId, String targetLevel) {
+        return startSession(applicationId, targetLevel, null, null);
+    }
+
+    @Transactional
+    public InterviewSession startSession(Long applicationId, String targetLevel, Integer requestedMaxQuestions) {
+        return startSession(applicationId, targetLevel, requestedMaxQuestions, null);
+    }
+
+    @Transactional
+    public InterviewSession startSession(Long applicationId, String targetLevel, Integer requestedMaxQuestions, Map<String, Integer> difficultyRule) {
         Application application = applicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Application not found"));
 
@@ -235,13 +331,15 @@ public class InterviewService {
             difficulty = mapLevelToDifficulty(application.getResume().getBasicInfo().getPredictedLevel().name());
         }
 
+        int maxQuestions = clampMaxQuestions(requestedMaxQuestions);
+
         InterviewSession session = InterviewSession.builder()
                 .application(application)
                 .status(InterviewSessionStatusEnum.IN_PROGRESS)
                 .interviewType(InterviewTypeEnum.MIXED)
                 .difficultyLevel(difficulty)
                 .totalQuestions(1)
-                .maxQuestions(5)
+                .maxQuestions(maxQuestions)
                 .build();
         session = sessionRepository.save(session);
 
@@ -253,149 +351,150 @@ public class InterviewService {
             industry = "IT";
         }
 
-        setupQuestionsForSession(session, targetRole, job.getDescription(), resume, difficulty, job.getId(), industry);
+        List<String> skillKeywords = job.getSkills() == null ? null : job.getSkills().stream()
+                .map(Skill::getName)
+                .filter(s -> s != null && !s.isBlank())
+                .toList();
+        setupQuestionsForSession(session, targetRole, job.getDescription(), resume, difficulty, job.getId(), industry, difficultyRule, skillKeywords);
 
         return session;
     }
 
     private void setupQuestionsForSession(InterviewSession session, String targetRole, String jobDescription, 
-                                        Resume resume, DifficultyLevelEnum difficulty, Long jobId, String industry) {
+                                        Resume resume, DifficultyLevelEnum defaultDifficulty, Long jobId, String industry,
+                                        Map<String, Integer> difficultyRule, List<String> skillKeywords) {
         List<InterviewQuestion> sessionQuestions = new ArrayList<>();
-        
-        // --- HYBRID FLOW: Random Questions from Pool (Only if jobId exists) ---
-        List<InterviewQuestionBank> cachedPool = (jobId != null) ? 
-                questionBankRepository.findByJobIdAndDifficulty(jobId, difficulty) : 
-                new ArrayList<>();
+        List<InterviewQuestionBank> banksToUpdate = new ArrayList<>();
+        List<InterviewQuestionBank> banksToInsert = new ArrayList<>();
+        Job jobForBank = null;
+        if (jobId != null) {
+            jobForBank = jobRepository.findById(jobId).orElse(null);
+        }
+        int questionTarget = clampMaxQuestions(session.getMaxQuestions());
+        Map<DifficultyLevelEnum, Integer> difficultyCounts = resolveDifficultyQuestionCounts(questionTarget, difficultyRule, defaultDifficulty);
 
-        if (cachedPool.size() >= 3) {
-            log.info("Found {} questions in cache pool for Job ID: {}, Level: {}. Selecting 3 random questions...", 
-                    cachedPool.size(), jobId, difficulty);
-            
-            // Randomly select 3 questions from pool
-            List<InterviewQuestionBank> selectedPool = new ArrayList<>(cachedPool);
-            java.util.Collections.shuffle(selectedPool);
-            List<InterviewQuestionBank> selectedQuestions = selectedPool.subList(0, 3);
-            
-            for (int i = 0; i < 3; i++) {
-                InterviewQuestionBank bankQ = selectedQuestions.get(i);
-                bankQ.setUseCount(bankQ.getUseCount() + 1);
-                questionBankRepository.save(bankQ);
-                
-                sessionQuestions.add(InterviewQuestion.builder()
-                        .interviewSession(session)
-                        .questionText(bankQ.getQuestionText())
-                        .questionType(bankQ.getQuestionType())
-                        .difficulty(difficulty)
-                        .questionOrder(i + 1)
-                        .canReuse(true)
-                        .build());
+        for (DifficultyLevelEnum difficulty : List.of(DifficultyLevelEnum.EASY, DifficultyLevelEnum.MEDIUM, DifficultyLevelEnum.HARD)) {
+            int bucketTarget = difficultyCounts.getOrDefault(difficulty, 0);
+            if (bucketTarget <= 0) {
+                continue;
             }
-            
-            // Generate Q4, Q5
-            try {
-                String aiResponse = geminiService.generatePersonalizedQuestions(jobDescription, resume.getExtractedText(), targetRole, industry, difficulty.name(), 2);
-                JsonNode questionsArray = objectMapper.readTree(aiResponse);
-                if (questionsArray.isArray()) {
-                    for (int i = 0; i < questionsArray.size(); i++) {
-                        JsonNode qNode = questionsArray.get(i);
-                        InterviewQuestion q = InterviewQuestion.builder()
-                                .interviewSession(session)
-                                .questionText(qNode.path("question").asText())
-                                .questionType(QuestionTypeEnum.TECHNICAL)
-                                .difficulty(difficulty)
-                                .questionOrder(4 + i)
-                                .cvContext(qNode.path("cv_context").asText())
-                                .jdContext(qNode.path("jd_context").asText())
-                                .canReuse(qNode.path("can_reuse").asBoolean(false))
-                                .build();
-                        sessionQuestions.add(q);
 
-                        // Save reusable personalized questions to grow the pool! (Only if jobId exists)
-                        if (jobId != null && q.getCanReuse() != null && q.getCanReuse()) {
-                            Job job = jobRepository.findById(jobId).orElse(null);
-                            if (job != null) {
-                                InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
-                                        .job(job)
+            int startSize = sessionQuestions.size();
+            List<InterviewQuestionBank> cachedPool = (jobId != null) ?
+                    questionBankRepository.findByJobIdAndDifficulty(jobId, difficulty) :
+                    new ArrayList<>();
+
+            if (!cachedPool.isEmpty()) {
+                List<InterviewQuestionBank> selectedPool = new ArrayList<>(cachedPool);
+                java.util.Collections.shuffle(selectedPool);
+                int takeFromPool = Math.min(bucketTarget, selectedPool.size());
+                for (int i = 0; i < takeFromPool; i++) {
+                    InterviewQuestionBank bankQ = selectedPool.get(i);
+                    bankQ.setUseCount(bankQ.getUseCount() + 1);
+                    banksToUpdate.add(bankQ);
+                    sessionQuestions.add(InterviewQuestion.builder()
+                            .interviewSession(session)
+                            .questionText(bankQ.getQuestionText())
+                            .questionType(bankQ.getQuestionType())
+                            .difficulty(difficulty)
+                            .questionOrder(sessionQuestions.size() + 1)
+                            .canReuse(true)
+                            .build());
+                }
+            }
+
+            int bucketMissing = bucketTarget - (sessionQuestions.size() - startSize);
+            if (bucketMissing > 0) {
+                try {
+                    String aiResponse = geminiService.generateAllQuestions(
+                            jobDescription, resume.getExtractedText(), targetRole, industry, difficulty.name(), bucketMissing, skillKeywords);
+                    JsonNode questionsArray = objectMapper.readTree(aiResponse);
+                    if (questionsArray.isArray()) {
+                        for (int i = 0; i < questionsArray.size() && bucketMissing > 0; i++) {
+                            JsonNode qNode = questionsArray.get(i);
+                            boolean canReuse = qNode.path("can_reuse").asBoolean(false);
+                            InterviewQuestion q = InterviewQuestion.builder()
+                                    .interviewSession(session)
+                                    .questionText(qNode.path("question").asText())
+                                    .questionType(QuestionTypeEnum.TECHNICAL)
+                                    .difficulty(difficulty)
+                                    .questionOrder(sessionQuestions.size() + 1)
+                                    .cvContext(qNode.path("cv_context").asText())
+                                    .jdContext(qNode.path("jd_context").asText())
+                                    .canReuse(canReuse)
+                                    .build();
+                            sessionQuestions.add(q);
+                            bucketMissing--;
+
+                            if (jobForBank != null && canReuse) {
+                                banksToInsert.add(InterviewQuestionBank.builder()
+                                        .job(jobForBank)
                                         .questionText(q.getQuestionText())
                                         .questionType(QuestionTypeEnum.TECHNICAL)
                                         .difficulty(difficulty)
                                         .topic(targetRole)
-                                        .questionOrder(4 + i)
+                                        .questionOrder(q.getQuestionOrder())
                                         .useCount(1)
-                                        .build();
-                                questionBankRepository.save(bankQ);
+                                        .build());
                             }
                         }
                     }
+                } catch (Exception e) {
+                    log.error("Failed to generate questions for difficulty {}", difficulty, e);
                 }
-            } catch (Exception e) {
-                log.error("Failed to generate personalized questions", e);
             }
-        } else {
-            log.info("Generating all 5 questions using Gemini...");
+        }
+
+        if (sessionQuestions.isEmpty()) {
+            log.info("No question generated from pool/Gemini. Falling back to full generation with {} questions...", questionTarget);
             try {
-                String aiResponse = geminiService.generateAllQuestions(jobDescription, resume.getExtractedText(), targetRole, industry, difficulty.name());
+                String aiResponse = geminiService.generateAllQuestions(
+                        jobDescription, resume.getExtractedText(), targetRole, industry, defaultDifficulty.name(), questionTarget, skillKeywords);
                 JsonNode questionsArray = objectMapper.readTree(aiResponse);
                 if (questionsArray.isArray()) {
-                    for (int i = 0; i < questionsArray.size(); i++) {
+                    for (int i = 0; i < questionsArray.size() && sessionQuestions.size() < questionTarget; i++) {
                         JsonNode qNode = questionsArray.get(i);
-                        int order = i + 1;
-                        boolean isReusable = qNode.path("can_reuse").asBoolean(true);
-                        
+                        boolean isReusable = qNode.path("can_reuse").asBoolean(false);
                         InterviewQuestion q = InterviewQuestion.builder()
                                 .interviewSession(session)
                                 .questionText(qNode.path("question").asText())
                                 .questionType(QuestionTypeEnum.TECHNICAL)
-                                .difficulty(difficulty)
-                                .questionOrder(order)
+                                .difficulty(defaultDifficulty)
+                                .questionOrder(sessionQuestions.size() + 1)
                                 .cvContext(qNode.path("cv_context").asText())
                                 .jdContext(qNode.path("jd_context").asText())
                                 .canReuse(isReusable)
                                 .build();
                         sessionQuestions.add(q);
-
-                        // Cache/save generated questions to populate the pool (Only if jobId exists)
-                        if (jobId != null && isReusable) {
-                            Job job = jobRepository.findById(jobId).orElse(null);
-                            if (job != null) {
-                                InterviewQuestionBank bankQ = InterviewQuestionBank.builder()
-                                        .job(job)
-                                        .questionText(q.getQuestionText())
-                                        .questionType(QuestionTypeEnum.TECHNICAL)
-                                        .difficulty(difficulty)
-                                        .topic(targetRole)
-                                        .questionOrder(order)
-                                        .useCount(1)
-                                        .build();
-                                questionBankRepository.save(bankQ);
-                            }
-                        }
                     }
                 }
             } catch (Exception e) {
-                log.error("Failed to generate questions via Gemini", e);
+                log.error("Failed to generate fallback questions via Gemini", e);
             }
         }
 
         String candidateCvText = resume != null ? resume.getExtractedText() : null;
-        for (int i = sessionQuestions.size(); i < 5; i++) {
+        for (int i = sessionQuestions.size(); i < questionTarget; i++) {
             sessionQuestions.add(InterviewQuestion.builder()
                     .interviewSession(session)
-                    .questionText(buildContextualFallbackQuestion(targetRole, jobDescription, candidateCvText, difficulty, i + 1))
+                    .questionText(buildContextualFallbackQuestion(targetRole, jobDescription, candidateCvText, defaultDifficulty, i + 1))
                     .questionType(QuestionTypeEnum.TECHNICAL)
-                    .difficulty(difficulty)
+                    .difficulty(defaultDifficulty)
                     .questionOrder(i + 1)
                     .canReuse(false)
                     .build());
         }
 
-        // Save all questions
-        for (InterviewQuestion q : sessionQuestions) {
-            questionRepository.save(q);
+        if (!banksToUpdate.isEmpty()) {
+            questionBankRepository.saveAll(banksToUpdate);
         }
+        if (!banksToInsert.isEmpty()) {
+            questionBankRepository.saveAll(banksToInsert);
+        }
+        questionRepository.saveAll(sessionQuestions);
         
-        session.setTotalQuestions(5);
-        session.setMaxQuestions(5);
+        session.setTotalQuestions(questionTarget);
+        session.setMaxQuestions(questionTarget);
         sessionRepository.save(session);
     }
 
@@ -574,8 +673,9 @@ public class InterviewService {
         return Map.of("scores", scores);
     }
 
-    private void saveCriteriaScores(InterviewAnswer answer, JsonNode scoresNode) {
+    public void saveCriteriaScores(InterviewAnswer answer, JsonNode scoresNode) {
         if (scoresNode != null && scoresNode.isObject()) {
+            List<AnswerScore> answerScores = new ArrayList<>();
             for (CriteriaEnum criteria : CriteriaEnum.values()) {
                 // Try uppercase first, then fallback to lowercase for robust LLM parsing
                 JsonNode cNode = scoresNode.path(criteria.name());
@@ -593,8 +693,11 @@ public class InterviewService {
                             .score(cScore)
                             .comment(cComment)
                             .build();
-                    answerScoreRepository.save(answerScore);
+                    answerScores.add(answerScore);
                 }
+            }
+            if (!answerScores.isEmpty()) {
+                answerScoreRepository.saveAll(answerScores);
             }
         }
     }
@@ -603,8 +706,10 @@ public class InterviewService {
     public InterviewSession finishSession(Long sessionId) {
         InterviewSession session = sessionRepository.findById(sessionId)
                 .orElseThrow(() -> new RuntimeException("Session not found"));
+        session.setStatus(InterviewSessionStatusEnum.REPORT_GENERATING);
+        session = sessionRepository.save(session);
         publishReportIfReady(sessionId);
-        log.info("finishSession called for session {}. Report generation was requested when ready.", sessionId);
+        log.info("finishSession called for session {}. Status set to REPORT_GENERATING.", sessionId);
         return session;
     }
 

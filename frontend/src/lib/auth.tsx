@@ -15,6 +15,7 @@ type AuthCtx = {
   user: AuthUser | null;
   loading: boolean;
   isAdmin: boolean;
+  hasPermission: (permission: string) => boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, fullName?: string) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
@@ -26,6 +27,7 @@ const Ctx = createContext<AuthCtx>({
   user: null,
   loading: true,
   isAdmin: false,
+  hasPermission: () => false,
   login: async () => {},
   register: async () => {},
   loginWithGoogle: async () => {},
@@ -37,7 +39,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isAdmin = useMemo(() => user?.role === "ADMIN", [user]);
+  const SUPER_ADMIN_ROLES = ["ADMIN", "SUPER_ADMIN"];
+  const isAdmin = useMemo(() => !!user && SUPER_ADMIN_ROLES.includes(user.role), [user]);
+
+  const hasPermission = useCallback(
+    (permission: string): boolean => {
+      if (!user) return false;
+      if (isAdmin) return true; // ADMIN/SUPER_ADMIN bypasses all checks
+      return user.permissions?.includes(permission) ?? false;
+    },
+    [user, isAdmin]
+  );
 
   // Đồng bộ session của người dùng khi ứng dụng khởi chạy
   const syncSession = useCallback(async () => {
@@ -137,13 +149,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       isAdmin,
+      hasPermission,
       login,
       register,
       loginWithGoogle,
       signOut,
       refreshUser: syncSession,
     }),
-    [user, loading, isAdmin, login, register, loginWithGoogle, signOut, syncSession]
+    [user, loading, isAdmin, hasPermission, login, register, loginWithGoogle, signOut, syncSession]
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

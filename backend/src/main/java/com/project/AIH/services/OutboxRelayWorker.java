@@ -5,6 +5,7 @@ import com.project.AIH.repositories.OutboxMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import java.nio.charset.StandardCharsets;
@@ -23,7 +24,10 @@ public class OutboxRelayWorker {
     private final OutboxMessageRepository outboxRepository;
     private final RabbitTemplate rabbitTemplate;
 
-    @Scheduled(fixedDelay = 10000) // Run every 10 seconds
+    @Value("${app.outbox.max-retries:5}")
+    private int maxRetries;
+
+    @Scheduled(fixedDelayString = "${app.outbox.poll-rate-ms:10000}")
     public void relayMessages() {
         List<OutboxMessage> pendingMessages = outboxRepository.findTop50ByStatusOrderByCreatedAtAsc(STATUS_PENDING);
         
@@ -51,8 +55,9 @@ public class OutboxRelayWorker {
                 log.info("Relayed message ID: {} to exchange: {}", msg.getId(), msg.getExchange());
             } catch (Exception e) {
                 log.error("Failed to relay message ID: {}. Error: {}", msg.getId(), e.getMessage());
-                msg.setRetryCount(msg.getRetryCount() + 1);
-                if (msg.getRetryCount() > 5) {
+                int retryCount = msg.getRetryCount() == null ? 0 : msg.getRetryCount();
+                msg.setRetryCount(retryCount + 1);
+                if (msg.getRetryCount() >= maxRetries) {
                     msg.setStatus(STATUS_FAILED);
                 } else {
                     msg.setStatus(STATUS_PENDING);
